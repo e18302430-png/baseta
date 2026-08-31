@@ -166,6 +166,13 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
 .b-ac{background:var(--ac-l);color:var(--ac-d)}
 .b-w{background:#FFF3DE;color:#B87610}
 .b-d{background:#FDE8E6;color:#C23327}
+.brandbanner{display:flex;align-items:center;gap:11px;margin-top:18px;padding:13px 14px;border-radius:15px;
+  background:linear-gradient(120deg,#0B0F14,#152920 60%,#0B0F14);color:#fff;position:relative;overflow:hidden}
+.brandbanner::before{content:"";position:absolute;inset:0;background:linear-gradient(120deg,transparent,rgba(0,214,143,.14),transparent);
+  background-size:200% 100%;animation:sheen 4s linear infinite}
+.brandbanner .bb-ic{font-size:20px;position:relative;z-index:1}
+.brandbanner b{color:var(--ac);font-family:'Cairo';font-size:13px;position:relative;z-index:1}
+.brandbanner span{display:block;font-size:11px;color:#B7BFC9;margin-top:2px;position:relative;z-index:1}
 .sw{width:44px;height:26px;border-radius:20px;background:var(--line);position:relative;transition:.3s;flex:0 0 auto}
 .sw i{position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:#fff;
   box-shadow:0 1px 3px rgba(0,0,0,.2);transition:.3s;font-style:normal}
@@ -269,7 +276,6 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
       <div class="otp-row mt" id="otpRow">
         <input maxlength="1" inputmode="numeric"><input maxlength="1" inputmode="numeric">
         <input maxlength="1" inputmode="numeric"><input maxlength="1" inputmode="numeric"></div>
-      <div class="demo-hint">🔑 كود التجربة: <b class="num">1234</b></div>
       <div class="resend">مستلمتش الكود؟ <b onclick="toast('اتبعت تاني')">إعادة الإرسال</b></div>
       <div class="spacer"></div>
       <button class="btn btn-p" onclick="verifyOtp()">تأكيد</button>
@@ -339,11 +345,21 @@ function emit(msg){
   try{ bc&&bc.postMessage(msg); }catch(e){}
   try{ localStorage.setItem('basita_bus', JSON.stringify(msg)); }catch(e){}
 }
+const _seenMsgIds=new Set();
+function _dedupe(fn){
+  return d=>{
+    if(!d||!d.id||_seenMsgIds.has(d.id))return;
+    _seenMsgIds.add(d.id);
+    if(_seenMsgIds.size>300){ _seenMsgIds.delete(_seenMsgIds.values().next().value); }
+    fn(d);
+  };
+}
 function onBus(fn){
-  window.addEventListener('message', e=>{ if(e.data&&e.data.__basita&&e.data.from!==ROLE) fn(e.data) });
-  if(bc) bc.onmessage=e=>{ if(e.data&&e.data.from!==ROLE) fn(e.data) };
+  const wrapped=_dedupe(fn);
+  window.addEventListener('message', e=>{ if(e.data&&e.data.__basita&&e.data.from!==ROLE) wrapped(e.data) });
+  if(bc) bc.onmessage=e=>{ if(e.data&&e.data.from!==ROLE) wrapped(e.data) };
   window.addEventListener('storage', e=>{ if(e.key==='basita_bus'&&e.newValue){
-    try{const d=JSON.parse(e.newValue); if(d.from!==ROLE) fn(d)}catch(_){} }});
+    try{const d=JSON.parse(e.newValue); if(d.from!==ROLE) wrapped(d)}catch(_){} }});
 }
 
 setTimeout(()=>document.getElementById('boot').classList.add('gone'),1300);
@@ -362,6 +378,7 @@ function sendOtp(){
   S.co.ph=v;
   goAuth('otp');
   setTimeout(()=>document.querySelector('#otpRow input').focus(),350);
+  setTimeout(()=>toast('📩 وصلك رسالة تحقق'),900);
 }
 document.addEventListener('input',e=>{
   if(e.target.parentElement&&e.target.parentElement.id==='otpRow'){
@@ -375,10 +392,9 @@ document.addEventListener('keydown',e=>{
 });
 function verifyOtp(){
   const code=[...document.querySelectorAll('#otpRow input')].map(i=>i.value).join('');
-  if(code!=='1234'){toast('الكود غلط — جرّب 1234');return}
+  if(code.length!==4){toast('اكتب الكود المكوّن من ٤ أرقام');return}
   if(authMode==='login'){
-    toast('أهلاً بيكي تاني، منى 👋');
-    document.getElementById('hiName').textContent='منى';
+    toast('أهلاً بيكي تاني 👋');
     mountApp();
   } else {
     goAuth('profile');
@@ -479,6 +495,11 @@ function placeOrder(){
   toast('الطلب اتبعت للتاجر — شغّل تطبيق التاجر وشوفه وصل');
 }
 onBus(d=>{
+  if(d.type==='platform:reset'){
+    S.cart={}; S.orders=[]; S.oid=null; S.view='home';
+    render(); toast('🗑️ اتصفّرت بيانات المنصة من لوحة المالك');
+    return;
+  }
   if(d.type==='catalog:sync'&&d.to&&d.to.includes('customer')){
     PRODS=d.products;
     if(['home','cart','checkout'].includes(S.view)) render();
@@ -511,6 +532,11 @@ function vHome(){
       <span class="act">${S.cart[p.id]?`<span class="stp"><button onclick="qty(${p.id},1)">+</button>
         <span class="q num">${S.cart[p.id]}</span><button onclick="qty(${p.id},-1)">−</button></span>`:
         `<button class="add" onclick="addCart(${p.id})">+</button>`}</span></div>`).join('')}
+    <div class="brandbanner">
+      <div class="bb-ic">🇪🇬</div>
+      <div><b>بسيطة</b> — بنرقمن مصر، نشاط ورا نشاط
+        <span>محلك مش هيفضل يشتغل بالتخمين بعد النهاردة</span></div>
+    </div>
     <div style="height:8px"></div></div>`;
 }
 function vCart(){
