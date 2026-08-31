@@ -48,12 +48,34 @@ p.lsub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
 .fld input{width:100%;padding:15px;border:1.5px solid var(--line);border-radius:14px;
   background:var(--surf2);color:var(--txt);outline:0;transition:.2s}
 .fld input:focus{border-color:var(--ac);background:var(--surf)}
+.fld select{width:100%;padding:15px;border:1.5px solid var(--line);border-radius:14px;
+  background:var(--surf2);color:var(--txt);outline:0;transition:.2s}
+.fld select:focus{border-color:var(--ac);background:var(--surf)}
+.fld select option{background:#fff}
 .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:16px;
   border-radius:15px;font-family:'Cairo';font-weight:700;font-size:15px;transition:.15s}
 .btn:active{transform:scale(.98)}
 .btn-p{background:var(--ac);color:#fff;box-shadow:0 10px 26px -10px rgba(91,110,245,.55)}
-.demo-hint{background:var(--ac-l);color:var(--ac-d);border-radius:12px;padding:11px 14px;font-size:12.5px;
-  text-align:center;margin-top:12px;border:1px dashed rgba(91,110,245,.35)}
+.btn-o{background:var(--surf);border:1.5px solid var(--line);color:var(--txt)}
+
+.astage{flex:1;display:none;flex-direction:column;padding:26px 24px;position:relative;overflow-y:auto}
+.astage.on{display:flex;animation:slideIn .4s cubic-bezier(.2,.8,.2,1)}
+@keyframes slideIn{from{opacity:0;transform:translateX(16px)}}
+.aback{width:36px;height:36px;border-radius:11px;background:var(--surf2);display:grid;place-items:center;
+  font-size:17px;margin-bottom:18px}
+.aprog{display:flex;gap:5px;margin-bottom:22px}
+.aprog i{height:4px;flex:1;border-radius:3px;background:var(--line);font-style:normal}
+.aprog i.on{background:var(--ac)}
+.hero-ill{width:100%;max-width:220px;height:170px;margin:6px auto 20px}
+.wmark{width:72px;height:72px;margin:0 auto 22px}
+h1.atitle{font-size:23px;text-align:center;line-height:1.4}
+p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-height:1.7}
+.otp-row{display:flex;gap:10px;justify-content:center;margin:8px 0 6px}
+.otp-row input{width:52px;height:60px;text-align:center;font-size:24px;font-weight:800;font-family:'Cairo';
+  border:1.5px solid var(--line);border-radius:15px;background:var(--surf2)}
+.otp-row input:focus{border-color:var(--ac);background:var(--surf)}
+.resend{text-align:center;font-size:13px;color:var(--txt2);margin-top:14px}
+.resend b{color:var(--ac-d);font-weight:700}
 
 /* ═══ بدء المناوبة ═══ */
 #shiftStart{position:absolute;inset:0;z-index:120;background:var(--bg);display:none;flex-direction:column;
@@ -174,24 +196,85 @@ p.lsub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
     <b>بسيطة</b><span>تطبيق المندوب</span><div class="bar"><i></i></div></div></div>
 
   <div id="loginFlow">
-    <div class="spacer" style="flex:.4"></div>
-    <svg class="lmark" viewBox="0 0 76 76"><circle cx="38" cy="38" r="38" fill="#EAECFE"/>
-      <circle cx="38" cy="46" r="9" fill="none" stroke="#5B6EF5" stroke-width="2.6"/>
-      <path d="M25 30h26l-4 12H29l-4-12Z" fill="none" stroke="#5B6EF5" stroke-width="2.6" stroke-linejoin="round"/></svg>
-    <h1 class="ltitle">دخول المندوبين</h1>
-    <p class="lsub">سجّل دخولك عشان تبدأ مناوبتك وتستقبل مهامك</p>
-    <div class="fld mt"><label>رقم الموبايل</label>
-      <input id="dPhone" type="tel" dir="ltr" value="01099887766" style="text-align:center;font-family:'Cairo'"></div>
-    <div class="fld"><label>كلمة المرور</label>
-      <input id="dPass" type="password" placeholder="••••••••" style="text-align:center"></div>
-    <div class="demo-hint">🔑 أي كلمة مرور هتشتغل في التجربة دي</div>
-    <div class="spacer"></div>
-    <button class="btn btn-p" onclick="doLogin()">دخول</button>
+
+    <div class="astage on" id="dst-welcome">
+      <div class="spacer" style="flex:.3"></div>
+      <svg class="hero-ill" viewBox="0 0 220 170"><defs><radialGradient id="dg1"><stop offset="0%" stop-color="#7C8CF8" stop-opacity=".25"/><stop offset="100%" stop-color="#7C8CF8" stop-opacity="0"/></radialGradient></defs>
+        <circle cx="110" cy="85" r="82" fill="url(#dg1)"/>
+        <circle cx="110" cy="95" r="34" fill="#fff" stroke="#5B6EF5" stroke-width="2"/>
+        <rect x="94" y="85" width="32" height="20" rx="4" fill="#EAECFE"/>
+        <circle cx="88" cy="118" r="10" fill="#151833"/><circle cx="132" cy="118" r="10" fill="#151833"/>
+        <path d="M60 105 L94 95" stroke="#5B6EF5" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="150" cy="60" r="6" fill="#00B67A"/></svg>
+      <h1 class="atitle">انضم كمندوب توصيل<br>واكسب من وقتك</h1>
+      <p class="asub">استقبل مهام قريبة منك وسلّم بجدولك الخاص</p>
+      <div class="spacer"></div>
+      <button class="btn btn-p" onclick="dGoAuth('phone')">سجّل كمندوب جديد</button>
+      <button class="btn btn-o mt" onclick="dGoAuth('login')">عندي حساب بالفعل</button>
+    </div>
+
+    <div class="astage" id="dst-login">
+      <button class="aback" onclick="dGoAuth('welcome')">→</button>
+      <svg class="wmark" viewBox="0 0 76 76"><circle cx="38" cy="38" r="38" fill="#EAECFE"/>
+        <circle cx="38" cy="46" r="9" fill="none" stroke="#5B6EF5" stroke-width="2.6"/>
+        <path d="M25 30h26l-4 12H29l-4-12Z" fill="none" stroke="#5B6EF5" stroke-width="2.6" stroke-linejoin="round"/></svg>
+      <h1 class="atitle">دخول المندوبين</h1>
+      <p class="asub">سجّل دخولك عشان تبدأ مناوبتك وتستقبل مهامك</p>
+      <div class="fld mt"><label>رقم الموبايل</label>
+        <input id="dPhone" type="tel" dir="ltr" placeholder="01xxxxxxxxx" style="text-align:center;font-family:'Cairo'"></div>
+      <div class="fld"><label>كلمة المرور</label>
+        <input id="dPass" type="password" placeholder="••••••••" style="text-align:center"></div>
+      <div class="spacer"></div>
+      <button class="btn btn-p" onclick="doLogin()">دخول</button>
+    </div>
+
+    <div class="astage" id="dst-phone">
+      <button class="aback" onclick="dGoAuth('welcome')">→</button>
+      <div class="aprog"><i class="on"></i><i></i><i></i></div>
+      <svg class="wmark" viewBox="0 0 72 72"><circle cx="36" cy="36" r="36" fill="#EAECFE"/>
+        <path d="M24 20h13l4 10-5 4c2 5 6 9 11 11l4-5 10 4v13c-20 1-37-16-37-37Z" fill="none" stroke="#5B6EF5" stroke-width="2.6" stroke-linejoin="round"/></svg>
+      <h1 class="atitle">رقم موبايلك</h1>
+      <p class="asub">هنبعتلك كود تحقق سريع عليه</p>
+      <div class="fld mt"><label>رقم الموبايل</label>
+        <input id="dSignupPhone" type="tel" dir="ltr" placeholder="01xxxxxxxxx" style="text-align:center;font-family:'Cairo';letter-spacing:1px"></div>
+      <div class="spacer"></div>
+      <button class="btn btn-p" onclick="dSendOtp()">متابعة</button>
+    </div>
+
+    <div class="astage" id="dst-otp">
+      <button class="aback" onclick="dGoAuth('phone')">→</button>
+      <div class="aprog"><i class="on"></i><i class="on"></i><i></i></div>
+      <h1 class="atitle">اكتب كود التحقق</h1>
+      <p class="asub">اتبعت رسالة على <b id="dOtpPhone" class="num" dir="ltr" style="color:var(--txt)"></b></p>
+      <div class="otp-row mt" id="dOtpRow">
+        <input maxlength="1" inputmode="numeric"><input maxlength="1" inputmode="numeric">
+        <input maxlength="1" inputmode="numeric"><input maxlength="1" inputmode="numeric"></div>
+      <div class="resend">مستلمتش الكود؟ <b onclick="toast('اتبعت تاني')">إعادة الإرسال</b></div>
+      <div class="spacer"></div>
+      <button class="btn btn-p" onclick="dVerifyOtp()">تأكيد</button>
+    </div>
+
+    <div class="astage" id="dst-details">
+      <div class="aprog"><i class="on"></i><i class="on"></i><i class="on"></i></div>
+      <svg class="wmark" viewBox="0 0 72 72"><circle cx="36" cy="36" r="36" fill="#EAECFE"/>
+        <circle cx="36" cy="29" r="10" fill="none" stroke="#5B6EF5" stroke-width="2.6"/>
+        <path d="M18 55c3-9 10-14 18-14s15 5 18 14" fill="none" stroke="#5B6EF5" stroke-width="2.6" stroke-linecap="round"/></svg>
+      <h1 class="atitle">بياناتك كمندوب</h1>
+      <p class="asub">آخر خطوة وتقدر تبدأ مناوبتك</p>
+      <div class="fld mt"><label>الاسم بالكامل</label><input id="dName" placeholder="اسمك بالكامل"></div>
+      <div class="fld"><label>وسيلة التوصيل</label><select id="dVehicle">
+        <option value="🛵">🛵 موتوسيكل</option><option value="🚲">🚲 دراجة</option><option value="🚗">🚗 عربية</option></select></div>
+      <div class="fld"><label>كلمة المرور</label><input id="dNewPass" type="password" placeholder="••••••••"></div>
+      <div class="fld"><label>تأكيد كلمة المرور</label><input id="dNewPassConf" type="password" placeholder="••••••••"></div>
+      <div class="spacer"></div>
+      <button class="btn btn-p" onclick="finishDriverSignup()">ابدأ كمندوب</button>
+    </div>
+
   </div>
 
   <div id="shiftStart">
-    <div class="prof-av">ك</div>
-    <h2>أهلاً، كريم عبد الله</h2>
+    <div class="prof-av" id="shiftAv">ك</div>
+    <h2>أهلاً، <span id="shiftName">كريم عبد الله</span></h2>
     <p>ابدأ مناوبتك عشان تستقبل مهام التوصيل</p>
     <div class="togglebig" onclick="startShift()"><b>بدء المناوبة</b><div class="sw" id="shiftSw"><i></i></div></div>
   </div>
@@ -205,7 +288,7 @@ p.lsub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
         <div class="brand"><b>بسيطة</b><span>تطبيق المندوب</span></div>
         <button class="live" style="border:0;background:rgba(0,0,0,.04);border-radius:9px;padding:5px 9px;margin-inline-start:auto" onclick="openDriverSettings()">⚙️ الإعدادات</button>
       </div>
-      <div class="me"><span class="av">ك</span><b>كريم عبد الله</b>
+      <div class="me"><span class="av" id="topAv">ك</span><b id="topName">كريم عبد الله</b>
         <div class="status-tg" id="statusTg"></div></div>
     </div>
     <div id="settleTop"></div>
@@ -237,21 +320,83 @@ function emit(msg){
   try{ bc&&bc.postMessage(msg); }catch(e){}
   try{ localStorage.setItem('basita_bus', JSON.stringify(msg)); }catch(e){}
 }
+const _seenMsgIds=new Set();
+function _dedupe(fn){
+  return d=>{
+    if(!d||!d.id||_seenMsgIds.has(d.id))return;
+    _seenMsgIds.add(d.id);
+    if(_seenMsgIds.size>300){ _seenMsgIds.delete(_seenMsgIds.values().next().value); }
+    fn(d);
+  };
+}
 function onBus(fn){
-  window.addEventListener('message', e=>{ if(e.data&&e.data.__basita&&e.data.from!==ROLE) fn(e.data) });
-  if(bc) bc.onmessage=e=>{ if(e.data&&e.data.from!==ROLE) fn(e.data) };
+  const wrapped=_dedupe(fn);
+  window.addEventListener('message', e=>{ if(e.data&&e.data.__basita&&e.data.from!==ROLE) wrapped(e.data) });
+  if(bc) bc.onmessage=e=>{ if(e.data&&e.data.from!==ROLE) wrapped(e.data) };
   window.addEventListener('storage', e=>{ if(e.key==='basita_bus'&&e.newValue){
-    try{const d=JSON.parse(e.newValue); if(d.from!==ROLE) fn(d)}catch(_){} }});
+    try{const d=JSON.parse(e.newValue); if(d.from!==ROLE) wrapped(d)}catch(_){} }});
 }
 
 setTimeout(()=>document.getElementById('boot').classList.add('gone'),1300);
 setTimeout(()=>document.getElementById('loginFlow').classList.add('show'),1350);
 
+function dGoAuth(stage){
+  document.querySelectorAll('#loginFlow .astage').forEach(s=>s.classList.remove('on'));
+  document.getElementById('dst-'+stage).classList.add('on');
+}
+document.addEventListener('input',e=>{
+  if(e.target.parentElement&&e.target.parentElement.id==='dOtpRow'){
+    if(e.target.value){const n=e.target.nextElementSibling;if(n)n.focus()}
+  }
+});
+document.addEventListener('keydown',e=>{
+  if(e.target.parentElement&&e.target.parentElement.id==='dOtpRow'&&e.key==='Backspace'&&!e.target.value){
+    const p=e.target.previousElementSibling;if(p)p.focus();
+  }
+});
+let dSignupPhone='';
+function dSendOtp(){
+  const v=document.getElementById('dSignupPhone').value.trim();
+  if(!/^01[0125]\d{8}$/.test(v)){toast('اكتب رقم موبايل مصري صحيح');return}
+  dSignupPhone=v;
+  document.getElementById('dOtpPhone').textContent=v;
+  dGoAuth('otp');
+  setTimeout(()=>document.querySelector('#dOtpRow input').focus(),350);
+  setTimeout(()=>toast('📩 وصلك رسالة تحقق'),900);
+}
+function dVerifyOtp(){
+  const code=[...document.querySelectorAll('#dOtpRow input')].map(i=>i.value).join('');
+  if(code.length!==4){toast('اكتب الكود كامل');return}
+  dGoAuth('details');
+}
+function finishDriverSignup(){
+  const name=document.getElementById('dName').value.trim();
+  const vehicle=document.getElementById('dVehicle').value;
+  const pass=document.getElementById('dNewPass').value;
+  const conf=document.getElementById('dNewPassConf').value;
+  if(!name){toast('اكتب اسمك بالكامل');return}
+  if(pass.length<4){toast('كلمة المرور قصيرة أوي');return}
+  if(pass!==conf){toast('كلمة المرور والتأكيد مش متطابقين');return}
+  S.driverName=name; S.vehicle=vehicle; S.password=pass; S.phone=dSignupPhone;
+  applyDriverIdentity();
+  toast('اتعمل حسابك بنجاح 🎉');
+  document.getElementById('loginFlow').classList.remove('show');
+  setTimeout(()=>document.getElementById('shiftStart').classList.add('show'),350);
+}
+function applyDriverIdentity(){
+  const n=S.driverName||'كريم عبد الله'; const initial=n.trim()[0]||'م';
+  document.getElementById('shiftName').textContent=n;
+  document.getElementById('shiftAv').textContent=initial;
+  document.getElementById('topAv').textContent=initial;
+  document.getElementById('topName').textContent=n;
+}
 function doLogin(){
   const ph=document.getElementById('dPhone').value.trim();
   const pass=document.getElementById('dPass').value;
   if(!/^01[0125]\d{8}$/.test(ph)){toast('اكتب رقم موبايل صحيح');return}
-  S.password=pass||'12345678';
+  if(!pass){toast('اكتب كلمة المرور');return}
+  if(!S.password) S.password=pass;
+  applyDriverIdentity();
   document.getElementById('loginFlow').classList.remove('show');
   setTimeout(()=>document.getElementById('shiftStart').classList.add('show'),350);
 }
@@ -263,6 +408,7 @@ function startShift(){
       document.getElementById('shiftStart').classList.remove('show');
       document.getElementById('mainApp').classList.add('show');
       render();
+      emit({to:['merchant','owner'],type:'driver:online',driverName:S.driverName||'كريم عبد الله',vehicle:S.vehicle||'🛵'});
       toast('بدأت مناوبتك — مستني أول مهمة');
     },400);
   },600);
@@ -271,11 +417,23 @@ function toast(m){const t=document.getElementById('toast');if(!t)return;t.textCo
   clearTimeout(window._tT);window._tT=setTimeout(()=>t.classList.remove('show'),2600)}
 
 const STEPS=['assigned','picked','delivering','delivered'];
-let S={view:'tasks',avail:true,tasks:[],history:[],shiftTotal:0,settling:false,password:''};
+const SHOP_GEO={lat:31.0958,lng:31.3789}; // إحداثيات تقريبية — المنيل، طلخا، الدقهلية
+function distanceKm(a,b){
+  if(!a||!b)return null;
+  const R=6371,dLat=(b.lat-a.lat)*Math.PI/180,dLng=(b.lng-a.lng)*Math.PI/180;
+  const x=Math.sin(dLat/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLng/2)**2;
+  return (R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x))).toFixed(1);
+}
+let S={view:'tasks',avail:true,tasks:[],history:[],shiftTotal:0,settling:false,password:'',driverName:'',vehicle:'🛵',phone:''};
 const $=s=>document.querySelector(s);
 const M=n=>Math.round(n).toLocaleString('en');
 
 onBus(d=>{
+  if(d.type==='platform:reset'){
+    S.tasks=[]; S.history=[]; S.shiftTotal=0; S.settling=false;
+    render(); toast('🗑️ اتصفّرت بيانات المهام من لوحة المالك');
+    return;
+  }
   if(d.type==='shift:settled'&&d.to&&d.to.includes('driver')){
     S.shiftTotal=0; S.settling=false; render(); toast('✓ التاجر أكّد استلام الكاش — مناوبتك اتقفلت');
     return;
@@ -420,9 +578,21 @@ function advance(id){
 function vTasks(){
   const active=S.tasks.filter(t=>t.accepted);
   const pending=S.tasks.filter(t=>!t.accepted);
-  if(!S.tasks.length)return `<div class="empty"><div class="e">🛵</div><h4>مفيش مهام دلوقتي</h4>
+  const goal=8, done=S.history.length, pct=Math.min(100,Math.round(done/goal*100));
+  const goalBanner=`<div class="pad" style="padding-top:14px">
+    <div style="border-radius:16px;padding:14px 16px;margin-bottom:12px;position:relative;overflow:hidden;
+      background:linear-gradient(120deg,#12162E,#1D2350 55%,#12162E);color:#fff;box-shadow:0 10px 26px -12px rgba(91,110,245,.4)">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px">
+        <span style="font-size:18px">🎯</span>
+        <b style="font-family:'Cairo';font-size:13.5px">هدفك النهاردة: <span class="num">${done}</span> من <span class="num">${goal}</span> طلبات</b>
+        <span style="margin-inline-start:auto;font-size:10px;color:#9AA8FF;letter-spacing:1px">بسيطة · شبكة موحّدة</span>
+      </div>
+      <div style="height:6px;background:rgba(255,255,255,.14);border-radius:4px;overflow:hidden">
+        <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#7C8CF8,#5FD4E8);border-radius:4px;transition:width .6s"></div></div>
+    </div></div>`;
+  if(!S.tasks.length)return goalBanner+`<div class="empty" style="padding-top:0"><div class="e">🛵</div><h4>مفيش مهام دلوقتي</h4>
     <p class="tiny">لما التاجر يعيّنك، هتظهر هنا فورًا</p></div>`;
-  return `<div class="pad" style="padding-top:14px">
+  return goalBanner+`<div class="pad" style="padding-top:0">
     ${active.map(t=>{
       const idx=STEPS.indexOf(t.stage);
       const nextLabel={assigned:'استلمت الطلب من المحل',picked:'بدأت التوصيل',delivering:'تم التسليم'}[t.stage];
@@ -433,6 +603,12 @@ function vTasks(){
           <span class="bdg b-prog">مهمة نشطة</span></div>
         <div class="tb">
           <div class="taddr"><span class="k">📍</span><span>${t.addr}</span></div>
+          ${t.geo?`<a href="https://www.google.com/maps/dir/?api=1&destination=${t.geo.lat},${t.geo.lng}" target="_blank" rel="noopener"
+              style="display:flex;align-items:center;gap:8px;text-decoration:none;background:var(--ac-l);color:var(--ac-d);
+              padding:9px 12px;border-radius:11px;font-size:12.5px;font-weight:700;margin:6px 0">
+              🗺️ افتح خريطة الطريق للعميل
+              <span class="tiny" style="margin-inline-start:auto;font-weight:500;color:var(--txt2)">≈ ${distanceKm(SHOP_GEO,t.geo)} كم</span></a>`:
+            `<div class="tiny muted" style="padding:6px 0">📍 العميل ماكانش فعّل موقعه وقت الطلب</div>`}
           <div class="taddr"><span class="k">📞</span><span class="num" dir="ltr">${maskPhone(t.ph)}</span>
             <button class="btn2 btn-o2" style="flex:0 0 auto;padding:6px 12px;font-size:11px;margin-inline-start:8px" onclick="maskedCall()">📞 اتصال</button></div>
           <div class="tsteps">${STEPS.map((s,i)=>`<div class="tstep ${i<=idx?'on':''}"></div>`).join('')}</div>
