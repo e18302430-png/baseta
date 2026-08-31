@@ -196,6 +196,16 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
 .stars span{cursor:pointer;transition:.15s;-webkit-tap-highlight-color:transparent}
 .stars span.on{color:var(--warn)}
 .stars span:active{transform:scale(1.2)}
+.tip-row{display:flex;gap:8px;flex-wrap:wrap}
+.tip-btn{padding:10px 16px;border-radius:999px;border:1.5px solid var(--line);background:var(--surf2);
+  color:var(--txt);font-family:'Cairo';font-weight:700;font-size:13px;cursor:pointer;transition:.15s}
+.tip-btn.on{background:var(--ac);border-color:var(--ac);color:#fff}
+.float-support{position:absolute;bottom:calc(var(--nav) + 14px);inset-inline-start:14px;z-index:35;
+  width:50px;height:50px;border-radius:50%;background:var(--ac);color:#fff;font-size:21px;border:0;
+  display:grid;place-items:center;box-shadow:0 12px 26px -8px rgba(0,182,122,.55)}
+.float-support:active{transform:scale(.92)}
+.sup-fld{width:100%;padding:13px;border:1.5px solid var(--line);border-radius:12px;background:var(--surf2);
+  color:var(--txt);resize:vertical;font-family:inherit;font-size:14px}
 
 .empty{text-align:center;padding:50px 22px;color:var(--txt3)}
 .empty .e{font-size:42px}
@@ -331,6 +341,7 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
     <div class="cartbar" id="cartbar" onclick="go('cart')">
       <span class="c num" id="cartCount">0</span><span>عرض السلة</span>
       <span class="t num" id="cartTotal">0 ج</span></div>
+    <button class="float-support" onclick="openSupportSheet()" aria-label="الدعم الفني">🆘</button>
     <div class="nav" id="nav"></div>
     <div class="shbg" id="shbg" onclick="closeSheet()"></div>
     <div class="sheet" id="sheet"><div class="grab"></div>
@@ -441,12 +452,24 @@ const STAGES=['placed','accepted','assigned','picked','delivering','delivered'];
 const SLABEL={placed:'تم استلام طلبك',accepted:'ماركت أبو حمزة قبل الطلب',assigned:'اتعيّن مندوب توصيل',
   picked:'المندوب استلم طلبك من المحل',delivering:'في الطريق إليك دلوقتي',delivered:'وصلك الطلب 🎉'};
 
-let S={view:'home',cart:{},orders:[],oid:null,co:{name:'منى',ph:'',lm:LM[0],house:'12',geo:null},pin:'1234'};
+let S={view:'home',cart:{},orders:[],oid:null,co:{name:'منى',ph:'',lm:LM[0],house:'12',geo:null},pin:'1234',shopPhoto:''};
 const $=s=>document.querySelector(s);
 const M=n=>Math.round(n).toLocaleString('en');
 const P=id=>PRODS.find(x=>x.id===id);
 
-let tT;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');
+function playNotifySound(){
+  try{
+    const ctx=new (window.AudioContext||window.webkitAudioContext)();
+    const o=ctx.createOscillator(),g=ctx.createGain();
+    o.connect(g);g.connect(ctx.destination);
+    o.type='sine';o.frequency.value=880;
+    g.gain.setValueAtTime(.0001,ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(.14,ctx.currentTime+.01);
+    g.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+.28);
+    o.start();o.stop(ctx.currentTime+.3);
+  }catch(e){}
+}
+let tT;function toast(m){playNotifySound();const t=$('#toast');t.textContent=m;t.classList.add('show');
   clearTimeout(tT);tT=setTimeout(()=>t.classList.remove('show'),2400)}
 function openSheet(t,h){$('#shT').textContent=t;$('#shB').innerHTML=h;$('#sheet').classList.add('show');$('#shbg').classList.add('show')}
 function closeSheet(){$('#sheet').classList.remove('show');$('#shbg').classList.remove('show')}
@@ -518,6 +541,22 @@ onBus(d=>{
     render(); toast('🗑️ اتصفّرت بيانات المنصة من لوحة المالك');
     return;
   }
+  if(d.type==='support:reply'&&d.to&&d.to.includes('customer')){
+    toast('📩 رد الدعم الفني: '+d.reply);
+    return;
+  }
+  if(d.type==='driver:message'&&d.to&&d.to.includes('customer')){
+    const o=S.orders.find(x=>x.id===d.orderId);
+    if(o){ o.driverMessages=o.driverMessages||[]; o.driverMessages.unshift({from:d.driverName,msg:d.message}); }
+    toast('🛵 '+d.driverName+': '+d.message);
+    render();
+    return;
+  }
+  if(d.type==='shop:photo_updated'&&d.to&&d.to.includes('customer')){
+    S.shopPhoto=d.photo;
+    if(S.view==='home') render();
+    return;
+  }
   if(d.type==='catalog:sync'&&d.to&&d.to.includes('customer')){
     PRODS=d.products;
     if(['home','cart','checkout'].includes(S.view)) render();
@@ -538,7 +577,9 @@ onBus(d=>{
 
 function vHome(){
   return `<div class="pad">
-    <div class="hero"><div class="e">ماركت أبو حمزة</div><h2>مفتوح دلوقتي</h2>
+    ${S.shopPhoto?`<div style="margin-top:14px;border-radius:16px;overflow:hidden;box-shadow:var(--sh)">
+      <img src="${S.shopPhoto}" style="width:100%;height:140px;object-fit:cover;display:block"></div>`:''}
+    <div class="hero" style="${S.shopPhoto?'border-radius:0 0 16px 16px;margin-top:0':''}"><div class="e">ماركت أبو حمزة</div><h2>مفتوح دلوقتي</h2>
       <p>توصيل ١٥-٢٥ دقيقة · رسوم التوصيل ٥ ج</p></div>
     <div class="qrentry"><span class="ic">🔗</span>
       <span><b>عندك كود محل؟</b><span>امسحه وادخل متجره على طول</span></span>
@@ -624,6 +665,17 @@ function vTrack(){
     <div class="card" style="padding:16px 14px">${STAGES.map((s,i)=>`
       <div class="tl-i ${i<cur?'done':i===cur?'now done':''}"><span class="tl-d">${i<=cur?'✓':''}</span>
       <span><span class="tl-t">${SLABEL[s]}</span>${i===cur?'<span class="tl-s">دلوقتي</span>':''}</span></div>`).join('')}</div>
+    ${o.driver&&o.stage!=='delivered'?`<div class="card mt" style="padding:13px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:18px">💬</span>
+        <span style="flex:1"><b style="font-size:13px;display:block">تواصل مع ${o.driver}</b>
+          <span class="tiny muted">راسله من غير ما تشوف رقمه أو يشوف رقمك</span></span>
+        <button style="background:var(--ac);color:#fff;border:0;border-radius:11px;padding:9px 14px;
+          font-family:'Cairo';font-weight:700;font-size:12.5px;flex:0 0 auto;cursor:pointer" onclick="openMsgSheet('${o.id}')">راسله</button>
+      </div>
+      ${(o.driverMessages&&o.driverMessages.length)?`<div class="mt" style="border-top:1px solid var(--line);padding-top:10px">
+        ${o.driverMessages.slice(0,3).map(m=>`<div class="tiny" style="padding:4px 0"><b style="color:var(--ac-d)">${m.from}:</b> ${m.msg}</div>`).join('')}
+      </div>`:''}</div>`:''}
     ${o.stage==='delivered'&&o.deliveryPhoto?`<div class="sec-t"><h3>صورة إثبات التسليم</h3></div>
       <div class="card" style="padding:10px;text-align:center">
         <img src="${o.deliveryPhoto}" style="width:100%;border-radius:12px;max-height:220px;object-fit:cover">
@@ -635,6 +687,14 @@ function vTrack(){
         <div class="stars" id="starsShop">${[1,2,3,4,5].map(n=>`<span data-n="${n}" onclick="setStar('shop',${n})">★</span>`).join('')}</div>
         <div class="tiny muted mb mt">قيّم المندوب${o.driver?' — '+o.driver:''}</div>
         <div class="stars" id="starsDriver">${[1,2,3,4,5].map(n=>`<span data-n="${n}" onclick="setStar('driver',${n})">★</span>`).join('')}</div>
+        ${o.driver?`<div class="tiny muted mb mt">حابب تدّي إكرامية لـ${o.driver}؟ (اختياري)</div>
+        <div class="tip-row" id="tipRow">
+          <button class="tip-btn" data-v="5" onclick="setTip(5)">٥ ج</button>
+          <button class="tip-btn" data-v="10" onclick="setTip(10)">١٠ ج</button>
+          <button class="tip-btn" data-v="20" onclick="setTip(20)">٢٠ ج</button>
+          <button class="tip-btn" data-v="custom" onclick="showCustomTip()">مبلغ آخر</button>
+        </div>
+        <input id="tipCustomInput" type="number" placeholder="اكتب المبلغ" class="sup-fld" style="display:none;margin-top:9px">`:''}
         <div class="fld mt" style="margin-bottom:10px"><label>عندك شكوى أو ملاحظة؟ (اختياري)</label>
           <input id="complaintInput" placeholder="اكتب هنا لو في مشكلة"></div>
         <button class="btn btn-p" onclick="submitFeedback('${o.id}')">إرسال التقييم</button>
@@ -656,21 +716,37 @@ function toggleRecurring(id){
   const o=S.orders.find(x=>x.id===id); o.recurring=!o.recurring; render();
   toast(o.recurring?'تمام — هنفكّرك الأسبوع الجاي بنفس الطلب':'اتلغى التكرار');
 }
-let ratingShop=0, ratingDriver=0;
+let ratingShop=0, ratingDriver=0, tipAmount=0;
 function setStar(type,n){
   if(type==='shop')ratingShop=n; else ratingDriver=n;
   const box=document.getElementById(type==='shop'?'starsShop':'starsDriver');
   if(box)box.querySelectorAll('span').forEach(s=>s.classList.toggle('on',+s.dataset.n<=n));
 }
+function setTip(v){
+  tipAmount=v;
+  const ci=document.getElementById('tipCustomInput'); if(ci)ci.style.display='none';
+  document.querySelectorAll('.tip-btn').forEach(b=>b.classList.toggle('on',b.dataset.v==v));
+}
+function showCustomTip(){
+  document.querySelectorAll('.tip-btn').forEach(b=>b.classList.remove('on'));
+  document.querySelector('.tip-btn[data-v="custom"]').classList.add('on');
+  const inp=document.getElementById('tipCustomInput');
+  inp.style.display='block'; inp.focus();
+  inp.oninput=()=>{ tipAmount=+inp.value||0; };
+}
 function submitFeedback(orderId){
   if(!ratingShop||!ratingDriver){toast('قيّم المتجر والمندوب الأول');return}
   const o=S.orders.find(x=>x.id===orderId); if(!o)return;
   const complaint=(document.getElementById('complaintInput')||{}).value?.trim()||'';
+  const hadTip=tipAmount>0;
   o.feedbackSubmitted=true;
   emit({to:['merchant','driver','owner'],type:'feedback:submitted',orderId,
     merchantRating:ratingShop,driverRating:ratingDriver,complaint,driverName:o.driver,customerName:o.name});
-  ratingShop=0; ratingDriver=0;
-  render(); toast('شكرًا لتقييمك 🙏');
+  if(hadTip&&o.driver){
+    emit({to:['driver','owner'],type:'tip:sent',orderId,amount:tipAmount,driverName:o.driver,customerName:o.name});
+  }
+  ratingShop=0; ratingDriver=0; tipAmount=0;
+  render(); toast(hadTip?'شكرًا لتقييمك وإكراميتك 🎁':'شكرًا لتقييمك 🙏');
 }
 function vOrders(){
   if(!S.orders.length)return `<div class="empty"><div class="e">📦</div><h4>مفيش طلبات لسه</h4>
@@ -700,6 +776,38 @@ function vAccount(){
     </div>
     <p class="tiny muted" style="text-align:center;margin-top:20px">بسيطة · بنرقمن مصر نشاط ورا نشاط 🇪🇬</p>
     <div style="height:12px"></div></div>`;
+}
+function openMsgSheet(orderId){
+  const presets=['ممكن تسرّع شوية؟','أنا مستني تحت','ابعتلي طمنيني عليك','شكرًا، خد وقتك'];
+  openSheet('راسل المندوب',`
+    <p class="tiny muted" style="margin:0 0 14px">الرسالة بتوصله جوه تطبيقه — من غير ما رقمك يتشاف</p>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
+      ${presets.map(p=>`<button class="btn btn-o" style="text-align:right;justify-content:flex-start" onclick="sendMsgToDriver('${orderId}','${p.replace(/'/g,"\\'")}')">${p}</button>`).join('')}
+    </div>
+    <div class="fld" style="margin-bottom:10px"><label>أو اكتب رسالة</label><input id="cMsgInput" placeholder="اكتب هنا..."></div>
+    <button class="btn btn-p" onclick="sendMsgToDriver('${orderId}',null)">إرسال</button>`);
+}
+function sendMsgToDriver(orderId,preset){
+  const msg=preset||document.getElementById('cMsgInput').value.trim();
+  if(!msg){toast('اكتب رسالة الأول');return}
+  emit({to:['driver'],type:'customer:message',orderId,message:msg});
+  closeSheet(); toast('اتبعتت الرسالة للمندوب ✓');
+}
+function openSupportSheet(){
+  openSheet('تواصل مع الدعم الفني',`
+    <div class="fld"><label>نوع المشكلة</label><select id="supCat">
+      <option>مشكلة في طلب</option><option>مشكلة في الدفع</option><option>مشكلة تقنية</option><option>اقتراح</option><option>تانى</option></select></div>
+    <div class="fld" style="margin-bottom:10px"><label>اكتب مشكلتك</label>
+      <textarea id="supMsg" rows="4" class="sup-fld"></textarea></div>
+    <button class="btn btn-p" onclick="submitTicket()">إرسال للدعم الفني</button>`);
+}
+function submitTicket(){
+  const cat=document.getElementById('supCat').value;
+  const msg=document.getElementById('supMsg').value.trim();
+  if(!msg){toast('اكتب مشكلتك الأول');return}
+  const ticketId='T'+Math.floor(1000+Math.random()*9000);
+  emit({to:['owner'],type:'support:ticket',ticketId,role:'customer',roleName:'عميل',fromName:S.co.name||'عميل',category:cat,message:msg});
+  closeSheet(); toast('✓ اتبعت طلبك للدعم — هنرد عليك في أقرب وقت');
 }
 function openPinSheet(){
   openSheet('تغيير رمز الدخول',`
