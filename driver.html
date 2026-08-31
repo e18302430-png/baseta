@@ -95,10 +95,15 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
 #shiftStart{position:absolute;inset:0;z-index:120;background:var(--bg);display:none;flex-direction:column;
   align-items:center;justify-content:center;padding:30px;text-align:center;opacity:0;transition:opacity .4s}
 #shiftStart.show{display:flex;opacity:1}
+#pendingReview{position:absolute;inset:0;z-index:120;background:var(--bg);display:none;flex-direction:column;
+  align-items:center;justify-content:center;padding:30px;text-align:center;opacity:0;transition:opacity .4s}
+#pendingReview.show{display:flex;opacity:1}
 .prof-av{width:88px;height:88px;border-radius:26px;background:var(--ac-l);color:var(--ac-d);display:grid;place-items:center;
   font-family:'Cairo';font-size:34px;margin-bottom:18px}
 #shiftStart h2{font-size:21px}
 #shiftStart p{color:var(--txt2);font-size:13px;margin:6px 0 24px}
+#pendingReview h2{font-size:21px}
+#pendingReview p{color:var(--txt2);font-size:13px;margin:6px 0 24px;line-height:1.8}
 .togglebig{width:100%;max-width:260px;padding:18px;border-radius:20px;background:var(--surf);border:2px solid var(--line);
   box-shadow:var(--sh);display:flex;align-items:center;justify-content:space-between}
 .togglebig b{font-family:'Cairo';font-size:15px}
@@ -127,8 +132,9 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
 .me b{font-size:14px;display:block}
 .status-tg{margin-inline-start:auto;display:flex;background:var(--surf2);border-radius:11px;padding:3px;gap:2px}
 .float-support{position:absolute;bottom:calc(var(--nav) + 14px);inset-inline-start:14px;z-index:35;
-  width:50px;height:50px;border-radius:50%;background:var(--ac);color:#fff;font-size:21px;border:0;
-  display:grid;place-items:center;box-shadow:0 12px 26px -8px rgba(91,110,245,.55)}
+  height:44px;padding:0 16px 0 14px;border-radius:999px;background:var(--ac);color:#fff;font-size:13.5px;font-weight:700;border:0;
+  display:flex;align-items:center;gap:7px;font-family:'Cairo',inherit;box-shadow:0 12px 26px -8px rgba(91,110,245,.55)}
+.float-support i{font-style:normal;font-size:19px}
 .float-support:active{transform:scale(.92)}
 .sup-fld{width:100%;padding:13px;border:1.5px solid var(--line);border-radius:12px;background:var(--surf2);
   color:var(--txt);resize:vertical;font-family:inherit;font-size:14px}
@@ -292,16 +298,43 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
         <circle cx="36" cy="29" r="10" fill="none" stroke="#5B6EF5" stroke-width="2.6"/>
         <path d="M18 55c3-9 10-14 18-14s15 5 18 14" fill="none" stroke="#5B6EF5" stroke-width="2.6" stroke-linecap="round"/></svg>
       <h1 class="atitle">بياناتك كمندوب</h1>
-      <p class="asub">آخر خطوة وتقدر تبدأ مناوبتك</p>
+      <p class="asub">خطوة كمان وتقدر تبدأ مناوبتك</p>
       <div class="fld mt"><label>الاسم بالكامل</label><input id="dName" placeholder="اسمك بالكامل"></div>
       <div class="fld"><label>وسيلة التوصيل</label><select id="dVehicle">
         <option value="🛵">🛵 موتوسيكل</option><option value="🚲">🚲 دراجة</option><option value="🚗">🚗 عربية</option></select></div>
       <div class="fld"><label>كلمة المرور</label><input id="dNewPass" type="password" placeholder="••••••••"></div>
       <div class="fld"><label>تأكيد كلمة المرور</label><input id="dNewPassConf" type="password" placeholder="••••••••"></div>
       <div class="spacer"></div>
-      <button class="btn btn-p" onclick="finishDriverSignup()">ابدأ كمندوب</button>
+      <button class="btn btn-p" onclick="goDriverVerify()">متابعة</button>
     </div>
 
+    <div class="astage" id="dst-verify">
+      <button class="aback" onclick="dGoAuth('details')">→</button>
+      <svg class="wmark" viewBox="0 0 72 72"><circle cx="36" cy="36" r="36" fill="#EAECFE"/>
+        <rect x="20" y="26" width="32" height="22" rx="3" fill="none" stroke="#5B6EF5" stroke-width="2.6"/>
+        <circle cx="30" cy="37" r="4" fill="none" stroke="#5B6EF5" stroke-width="2.2"/>
+        <path d="M40 42h8" stroke="#5B6EF5" stroke-width="2.2" stroke-linecap="round"/></svg>
+      <h1 class="atitle">توثيق الهوية</h1>
+      <p class="asub">مطلوب صورة البطاقة الشخصية وصورة شخصية واضحة — عشان أمان العملاء والمنصة</p>
+      <div class="fld mt"><label>صورة البطاقة الشخصية (وش البطاقة)</label>
+        <input type="file" accept="image/*" capture="environment" id="dIdCardFile" style="display:none" onchange="previewDriverDoc(this,'idCard')">
+        <button class="btn btn-o" style="width:100%" onclick="document.getElementById('dIdCardFile').click()" id="dIdCardBtn">📇 ارفع صورة البطاقة</button>
+        <img id="dIdCardPreview" style="display:none;width:100%;border-radius:12px;margin-top:8px;max-height:160px;object-fit:cover"></div>
+      <div class="fld"><label>صورة شخصية (سيلفي واضح للوجه)</label>
+        <input type="file" accept="image/*" capture="user" id="dSelfieFile" style="display:none" onchange="previewDriverDoc(this,'selfie')">
+        <button class="btn btn-o" style="width:100%" onclick="document.getElementById('dSelfieFile').click()" id="dSelfieBtn">🤳 ارفع صورتك الشخصية</button>
+        <img id="dSelfiePreview" style="display:none;width:100%;border-radius:12px;margin-top:8px;max-height:160px;object-fit:cover"></div>
+      <div class="spacer"></div>
+      <button class="btn btn-p" onclick="finishDriverSignup()">إنهاء التسجيل</button>
+    </div>
+
+  </div>
+
+  <div id="pendingReview">
+    <div class="prof-av" id="pendingAv">ك</div>
+    <h2>مبروك، اتسجّلت! ⏳</h2>
+    <p>بياناتك بانتظار المراجعة من إدارة المنصة — بنتأكد من صورة البطاقة والصورة الشخصية، وهنبعتلك إشعار فور الموافقة</p>
+    <button class="btn btn-o mt" style="max-width:220px" onclick="checkDriverApproval()">تحديث الحالة</button>
   </div>
 
   <div id="shiftStart">
@@ -326,7 +359,7 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
     </div>
     <div id="settleTop"></div>
     <div class="body" id="screen"></div>
-    <button class="float-support" onclick="openSupportSheet()" aria-label="الدعم الفني">🆘</button>
+    <button class="float-support" onclick="openSupportSheet()" aria-label="الدعم الفني"><i>🆘</i><span>الدعم الفني</span></button>
     <div class="nav" id="nav"></div>
     <div class="toast" id="toast"></div>
   </div>
@@ -403,19 +436,50 @@ function dVerifyOtp(){
   if(code.length!==4){toast('اكتب الكود كامل');return}
   dGoAuth('details');
 }
-function finishDriverSignup(){
+function goDriverVerify(){
   const name=document.getElementById('dName').value.trim();
-  const vehicle=document.getElementById('dVehicle').value;
   const pass=document.getElementById('dNewPass').value;
   const conf=document.getElementById('dNewPassConf').value;
   if(!name){toast('اكتب اسمك بالكامل');return}
   if(pass.length<4){toast('كلمة المرور قصيرة أوي');return}
   if(pass!==conf){toast('كلمة المرور والتأكيد مش متطابقين');return}
+  dGoAuth('verify');
+}
+let dDocs={idCard:'',selfie:''};
+function previewDriverDoc(input,kind){
+  const file=input.files&&input.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    dDocs[kind]=e.target.result;
+    const img=document.getElementById(kind==='idCard'?'dIdCardPreview':'dSelfiePreview');
+    img.src=e.target.result; img.style.display='block';
+    document.getElementById(kind==='idCard'?'dIdCardBtn':'dSelfieBtn').textContent=kind==='idCard'?'✓ اتسجّلت صورة البطاقة — غيّرها':'✓ اتسجّلت الصورة الشخصية — غيّرها';
+  };
+  reader.readAsDataURL(file);
+}
+function finishDriverSignup(){
+  if(!dDocs.idCard){toast('لازم ترفع صورة البطاقة الشخصية');return}
+  if(!dDocs.selfie){toast('لازم ترفع صورتك الشخصية');return}
+  const name=document.getElementById('dName').value.trim();
+  const vehicle=document.getElementById('dVehicle').value;
+  const pass=document.getElementById('dNewPass').value;
   S.driverName=name; S.vehicle=vehicle; S.password=pass; S.phone=dSignupPhone;
+  S.driverId=S.driverId||('d_'+(dSignupPhone||Math.random().toString(36).slice(2)));
+  S.idCardPhoto=dDocs.idCard; S.selfiePhoto=dDocs.selfie; S.verifyStatus='pending';
   applyDriverIdentity();
-  toast('اتعمل حسابك بنجاح 🎉');
+  emit({to:['owner'],type:'driver:register',driverId:S.driverId,driverName:name,vehicle,phone:S.phone,
+    idCardPhoto:dDocs.idCard,selfiePhoto:dDocs.selfie});
+  toast('اتبعتت بياناتك للمراجعة 🎉');
   document.getElementById('loginFlow').classList.remove('show');
-  setTimeout(()=>document.getElementById('shiftStart').classList.add('show'),350);
+  setTimeout(()=>document.getElementById('pendingReview').classList.add('show'),350);
+}
+function checkDriverApproval(){
+  if(S.verifyStatus==='approved'){
+    document.getElementById('pendingReview').classList.remove('show');
+    setTimeout(()=>document.getElementById('shiftStart').classList.add('show'),300);
+  }else{
+    toast('لسه بنراجع بياناتك — هنبعتلك إشعار أول ما نخلص');
+  }
 }
 function applyDriverIdentity(){
   const n=S.driverName||'كريم عبد الله'; const initial=n.trim()[0]||'م';
@@ -470,7 +534,7 @@ function distanceKm(a,b){
   const x=Math.sin(dLat/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLng/2)**2;
   return (R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x))).toFixed(1);
 }
-let S={view:'tasks',avail:true,tasks:[],history:[],shiftTotal:0,settling:false,password:'',driverName:'',vehicle:'🛵',phone:'',ratings:[],tips:[]};
+let S={view:'tasks',avail:true,tasks:[],history:[],shiftTotal:0,settling:false,password:'',driverName:'',vehicle:'🛵',phone:'',ratings:[],tips:[],driverId:'',verifyStatus:'',idCardPhoto:'',selfiePhoto:''};
 const $=s=>document.querySelector(s);
 const M=n=>Math.round(n).toLocaleString('en');
 
@@ -481,7 +545,23 @@ onBus(d=>{
     return;
   }
   if(d.type==='support:reply'&&d.to&&d.to.includes('driver')){
-    toast('📩 رد الدعم الفني: '+d.reply); return;
+    toast('📩 وصلك رد من الدعم الفني'); openSupportReplySheet(d.ticketId,d.reply); return;
+  }
+  if(d.type==='driver:approved'&&d.to&&d.to.includes('driver')&&d.driverId===S.driverId){
+    S.verifyStatus='approved';
+    toast('✅ اتوافق على حسابك — يلا ابدأ مناوبتك');
+    if(document.getElementById('pendingReview').classList.contains('show')){
+      document.getElementById('pendingReview').classList.remove('show');
+      setTimeout(()=>document.getElementById('shiftStart').classList.add('show'),300);
+    }
+    return;
+  }
+  if(d.type==='driver:rejected'&&d.to&&d.to.includes('driver')&&d.driverId===S.driverId){
+    S.verifyStatus='rejected';
+    const p=document.querySelector('#pendingReview p');
+    if(p) p.innerHTML='للأسف بياناتك محتاجة مراجعة تانية: <b>'+(d.reason||'تواصل مع الدعم الفني')+'</b>';
+    toast('⚠️ محتاجين تراجع بياناتك — كلّم الدعم الفني');
+    return;
   }
   if(d.type==='feedback:submitted'&&d.to&&d.to.includes('driver')){
     S.ratings.unshift({orderId:d.orderId,rating:d.driverRating});
@@ -662,6 +742,44 @@ function submitTicket(){
   const ticketId='T'+Math.floor(1000+Math.random()*9000);
   emit({to:['owner'],type:'support:ticket',ticketId,role:'driver',roleName:'مندوب',fromName:S.driverName||'كريم عبد الله',category:cat,message:msg});
   closeSupportSheet(); toast('✓ اتبعت طلبك للدعم — هيرد عليك في أقرب وقت');
+}
+function openSupportReplySheet(ticketId,reply){
+  const el=document.createElement('div'); el.id='dSupReplyWrap';
+  el.innerHTML=`<div style="position:absolute;inset:0;background:rgba(0,0,0,.4);z-index:70" onclick="closeSupportReplySheet()"></div>
+  <div style="position:absolute;inset-inline:0;bottom:0;background:#fff;border-radius:22px 22px 0 0;z-index:71;
+    max-height:85%;overflow-y:auto;padding:20px 18px 26px;box-shadow:0 -10px 40px rgba(0,0,0,.25)">
+    <div style="display:flex;align-items:center;margin-bottom:14px">
+      <h3 style="font-family:Cairo;font-size:16px;color:#151833">رد الدعم الفني</h3>
+      <button style="margin-inline-start:auto;width:32px;height:32px;border-radius:10px;background:var(--surf2);font-size:16px" onclick="closeSupportReplySheet()">✕</button></div>
+    <div style="padding:14px;background:var(--surf2);border-radius:12px;line-height:1.8;margin-bottom:16px;color:#151833">${reply}</div>
+    <div class="tiny muted" style="margin-bottom:10px">مشكلتك اتحلّت؟</div>
+    <button class="btn2 btn-p2" style="width:100%" onclick="confirmSupportResolved('${ticketId}')">✅ آه، اتحلّت</button>
+    <button class="btn2 btn-o2 mt" style="width:100%" onclick="denySupportResolved('${ticketId}')">❌ لسه مش اتحلّت</button>
+  </div>`;
+  document.getElementById('app').appendChild(el);
+}
+function closeSupportReplySheet(){ document.getElementById('dSupReplyWrap')?.remove(); }
+function confirmSupportResolved(ticketId){
+  emit({to:['owner'],type:'support:confirm_resolved',ticketId,role:'driver'});
+  closeSupportReplySheet(); toast('تمام، شكرًا لتأكيدك 🙏');
+}
+function denySupportResolved(ticketId){
+  closeSupportReplySheet();
+  const el=document.createElement('div'); el.id='dSupFollowupWrap';
+  el.innerHTML=`<div style="position:absolute;inset:0;background:rgba(0,0,0,.4);z-index:70" onclick="document.getElementById('dSupFollowupWrap')?.remove()"></div>
+  <div style="position:absolute;inset-inline:0;bottom:0;background:#fff;border-radius:22px 22px 0 0;z-index:71;
+    max-height:85%;overflow-y:auto;padding:20px 18px 26px;box-shadow:0 -10px 40px rgba(0,0,0,.25)">
+    <h3 style="font-family:Cairo;font-size:16px;color:#151833;margin-bottom:14px">وضّح المشكلة أكتر</h3>
+    <div class="fld" style="margin-bottom:10px"><label>ايه اللي لسه مش تمام؟</label>
+      <textarea id="supFollowup" rows="3" class="sup-fld"></textarea></div>
+    <button class="btn2 btn-p2" style="width:100%" onclick="sendSupportFollowup('${ticketId}')">إرسال للدعم تاني</button>
+  </div>`;
+  document.getElementById('app').appendChild(el);
+}
+function sendSupportFollowup(ticketId){
+  const note=document.getElementById('supFollowup').value.trim();
+  emit({to:['owner'],type:'support:not_resolved',ticketId,role:'driver',note});
+  document.getElementById('dSupFollowupWrap')?.remove(); toast('اتبعتت ملاحظتك — التذكرة اتفتحت تاني');
 }
 function openDriverSettings(){
   const el=document.createElement('div'); el.id='dSheetWrap';
