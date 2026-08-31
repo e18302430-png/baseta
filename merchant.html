@@ -50,12 +50,34 @@ p.lsub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
 .fld input{width:100%;padding:15px;border:1.5px solid var(--line);border-radius:14px;
   background:var(--surf2);color:var(--txt);outline:0;transition:.2s}
 .fld input:focus{border-color:var(--ac);background:var(--surf)}
+.fld select{width:100%;padding:15px;border:1.5px solid var(--line);border-radius:14px;
+  background:var(--surf2);color:var(--txt);outline:0;transition:.2s}
+.fld select:focus{border-color:var(--ac);background:var(--surf)}
+.fld select option{background:#fff}
 .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:16px;
   border-radius:15px;font-family:'Cairo';font-weight:700;font-size:15px;transition:.15s}
 .btn:active{transform:scale(.98)}
 .btn-p{background:var(--ac);color:#211602;box-shadow:0 10px 26px -10px rgba(231,154,30,.55)}
-.demo-hint{background:var(--ac-l);color:var(--ac-d);border-radius:12px;padding:11px 14px;font-size:12.5px;
-  text-align:center;margin-top:12px;border:1px dashed rgba(231,154,30,.35)}
+.btn-o{background:var(--surf);border:1.5px solid var(--line);color:var(--txt)}
+
+.astage{flex:1;display:none;flex-direction:column;padding:26px 24px;position:relative;overflow-y:auto}
+.astage.on{display:flex;animation:slideIn .4s cubic-bezier(.2,.8,.2,1)}
+@keyframes slideIn{from{opacity:0;transform:translateX(16px)}}
+.aback{width:36px;height:36px;border-radius:11px;background:var(--surf2);display:grid;place-items:center;
+  font-size:17px;margin-bottom:18px}
+.aprog{display:flex;gap:5px;margin-bottom:22px}
+.aprog i{height:4px;flex:1;border-radius:3px;background:var(--line);font-style:normal}
+.aprog i.on{background:var(--ac)}
+.hero-ill{width:100%;max-width:220px;height:170px;margin:6px auto 20px}
+.wmark{width:72px;height:72px;margin:0 auto 22px}
+h1.atitle{font-size:23px;text-align:center;line-height:1.4}
+p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-height:1.7}
+.otp-row{display:flex;gap:10px;justify-content:center;margin:8px 0 6px}
+.otp-row input{width:52px;height:60px;text-align:center;font-size:24px;font-weight:800;font-family:'Cairo';
+  border:1.5px solid var(--line);border-radius:15px;background:var(--surf2)}
+.otp-row input:focus{border-color:var(--ac);background:var(--surf)}
+.resend{text-align:center;font-size:13px;color:var(--txt2);margin-top:14px}
+.resend b{color:var(--ac-d);font-weight:700}
 
 /* ═══ فتح المتجر ═══ */
 #storeOpen{position:absolute;inset:0;z-index:150;background:linear-gradient(160deg,#241A08,#2E2210 60%,#1A1206);
@@ -156,6 +178,14 @@ p.lsub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
 .row .n{font-weight:700;font-size:13.5px}
 .row .s{font-size:11.5px;color:var(--txt2)}
 .row .end{margin-inline-start:auto;text-align:end;flex:0 0 auto}
+.brandbanner{display:flex;align-items:center;gap:11px;margin-bottom:12px;padding:13px 14px;border-radius:15px;
+  background:linear-gradient(120deg,#241B08,#2E2210 60%,#241B08);color:#fff;position:relative;overflow:hidden}
+.brandbanner::before{content:"";position:absolute;inset:0;background:linear-gradient(120deg,transparent,rgba(240,169,59,.16),transparent);
+  background-size:200% 100%;animation:sheen 4s linear infinite}
+.brandbanner .bb-ic{font-size:20px;position:relative;z-index:1}
+.brandbanner b{color:var(--ac);font-family:'Cairo';font-size:13px;position:relative;z-index:1}
+.brandbanner span{display:block;font-size:11px;color:#C9BB9C;margin-top:2px;position:relative;z-index:1}
+@keyframes sheen{to{background-position:-200% 0}}
 
 .nav{position:absolute;inset-inline:0;bottom:0;height:var(--nav);background:rgba(255,255,255,.97);
   backdrop-filter:blur(14px);border-top:1px solid var(--line);display:flex;z-index:40}
@@ -191,26 +221,82 @@ p.lsub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
     <b>بسيطة</b><span>لوحة التاجر</span><div class="bar"><i></i></div></div></div>
 
   <div id="loginFlow">
-    <div class="spacer" style="flex:.4"></div>
-    <svg class="lmark" viewBox="0 0 76 76"><circle cx="38" cy="38" r="38" fill="#FDF1DD"/>
-      <path d="M24 30h28v22a3 3 0 0 1-3 3H27a3 3 0 0 1-3-3V30Z" fill="none" stroke="#E79A1E" stroke-width="2.6"/>
-      <path d="M28 30v-4a10 10 0 0 1 20 0v4" fill="none" stroke="#E79A1E" stroke-width="2.6"/></svg>
-    <h1 class="ltitle">دخول التجّار</h1>
-    <p class="lsub">سجّل دخولك عشان تدخل متجرك وتشوف طلباتك</p>
-    <div class="fld mt"><label>نوع نشاطك</label>
-      <select id="mBizType" style="text-align:center">
+
+    <div class="astage on" id="mst-welcome">
+      <div class="spacer" style="flex:.3"></div>
+      <svg class="hero-ill" viewBox="0 0 220 170"><defs><radialGradient id="mg1"><stop offset="0%" stop-color="#F0A93B" stop-opacity=".25"/><stop offset="100%" stop-color="#F0A93B" stop-opacity="0"/></radialGradient></defs>
+        <circle cx="110" cy="85" r="82" fill="url(#mg1)"/>
+        <rect x="52" y="60" width="116" height="75" rx="14" fill="#fff" stroke="#E79A1E" stroke-width="2"/>
+        <path d="M52 78 L168 78" stroke="#FDF1DD" stroke-width="10"/>
+        <circle cx="150" cy="108" r="15" fill="#E79A1E"/><path d="M144 108 l4 4 8-9" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="70" cy="112" r="7" fill="#00B67A"/><rect x="66" y="118" width="8" height="14" fill="#C9BB9C"/></svg>
+      <h1 class="atitle">افتح متجرك الرقمي<br>في دقايق معدودة</h1>
+      <p class="asub">إدارة كاملة لطلباتك ومخزونك وحساباتك من مكان واحد</p>
+      <div class="spacer"></div>
+      <button class="btn btn-p" onclick="mGoAuth('phone')">سجّل متجر جديد</button>
+      <button class="btn btn-o mt" onclick="mGoAuth('login')">عندي حساب بالفعل</button>
+    </div>
+
+    <div class="astage" id="mst-login">
+      <button class="aback" onclick="mGoAuth('welcome')">→</button>
+      <svg class="wmark" viewBox="0 0 76 76"><circle cx="38" cy="38" r="38" fill="#FDF1DD"/>
+        <path d="M24 30h28v22a3 3 0 0 1-3 3H27a3 3 0 0 1-3-3V30Z" fill="none" stroke="#E79A1E" stroke-width="2.6"/>
+        <path d="M28 30v-4a10 10 0 0 1 20 0v4" fill="none" stroke="#E79A1E" stroke-width="2.6"/></svg>
+      <h1 class="atitle">دخول التجّار</h1>
+      <p class="asub">سجّل دخولك عشان تدخل متجرك وتشوف طلباتك</p>
+      <div class="fld mt"><label>رقم الموبايل</label>
+        <input id="mPhone" type="tel" dir="ltr" placeholder="01xxxxxxxxx" style="text-align:center;font-family:'Cairo'"></div>
+      <div class="fld"><label>كلمة المرور</label>
+        <input id="mPass" type="password" placeholder="••••••••" style="text-align:center"></div>
+      <div class="spacer"></div>
+      <button class="btn btn-p" onclick="doLogin()">دخول المتجر</button>
+    </div>
+
+    <div class="astage" id="mst-phone">
+      <button class="aback" onclick="mGoAuth('welcome')">→</button>
+      <div class="aprog"><i class="on"></i><i></i><i></i></div>
+      <svg class="wmark" viewBox="0 0 72 72"><circle cx="36" cy="36" r="36" fill="#FDF1DD"/>
+        <path d="M24 20h13l4 10-5 4c2 5 6 9 11 11l4-5 10 4v13c-20 1-37-16-37-37Z" fill="none" stroke="#E79A1E" stroke-width="2.6" stroke-linejoin="round"/></svg>
+      <h1 class="atitle">رقم موبايلك</h1>
+      <p class="asub">هنبعتلك كود تحقق سريع عليه</p>
+      <div class="fld mt"><label>رقم الموبايل</label>
+        <input id="mSignupPhone" type="tel" dir="ltr" placeholder="01xxxxxxxxx" style="text-align:center;font-family:'Cairo';letter-spacing:1px"></div>
+      <div class="spacer"></div>
+      <button class="btn btn-p" onclick="mSendOtp()">متابعة</button>
+    </div>
+
+    <div class="astage" id="mst-otp">
+      <button class="aback" onclick="mGoAuth('phone')">→</button>
+      <div class="aprog"><i class="on"></i><i class="on"></i><i></i></div>
+      <h1 class="atitle">اكتب كود التحقق</h1>
+      <p class="asub">اتبعت رسالة على <b id="mOtpPhone" class="num" dir="ltr" style="color:var(--txt)"></b></p>
+      <div class="otp-row mt" id="mOtpRow">
+        <input maxlength="1" inputmode="numeric"><input maxlength="1" inputmode="numeric">
+        <input maxlength="1" inputmode="numeric"><input maxlength="1" inputmode="numeric"></div>
+      <div class="resend">مستلمتش الكود؟ <b onclick="toast('اتبعت تاني')">إعادة الإرسال</b></div>
+      <div class="spacer"></div>
+      <button class="btn btn-p" onclick="mVerifyOtp()">تأكيد</button>
+    </div>
+
+    <div class="astage" id="mst-details">
+      <div class="aprog"><i class="on"></i><i class="on"></i><i class="on"></i></div>
+      <svg class="wmark" viewBox="0 0 72 72"><circle cx="36" cy="36" r="36" fill="#FDF1DD"/>
+        <path d="M20 44h32v6a4 4 0 0 1-4 4H24a4 4 0 0 1-4-4v-6Z" fill="none" stroke="#E79A1E" stroke-width="2.6"/>
+        <path d="M24 44v-8h24v8" fill="none" stroke="#E79A1E" stroke-width="2.6"/></svg>
+      <h1 class="atitle">بيانات متجرك</h1>
+      <p class="asub">آخر خطوة وتقدر تفتح متجرك</p>
+      <div class="fld mt"><label>اسم المتجر</label><input id="mStoreName" placeholder="مثلاً: بقالة الأمانة"></div>
+      <div class="fld"><label>نوع نشاطك</label><select id="mStoreType">
         <option value="grocery">🛒 بقالة / سوبرماركت</option>
         <option value="pharmacy">💊 صيدلية</option>
         <option value="bakery">🥖 مخبز</option>
-        <option value="other">🏪 نشاط تاني</option>
-      </select></div>
-    <div class="fld"><label>رقم الموبايل</label>
-      <input id="mPhone" type="tel" dir="ltr" value="01015974104" style="text-align:center;font-family:'Cairo'"></div>
-    <div class="fld"><label>كلمة المرور</label>
-      <input id="mPass" type="password" placeholder="••••••••" style="text-align:center"></div>
-    <div class="demo-hint">🔑 أي كلمة مرور هتشتغل في التجربة دي</div>
-    <div class="spacer"></div>
-    <button class="btn btn-p" onclick="doLogin()">دخول المتجر</button>
+        <option value="other">🏪 نشاط تاني</option></select></div>
+      <div class="fld"><label>كلمة المرور</label><input id="mNewPass" type="password" placeholder="••••••••"></div>
+      <div class="fld"><label>تأكيد كلمة المرور</label><input id="mNewPassConf" type="password" placeholder="••••••••"></div>
+      <div class="spacer"></div>
+      <button class="btn btn-p" onclick="finishMerchantSignup()">افتح متجري</button>
+    </div>
+
   </div>
 
   <div id="storeOpen">
@@ -254,23 +340,78 @@ function emit(msg){
   try{ bc&&bc.postMessage(msg); }catch(e){}
   try{ localStorage.setItem('basita_bus', JSON.stringify(msg)); }catch(e){}
 }
+const _seenMsgIds=new Set();
+function _dedupe(fn){
+  return d=>{
+    if(!d||!d.id||_seenMsgIds.has(d.id))return;
+    _seenMsgIds.add(d.id);
+    if(_seenMsgIds.size>300){ _seenMsgIds.delete(_seenMsgIds.values().next().value); }
+    fn(d);
+  };
+}
 function onBus(fn){
-  window.addEventListener('message', e=>{ if(e.data&&e.data.__basita&&e.data.from!==ROLE) fn(e.data) });
-  if(bc) bc.onmessage=e=>{ if(e.data&&e.data.from!==ROLE) fn(e.data) };
+  const wrapped=_dedupe(fn);
+  window.addEventListener('message', e=>{ if(e.data&&e.data.__basita&&e.data.from!==ROLE) wrapped(e.data) });
+  if(bc) bc.onmessage=e=>{ if(e.data&&e.data.from!==ROLE) wrapped(e.data) };
   window.addEventListener('storage', e=>{ if(e.key==='basita_bus'&&e.newValue){
-    try{const d=JSON.parse(e.newValue); if(d.from!==ROLE) fn(d)}catch(_){} }});
+    try{const d=JSON.parse(e.newValue); if(d.from!==ROLE) wrapped(d)}catch(_){} }});
 }
 
 setTimeout(()=>document.getElementById('boot').classList.add('gone'),1300);
 setTimeout(()=>document.getElementById('loginFlow').classList.add('show'),1350);
 
+function mGoAuth(stage){
+  document.querySelectorAll('#loginFlow .astage').forEach(s=>s.classList.remove('on'));
+  document.getElementById('mst-'+stage).classList.add('on');
+}
+document.addEventListener('input',e=>{
+  if(e.target.parentElement&&e.target.parentElement.id==='mOtpRow'){
+    if(e.target.value){const n=e.target.nextElementSibling;if(n)n.focus()}
+  }
+});
+document.addEventListener('keydown',e=>{
+  if(e.target.parentElement&&e.target.parentElement.id==='mOtpRow'&&e.key==='Backspace'&&!e.target.value){
+    const p=e.target.previousElementSibling;if(p)p.focus();
+  }
+});
+let mSignupPhone='';
+function mSendOtp(){
+  const v=document.getElementById('mSignupPhone').value.trim();
+  if(!/^01[0125]\d{8}$/.test(v)){toast('اكتب رقم موبايل مصري صحيح');return}
+  mSignupPhone=v;
+  document.getElementById('mOtpPhone').textContent=v;
+  mGoAuth('otp');
+  setTimeout(()=>document.querySelector('#mOtpRow input').focus(),350);
+  setTimeout(()=>toast('📩 وصلك رسالة تحقق'),900);
+}
+function mVerifyOtp(){
+  const code=[...document.querySelectorAll('#mOtpRow input')].map(i=>i.value).join('');
+  if(code.length!==4){toast('اكتب الكود كامل');return}
+  mGoAuth('details');
+}
+function finishMerchantSignup(){
+  const name=document.getElementById('mStoreName').value.trim();
+  const type=document.getElementById('mStoreType').value;
+  const pass=document.getElementById('mNewPass').value;
+  const conf=document.getElementById('mNewPassConf').value;
+  if(!name){toast('اكتب اسم متجرك');return}
+  if(pass.length<4){toast('كلمة المرور قصيرة أوي');return}
+  if(pass!==conf){toast('كلمة المرور والتأكيد مش متطابقين');return}
+  S.bizType=type; S.customStoreName=name; S.password=pass; S.phone=mSignupPhone;
+  applyBizIdentity();
+  toast('اتعمل متجرك بنجاح 🎉');
+  proceedToStoreOpen();
+}
 function doLogin(){
   const ph=document.getElementById('mPhone').value.trim();
   const pass=document.getElementById('mPass').value;
-  const biz=document.getElementById('mBizType').value;
   if(!/^01[0125]\d{8}$/.test(ph)){toast('اكتب رقم موبايل صحيح');return}
-  S.bizType=biz; S.password=pass||'12345678';
+  if(!pass){toast('اكتب كلمة المرور');return}
+  if(!S.password) S.password=pass;
   applyBizIdentity();
+  proceedToStoreOpen();
+}
+function proceedToStoreOpen(){
   document.getElementById('loginFlow').classList.remove('show');
   setTimeout(()=>{
     document.getElementById('storeOpen').classList.add('show');
@@ -294,7 +435,10 @@ const BIZ_TYPES={
   bakery:{name:'مخبز النور',icon:'🥖',label:'مخبز'},
   other:{name:'محلي',icon:'🏪',label:'نشاط عام'},
 };
-function BIZ(){ return BIZ_TYPES[S.bizType||'grocery']; }
+function BIZ(){
+  const base=BIZ_TYPES[S.bizType||'grocery'];
+  return S.customStoreName?{...base,name:S.customStoreName}:base;
+}
 function applyBizIdentity(){
   const b=BIZ();
   document.getElementById('soLogo').textContent=b.icon;
@@ -308,7 +452,7 @@ function toast(m){const t=document.getElementById('toast');if(!t)return;t.textCo
 const STAGES=['placed','accepted','assigned','picked','delivering','delivered'];
 const SLABEL={placed:'جديد',accepted:'اتقبل',assigned:'اتعيّن مندوب',picked:'المندوب استلم',
   delivering:'في الطريق',delivered:'اتسلّم'};
-let S={tab:'new',orders:[],expenses:[],cashCounted:'',bizType:'grocery',password:'',
+let S={tab:'new',orders:[],expenses:[],cashCounted:'',bizType:'grocery',password:'',customStoreName:'',phone:'',availableDriver:null,
   sub:{status:'trial',daysLeft:14,price:99},
   customerStats:{},
   products:[
@@ -341,6 +485,13 @@ setInterval(()=>{
 },5000);
 
 onBus(d=>{
+  if(d.type==='platform:reset'){
+    S.orders=[]; S.expenses=[]; S.purchases=[]; S.customerStats={};
+    S.sub={status:'trial',daysLeft:14,price:99};
+    render(); toast('🗑️ اتصفّرت بيانات الطلبات من لوحة المالك');
+    return;
+  }
+  if(d.type==='driver:online'&&d.to&&d.to.includes('merchant')){ S.availableDriver={name:d.driverName,vehicle:d.vehicle}; }
   if(d.type==='shift:settle_request'&&d.to&&d.to.includes('merchant')){
     S.pendingSettlement={driverName:d.driverName,amount:d.amount};
     render(); toast('💰 '+d.driverName+' عايز يسلّمك كاش المناوبة');
@@ -556,7 +707,7 @@ function accept(id){
   render(); toast('اتبعت موافقة للعميل فورًا');
 }
 function assign(id){
-  const o=S.orders.find(x=>x.id===id); o.stage='assigned'; o.driver='كريم عبد الله'; o._pickDriver=false;
+  const o=S.orders.find(x=>x.id===id); o.stage='assigned'; o.driver=(S.availableDriver&&S.availableDriver.name)||'كريم عبد الله'; o._pickDriver=false;
   emit({to:['customer','driver'],type:'order:assign',orderId:id,driverName:o.driver,order:o});
   render(); toast('اتبعت المهمة لتطبيق المندوب مباشرة');
 }
@@ -580,7 +731,7 @@ function oCard(o){
         <button class="btn2 btn-p2" onclick="accept('${o.id}')">قبول الطلب</button>
         <button class="btn-d2" onclick="rejectO('${o.id}')">اعتذار</button></div>`:''}
       ${o._pickDriver?`<div class="driverpick"><div class="dn"><span class="av2">👤</span>
-        <span><b>كريم عبد الله</b><span>⭐ ٤.٩ · متاح الآن · ٣ دقايق</span></span></div>
+        <span><b>${(S.availableDriver&&S.availableDriver.name)||'كريم عبد الله'}</b><span>${(S.availableDriver&&S.availableDriver.vehicle)||'🛵'} متاح الآن · ⭐ ٤.٩</span></span></div>
         <button class="btn2 btn-p2" style="width:100%" onclick="assign('${o.id}')">عيّن كريم كمندوب</button></div>`:''}
       ${o.driver&&!o._pickDriver&&o.stage==='assigned'?
         `<div class="pickupqr" style="flex-direction:column;align-items:stretch;gap:9px">
@@ -610,6 +761,11 @@ function vList(){
               S.orders.filter(o=>o.stage==='delivered').length;
       return `<button class="chip" aria-pressed="${S.tab===k}" onclick="S.tab='${k}';render()">${n}${c?` <span class="num">(${c})</span>`:''}</button>`}).join('')}
   </div><div class="pad" style="padding-top:12px">
+    <div class="brandbanner">
+      <div class="bb-ic">🚀</div>
+      <div><b>متجرك متصل بشبكة بسيطة</b>
+        <span>نظام إدارة متطور بيكبر معاك — من المنيل لمصر كلها</span></div>
+    </div>
     ${list.length?list.map(o=>oCard(o)).join(''):`<div class="empty"><div class="e">📭</div><h4>مفيش طلبات هنا</h4>
       <p class="tiny">شغّل تطبيق العميل واعمل طلب — هيوصل هنا فورًا</p></div>`}
     <div style="height:12px"></div></div>`;
