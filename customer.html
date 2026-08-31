@@ -241,6 +241,17 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
 .qrentry span{font-size:11px;color:#B7BFC9;position:relative;z-index:1}
 .qrentry button{margin-inline-start:auto;background:var(--ac);color:#fff;font-family:'Cairo';font-weight:700;
   font-size:12.5px;padding:9px 14px;border-radius:10px;position:relative;z-index:1;box-shadow:0 6px 16px -6px rgba(0,182,122,.6)}
+.cats{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:11px}
+.cat{background:var(--surf);border:1px solid var(--line);border-radius:14px;padding:13px 6px;text-align:center;transition:.2s}
+.cat:active{transform:scale(.95)}
+.cat.on-cat{background:var(--ac-l);border-color:var(--ac)}
+.cat .e{font-size:22px;line-height:1.2}
+.cat .n{font-size:11px;font-weight:600;margin-top:4px;color:var(--txt)}
+.shopcard{display:flex;gap:11px;align-items:center;width:100%;text-align:right;background:var(--surf);
+  border:1px solid var(--line);border-radius:15px;padding:11px;margin-bottom:9px;box-shadow:var(--sh)}
+.shopcard:active{transform:scale(.985)}
+.shopcard-ic{width:52px;height:52px;border-radius:13px;background:var(--surf2);display:grid;place-items:center;font-size:23px;flex:0 0 auto}
+.shopcard-ph{width:52px;height:52px;border-radius:13px;object-fit:cover;flex:0 0 auto}
 
 .scanbg{position:absolute;inset:0;background:#000;z-index:80;display:none;flex-direction:column}
 .scanbg.show{display:flex}
@@ -441,21 +452,27 @@ function mountApp(){
   setTimeout(()=>{document.getElementById('mainApp').classList.add('show');render()},300);
 }
 
-let PRODS=[
- {id:1,n:'سكر أبيض',br:'السلطان',u:'كجم',p:38,i:'🍬'},{id:2,n:'أرز مصري',br:'الضحى',u:'كجم',p:32,i:'🍚'},
- {id:3,n:'زيت عباد الشمس',br:'عافية',u:'٩٠٠ مل',p:78,i:'🫒'},{id:4,n:'لبن كامل الدسم',br:'جهينة',u:'١ لتر',p:42,i:'🥛'},
- {id:5,n:'شاي ناعم',br:'ليبتون',u:'٢٥٠ جم',p:52,i:'🍵'},{id:6,n:'مياه معدنية',br:'حياة',u:'١.٥ لتر',p:8,i:'💧'},
- {id:7,n:'بيض بلدي',br:'',u:'طبق ٣٠',p:135,i:'🥚'},{id:8,n:'جبنة بيضاء',br:'دومتي',u:'٥٠٠ جم',p:58,i:'🧀'},
+let PRODS=[]; // بيتملى ديناميكيًا من كتالوج المحل المختار
+let SHOPS={}; // دليل المحلات الحي — بيتبني من أي تاجر بيفتح متجره فعليًا
+const CATS=[
+  {k:'grocery',n:'بقالات',i:'🛒'},{k:'pharmacy',n:'صيدليات',i:'💊'},
+  {k:'restaurant',n:'مطاعم',i:'🍔'},{k:'cafe',n:'كافيهات',i:'☕'},{k:'bakery',n:'مخابز',i:'🥖'},
 ];
 const LM=['جنب الجامع الكبير','أول شارع المدرسة','عند المحول','قدام الوحدة الصحية'];
 const STAGES=['placed','accepted','assigned','picked','delivering','delivered'];
-const SLABEL={placed:'تم استلام طلبك',accepted:'ماركت أبو حمزة قبل الطلب',assigned:'اتعيّن مندوب توصيل',
+const SLABEL={placed:'تم استلام طلبك',accepted:'المحل قبل الطلب',assigned:'اتعيّن مندوب توصيل',
   picked:'المندوب استلم طلبك من المحل',delivering:'في الطريق إليك دلوقتي',delivered:'وصلك الطلب 🎉'};
 
-let S={view:'home',cart:{},orders:[],oid:null,co:{name:'منى',ph:'',lm:LM[0],house:'12',geo:null},pin:'1234',shopPhoto:''};
+let S={view:'home',cart:{},cartShop:null,orders:[],oid:null,activeShop:null,catFilter:null,
+  co:{name:'منى',ph:'',lm:LM[0],house:'12',geo:null},pin:'1234'};
 const $=s=>document.querySelector(s);
 const M=n=>Math.round(n).toLocaleString('en');
-const P=id=>PRODS.find(x=>x.id===id);
+function shopProducts(shopId){ return (SHOPS[shopId]&&SHOPS[shopId].products)||[]; }
+function P(id){
+  const inCart=S.cartShop&&shopProducts(S.cartShop).find(x=>x.id===id);
+  if(inCart)return inCart;
+  return shopProducts(S.activeShop).find(x=>x.id===id);
+}
 
 function playNotifySound(){
   try{
@@ -478,7 +495,14 @@ function go(v,a){S.view=v;if(v==='track')S.oid=a;$('#screen').scrollTop=0;render
 const cItems=()=>Object.entries(S.cart).map(([id,q])=>({p:P(+id),q}));
 const cSub=()=>cItems().reduce((s,{p,q})=>s+p.p*q,0);
 const cCount=()=>Object.values(S.cart).reduce((a,b)=>a+b,0);
-function addCart(id){S.cart[id]=(S.cart[id]||0)+1;render()}
+function addCart(id){
+  if(S.cartShop&&S.cartShop!==S.activeShop&&Object.keys(S.cart).length){
+    if(!confirm('عندك أصناف من محل تاني في السلة. تفضيها وتبدأ من المحل ده؟'))return;
+    S.cart={};
+  }
+  S.cartShop=S.activeShop;
+  S.cart[id]=(S.cart[id]||0)+1;render();
+}
 function qty(id,d){const n=(S.cart[id]||0)+d;if(n<=0)delete S.cart[id];else S.cart[id]=n;render()}
 let scanStream=null, scanRAF=null;
 function startScan(){
@@ -526,14 +550,17 @@ function placeOrder(){
   const c=S.co;
   if(!c.house.trim()){toast('اكتب رقم البيت');return}
   if(!c.geo){toast('لازم تفعّل موقعك الأول');return}
+  const shop=SHOPS[S.activeShop];
+  if(!shop){toast('اختار محل الأول');return}
   const items=cItems(); const fee=5;
   const id='B'+Math.floor(1000+Math.random()*9000);
-  const order={id,name:c.name,ph:c.ph||'01015974104',addr:`${c.lm} — بيت ${c.house}`,geo:c.geo,
+  const order={id,merchantId:shop.id,shopName:shop.name,name:c.name,ph:c.ph||'01015974104',
+    addr:`${c.lm} — بيت ${c.house}`,geo:c.geo,
     items:items.map(({p,q})=>({n:p.n,q,p:p.p,u:p.u})),fee,total:cSub()+fee,stage:'placed',driver:null,recurring:false};
-  S.orders.unshift(order); S.cart={};
+  S.orders.unshift(order); S.cart={}; S.cartShop=null;
   emit({to:['merchant'],type:'order:new',order});
   go('track',id);
-  toast('الطلب اتبعت للتاجر — شغّل تطبيق التاجر وشوفه وصل');
+  toast('الطلب اتبعت لـ'+shop.name+' — هيوصله فورًا');
 }
 onBus(d=>{
   if(d.type==='platform:reset'){
@@ -552,15 +579,26 @@ onBus(d=>{
     render();
     return;
   }
+  if(d.type==='merchant:online'&&d.to&&d.to.includes('customer')){
+    const isNew=!SHOPS[d.merchantId];
+    SHOPS[d.merchantId]={id:d.merchantId,name:d.merchantName,type:d.bizLabel,typeKey:d.bizTypeKey,
+      icon:d.bizIcon,photo:(SHOPS[d.merchantId]&&SHOPS[d.merchantId].photo)||'',
+      products:(SHOPS[d.merchantId]&&SHOPS[d.merchantId].products)||[]};
+    if(S.activeShop===d.merchantId&&PRODS.length===0) PRODS=SHOPS[d.merchantId].products;
+    if(['home','shop'].includes(S.view)) render();
+    if(isNew) toast('🎉 محل جديد فتح دلوقتي: '+d.merchantName);
+    return;
+  }
   if(d.type==='shop:photo_updated'&&d.to&&d.to.includes('customer')){
-    S.shopPhoto=d.photo;
-    if(S.view==='home') render();
+    if(SHOPS[d.merchantId]) SHOPS[d.merchantId].photo=d.photo;
+    if(['home','shop'].includes(S.view)) render();
     return;
   }
   if(d.type==='catalog:sync'&&d.to&&d.to.includes('customer')){
-    PRODS=d.products;
-    if(['home','cart','checkout'].includes(S.view)) render();
-    toast('اتحدّثت أصناف المحل');
+    if(!SHOPS[d.merchantId]) SHOPS[d.merchantId]={id:d.merchantId,name:d.merchantName||'محل',type:'',icon:'🏪',photo:'',products:[]};
+    SHOPS[d.merchantId].products=d.products;
+    if(S.activeShop===d.merchantId){ PRODS=d.products; toast('اتحدّثت أصناف المحل'); }
+    if(['home','shop'].includes(S.view)) render();
     return;
   }
   const o=S.orders.find(x=>x.id===d.orderId);
@@ -576,26 +614,56 @@ onBus(d=>{
 });
 
 function vHome(){
+  const shops=Object.values(SHOPS);
+  const filtered=S.catFilter?shops.filter(s=>s.typeKey===S.catFilter):shops;
   return `<div class="pad">
-    ${S.shopPhoto?`<div style="margin-top:14px;border-radius:16px;overflow:hidden;box-shadow:var(--sh)">
-      <img src="${S.shopPhoto}" style="width:100%;height:140px;object-fit:cover;display:block"></div>`:''}
-    <div class="hero" style="${S.shopPhoto?'border-radius:0 0 16px 16px;margin-top:0':''}"><div class="e">ماركت أبو حمزة</div><h2>مفتوح دلوقتي</h2>
-      <p>توصيل ١٥-٢٥ دقيقة · رسوم التوصيل ٥ ج</p></div>
     <div class="qrentry"><span class="ic">🔗</span>
       <span><b>عندك كود محل؟</b><span>امسحه وادخل متجره على طول</span></span>
       <button onclick="startScan()">امسح QR</button></div>
-    <div class="sec-t"><h3>الأصناف</h3><span class="num">${PRODS.length} صنف</span></div>
-    ${PRODS.map(p=>`<div class="prod"><span class="ph">${p.i}</span>
-      <span style="flex:1"><span class="n">${p.n}${p.br?` <span class="muted tiny">${p.br}</span>`:''}</span>
-      <span class="u">${p.u}</span><span class="pr num">${M(p.p)} ج</span></span>
-      <span class="act">${S.cart[p.id]?`<span class="stp"><button onclick="qty(${p.id},1)">+</button>
-        <span class="q num">${S.cart[p.id]}</span><button onclick="qty(${p.id},-1)">−</button></span>`:
-        `<button class="add" onclick="addCart(${p.id})">+</button>`}</span></div>`).join('')}
+    <div class="sec-t" style="margin-top:16px"><h3>الأقسام</h3></div>
+    <div class="cats">
+      <button class="cat ${!S.catFilter?'on-cat':''}" onclick="S.catFilter=null;render()">
+        <span class="e">🏪</span><span class="n">الكل</span></button>
+      ${CATS.map(c=>`<button class="cat ${S.catFilter===c.k?'on-cat':''}" onclick="S.catFilter='${c.k}';render()">
+        <span class="e">${c.i}</span><span class="n">${c.n}</span></button>`).join('')}
+    </div>
+    <div class="sec-t"><h3>محلات قريبة منك</h3><span class="num">${filtered.length}</span></div>
+    ${filtered.length?filtered.map(s=>`<button class="shopcard" onclick="openShop('${s.id}')">
+      ${s.photo?`<img src="${s.photo}" class="shopcard-ph">`:`<span class="shopcard-ic">${s.icon}</span>`}
+      <span style="flex:1;text-align:right"><b>${s.name}</b><span class="tiny muted" style="display:block">${s.type} · ${s.products.length} صنف</span></span>
+      <span class="bdg b-ac">مفتوح</span></button>`).join(''):
+      `<div class="empty"><div class="e">🏪</div><h4>لسه مفيش محلات فاتحة</h4>
+        <p class="tiny">أول ما تاجر يسجّل ويفتح متجره، هيظهر هنا فورًا من غير ما تعمل حاجة</p></div>`}
     <div class="brandbanner">
       <div class="bb-ic">🇪🇬</div>
       <div><b>بسيطة</b> — بنرقمن مصر، نشاط ورا نشاط
         <span>محلك مش هيفضل يشتغل بالتخمين بعد النهاردة</span></div>
     </div>
+    <div style="height:8px"></div></div>`;
+}
+function openShop(id){
+  S.activeShop=id; PRODS=SHOPS[id].products;
+  go('shop');
+}
+function backHome(){ go('home'); }
+function vShop(){
+  const s=SHOPS[S.activeShop];
+  if(!s)return vHome();
+  return `<div class="pad">
+    <button class="back" style="margin-top:14px" onclick="backHome()">→</button>
+    ${s.photo?`<div style="margin-top:12px;border-radius:16px;overflow:hidden;box-shadow:var(--sh)">
+      <img src="${s.photo}" style="width:100%;height:140px;object-fit:cover;display:block"></div>`:''}
+    <div class="hero" style="${s.photo?'border-radius:0 0 16px 16px;margin-top:0':''}">
+      <div class="e">${s.type}</div><h2>${s.name}</h2>
+      <p>توصيل ١٥-٢٥ دقيقة · رسوم التوصيل ٥ ج</p></div>
+    <div class="sec-t"><h3>الأصناف</h3><span class="num">${s.products.length} صنف</span></div>
+    ${s.products.length?s.products.map(p=>`<div class="prod"><span class="ph">${p.i}</span>
+      <span style="flex:1"><span class="n">${p.n}${p.br?` <span class="muted tiny">${p.br}</span>`:''}</span>
+      <span class="u">${p.u}</span><span class="pr num">${M(p.p)} ج</span></span>
+      <span class="act">${S.cart[p.id]?`<span class="stp"><button onclick="qty(${p.id},1)">+</button>
+        <span class="q num">${S.cart[p.id]}</span><button onclick="qty(${p.id},-1)">−</button></span>`:
+        `<button class="add" onclick="addCart(${p.id})">+</button>`}</span></div>`).join(''):
+      `<div class="empty"><div class="e">🏷️</div><h4>المحل لسه بيضيف أصنافه</h4></div>`}
     <div style="height:8px"></div></div>`;
 }
 function vCart(){
@@ -823,13 +891,13 @@ function savePin(){
   if(n!==c){toast('الرمز الجديد والتأكيد مش متطابقين');return}
   S.pin=n; closeSheet(); toast('اتغيّر رمزك بنجاح ✓');
 }
-const V={home:vHome,cart:vCart,checkout:vCheckout,track:vTrack,orders:vOrders,account:vAccount};
+const V={home:vHome,shop:vShop,cart:vCart,checkout:vCheckout,track:vTrack,orders:vOrders,account:vAccount};
 const NAV=[['home','🏠','المتجر'],['orders','📦','طلباتي'],['account','👤','حسابي']];
 function render(){
   $('#screen').innerHTML=(V[S.view]||vHome)();
   $('#nav').innerHTML=NAV.map(([v,i,n])=>{
     const bn=(v==='orders'&&S.orders.some(o=>o.stage!=='delivered'))?`<span class="bn">•</span>`:'';
-    return `<button aria-pressed="${S.view===v||(v==='home'&&['cart','checkout','track'].includes(S.view))}"
+    return `<button aria-pressed="${S.view===v||(v==='home'&&['shop','cart','checkout','track'].includes(S.view))}"
       onclick="go('${v}')">${bn}<span class="i">${i}</span><span>${n}</span></button>`}).join('');
   updBar();
 }
