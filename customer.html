@@ -201,8 +201,9 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
   color:var(--txt);font-family:'Cairo';font-weight:700;font-size:13px;cursor:pointer;transition:.15s}
 .tip-btn.on{background:var(--ac);border-color:var(--ac);color:#fff}
 .float-support{position:absolute;bottom:calc(var(--nav) + 14px);inset-inline-start:14px;z-index:35;
-  width:50px;height:50px;border-radius:50%;background:var(--ac);color:#fff;font-size:21px;border:0;
-  display:grid;place-items:center;box-shadow:0 12px 26px -8px rgba(0,182,122,.55)}
+  height:44px;padding:0 16px 0 14px;border-radius:999px;background:var(--ac);color:#fff;font-size:13.5px;font-weight:700;border:0;
+  display:flex;align-items:center;gap:7px;font-family:'Cairo',inherit;box-shadow:0 12px 26px -8px rgba(0,182,122,.55)}
+.float-support i{font-style:normal;font-size:19px}
 .float-support:active{transform:scale(.92)}
 .sup-fld{width:100%;padding:13px;border:1.5px solid var(--line);border-radius:12px;background:var(--surf2);
   color:var(--txt);resize:vertical;font-family:inherit;font-size:14px}
@@ -352,7 +353,7 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
     <div class="cartbar" id="cartbar" onclick="go('cart')">
       <span class="c num" id="cartCount">0</span><span>عرض السلة</span>
       <span class="t num" id="cartTotal">0 ج</span></div>
-    <button class="float-support" onclick="openSupportSheet()" aria-label="الدعم الفني">🆘</button>
+    <button class="float-support" onclick="openSupportSheet()" aria-label="الدعم الفني"><i>🆘</i><span>الدعم الفني</span></button>
     <div class="nav" id="nav"></div>
     <div class="shbg" id="shbg" onclick="closeSheet()"></div>
     <div class="sheet" id="sheet"><div class="grab"></div>
@@ -569,7 +570,8 @@ onBus(d=>{
     return;
   }
   if(d.type==='support:reply'&&d.to&&d.to.includes('customer')){
-    toast('📩 رد الدعم الفني: '+d.reply);
+    toast('📩 وصلك رد من الدعم الفني');
+    openSupportReplySheet(d.ticketId,d.reply);
     return;
   }
   if(d.type==='driver:message'&&d.to&&d.to.includes('customer')){
@@ -583,10 +585,17 @@ onBus(d=>{
     const isNew=!SHOPS[d.merchantId];
     SHOPS[d.merchantId]={id:d.merchantId,name:d.merchantName,type:d.bizLabel,typeKey:d.bizTypeKey,
       icon:d.bizIcon,photo:(SHOPS[d.merchantId]&&SHOPS[d.merchantId].photo)||'',
+      bio:(SHOPS[d.merchantId]&&SHOPS[d.merchantId].bio)||'',
       products:(SHOPS[d.merchantId]&&SHOPS[d.merchantId].products)||[]};
     if(S.activeShop===d.merchantId&&PRODS.length===0) PRODS=SHOPS[d.merchantId].products;
     if(['home','shop'].includes(S.view)) render();
     if(isNew) toast('🎉 محل جديد فتح دلوقتي: '+d.merchantName);
+    return;
+  }
+  if(d.type==='merchant:bio_updated'&&d.to&&d.to.includes('customer')){
+    if(!SHOPS[d.merchantId]) SHOPS[d.merchantId]={id:d.merchantId,name:d.merchantName||'محل',type:'',icon:'🏪',photo:'',bio:'',products:[]};
+    SHOPS[d.merchantId].bio=d.bio;
+    if(S.activeShop===d.merchantId) render();
     return;
   }
   if(d.type==='shop:photo_updated'&&d.to&&d.to.includes('customer')){
@@ -655,7 +664,8 @@ function vShop(){
       <img src="${s.photo}" style="width:100%;height:140px;object-fit:cover;display:block"></div>`:''}
     <div class="hero" style="${s.photo?'border-radius:0 0 16px 16px;margin-top:0':''}">
       <div class="e">${s.type}</div><h2>${s.name}</h2>
-      <p>توصيل ١٥-٢٥ دقيقة · رسوم التوصيل ٥ ج</p></div>
+      <p>توصيل ١٥-٢٥ دقيقة · رسوم التوصيل ٥ ج</p>
+      ${s.bio?`<p style="margin-top:6px;color:var(--txt);opacity:.85;line-height:1.7">${s.bio}</p>`:''}</div>
     <div class="sec-t"><h3>الأصناف</h3><span class="num">${s.products.length} صنف</span></div>
     ${s.products.length?s.products.map(p=>`<div class="prod"><span class="ph">${p.i}</span>
       <span style="flex:1"><span class="n">${p.n}${p.br?` <span class="muted tiny">${p.br}</span>`:''}</span>
@@ -876,6 +886,29 @@ function submitTicket(){
   const ticketId='T'+Math.floor(1000+Math.random()*9000);
   emit({to:['owner'],type:'support:ticket',ticketId,role:'customer',roleName:'عميل',fromName:S.co.name||'عميل',category:cat,message:msg});
   closeSheet(); toast('✓ اتبعت طلبك للدعم — هنرد عليك في أقرب وقت');
+}
+function openSupportReplySheet(ticketId,reply){
+  openSheet('رد الدعم الفني',`
+    <div class="tiny muted mb">بخصوص تذكرتك</div>
+    <div class="card" style="padding:14px;margin-bottom:16px;line-height:1.8">${reply}</div>
+    <div class="tiny muted mb" style="margin-bottom:10px">مشكلتك اتحلّت؟</div>
+    <button class="btn btn-p" onclick="confirmSupportResolved('${ticketId}')">✅ آه، اتحلّت</button>
+    <button class="btn btn-o mt" onclick="denySupportResolved('${ticketId}')">❌ لسه مش اتحلّت</button>`);
+}
+function confirmSupportResolved(ticketId){
+  emit({to:['owner'],type:'support:confirm_resolved',ticketId,role:'customer'});
+  closeSheet(); toast('تمام، شكرًا لتأكيدك 🙏');
+}
+function denySupportResolved(ticketId){
+  openSheet('وضّح المشكلة أكتر',`
+    <div class="fld" style="margin-bottom:10px"><label>ايه اللي لسه مش تمام؟</label>
+      <textarea id="supFollowup" rows="3" class="sup-fld"></textarea></div>
+    <button class="btn btn-p" onclick="sendSupportFollowup('${ticketId}')">إرسال للدعم تاني</button>`);
+}
+function sendSupportFollowup(ticketId){
+  const note=document.getElementById('supFollowup').value.trim();
+  emit({to:['owner'],type:'support:not_resolved',ticketId,role:'customer',note});
+  closeSheet(); toast('اتبعتت ملاحظتك — التذكرة اتفتحت تاني');
 }
 function openPinSheet(){
   openSheet('تغيير رمز الدخول',`
