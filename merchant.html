@@ -36,6 +36,20 @@ input{font-family:inherit;font-size:16px}
 #boot .bar{width:130px;height:3px;background:rgba(255,255,255,.14);border-radius:9px;margin:20px auto 0;overflow:hidden}
 #boot .bar i{display:block;height:100%;width:0;background:#F5C067;animation:ld 1.3s ease forwards;border-radius:9px}
 @keyframes ld{to{width:100%}}
+#boot .mk path{stroke-dasharray:90;stroke-dashoffset:90;animation:drawPath 850ms cubic-bezier(.2,.8,.2,1) forwards}
+#boot .mk circle{opacity:0;transform:scale(.3);transform-box:fill-box;transform-origin:center;
+  animation:popIn 480ms cubic-bezier(.34,1.56,.64,1) 650ms forwards}
+@keyframes drawPath{to{stroke-dashoffset:0}}
+@keyframes popIn{to{opacity:1;transform:scale(1)}}
+#boot b{display:inline-block;position:relative;overflow:hidden;
+  clip-path:inset(0 100% 0 0);animation:reveal 650ms cubic-bezier(.2,.8,.2,1) 480ms forwards}
+@keyframes reveal{to{clip-path:inset(0 0 0 0)}}
+#boot b::after{content:"";position:absolute;inset:0;mix-blend-mode:overlay;
+  background:linear-gradient(100deg,transparent,rgba(255,255,255,.55),transparent);
+  background-size:220% 100%;background-position:200% 0;animation:sheenSweep 850ms ease 900ms forwards}
+@keyframes sheenSweep{to{background-position:-120% 0}}
+#boot span{display:block;opacity:0;transform:translateY(7px);animation:fadeUp 480ms ease 1050ms forwards}
+@keyframes fadeUp{to{opacity:1;transform:none}}
 
 /* ═══ تسجيل الدخول ═══ */
 #loginFlow{position:absolute;inset:0;z-index:100;background:var(--bg);display:flex;flex-direction:column;
@@ -452,7 +466,7 @@ function toast(m){const t=document.getElementById('toast');if(!t)return;t.textCo
 const STAGES=['placed','accepted','assigned','picked','delivering','delivered'];
 const SLABEL={placed:'جديد',accepted:'اتقبل',assigned:'اتعيّن مندوب',picked:'المندوب استلم',
   delivering:'في الطريق',delivered:'اتسلّم'};
-let S={tab:'new',orders:[],expenses:[],cashCounted:'',bizType:'grocery',password:'',customStoreName:'',phone:'',availableDriver:null,
+let S={tab:'new',orders:[],expenses:[],cashCounted:'',bizType:'grocery',password:'',customStoreName:'',phone:'',availableDriver:null,reviews:[],
   sub:{status:'trial',daysLeft:14,price:99},
   customerStats:{},
   products:[
@@ -496,6 +510,10 @@ onBus(d=>{
     S.pendingSettlement={driverName:d.driverName,amount:d.amount};
     render(); toast('💰 '+d.driverName+' عايز يسلّمك كاش المناوبة');
     return;
+  }
+  if(d.type==='feedback:submitted'&&d.to&&d.to.includes('merchant')){
+    S.reviews.unshift({orderId:d.orderId,rating:d.merchantRating,complaint:d.complaint,customerName:d.customerName});
+    toast(d.complaint?'⚠️ شكوى جديدة من '+d.customerName:'⭐ تقييم جديد: '+d.merchantRating+'/5');
   }
   if(!d.to||!d.to.includes('merchant'))return;
   if(d.type==='order:new'){
@@ -773,12 +791,25 @@ function vList(){
 function vStats(){
   const mx=Math.max(...S.s7);
   const dSales=S.orders.filter(o=>o.stage!=='rejected').reduce((s,o)=>s+o.items.reduce((a,i)=>a+i.p*i.q,0),0);
+  const revs=S.reviews||[];
+  const avg=revs.length?(revs.reduce((s,r)=>s+r.rating,0)/revs.length).toFixed(1):'—';
+  const complaints=revs.filter(r=>r.complaint);
   return `<div class="pad" style="padding-top:14px">
     <div class="card" style="padding:14px"><div class="tiny muted">مبيعات آخر ٧ أيام</div>
       <div class="bars">${S.s7.map((v,i)=>`<div><i style="height:${v/mx*100}%"></i><b>${S.days[i]}</b></div>`).join('')}</div></div>
     <div class="card mt" style="padding:14px"><div class="tiny muted">مبيعات النهاردة (المتزامنة)</div>
       <div class="kufi num" style="font-size:26px;margin-top:4px">${M(dSales)} ج</div>
       <div class="tiny" style="color:var(--ok)">من ${S.orders.length} طلب وصل عبر الشبكة</div></div>
+    <div class="sec-t"><h3>تقييمات العملاء</h3></div>
+    <div class="card" style="padding:14px">
+      <div class="row" style="padding:2px 0;border:0"><span class="muted">متوسط تقييم متجرك</span>
+        <b class="end kufi" style="font-size:21px;color:var(--ac-d)">⭐ ${avg}</b></div>
+      <div class="tiny muted mt">من ${revs.length} تقييم</div>
+    </div>
+    ${complaints.length?`<div class="sec-t"><h3 style="color:var(--danger)">شكاوى محتاجة متابعة</h3></div>
+      <div class="card">${complaints.map(c=>`<div class="row"><span class="av" style="background:#FDE8E6;color:#C23327">!</span>
+        <span><span class="n">${c.customerName}</span><span class="s">${c.complaint}</span></span>
+        <span class="end tiny muted">⭐${c.rating}</span></div>`).join('')}</div>`:''}
     <div style="height:12px"></div></div>`;
 }
 function vAcct(){
