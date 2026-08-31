@@ -144,8 +144,9 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
 .pickupqr{display:flex;align-items:center;gap:10px;margin-top:10px;padding:10px;border-radius:12px;background:var(--surf2)}
 .pickupqr img{border-radius:8px;background:#fff;flex:0 0 auto}
 .float-support{position:absolute;bottom:calc(var(--nav) + 14px);inset-inline-start:14px;z-index:35;
-  width:50px;height:50px;border-radius:50%;background:var(--ac);color:#211602;font-size:21px;border:0;
-  display:grid;place-items:center;box-shadow:0 12px 26px -8px rgba(231,154,30,.55)}
+  height:44px;padding:0 16px 0 14px;border-radius:999px;background:var(--ac);color:#211602;font-size:13.5px;font-weight:700;border:0;
+  display:flex;align-items:center;gap:7px;font-family:'Cairo',inherit;box-shadow:0 12px 26px -8px rgba(231,154,30,.55)}
+.float-support i{font-style:normal;font-size:19px}
 .float-support:active{transform:scale(.92)}
 .sup-fld{width:100%;padding:13px;border:1.5px solid var(--line);border-radius:12px;background:var(--surf2);
   color:var(--txt);resize:vertical;font-family:inherit;font-size:14px}
@@ -364,7 +365,7 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
     <div id="settleBanner"></div>
     <div class="kpis" id="kpis"></div>
     <div class="body" id="screen"></div>
-    <button class="float-support" onclick="openSupportSheet()" aria-label="الدعم الفني">🆘</button>
+    <button class="float-support" onclick="openSupportSheet()" aria-label="الدعم الفني"><i>🆘</i><span>الدعم الفني</span></button>
     <div class="nav" id="nav"></div>
     <div class="toast" id="toast"></div>
   </div>
@@ -513,7 +514,7 @@ function toast(m){playNotifySound();const t=document.getElementById('toast');if(
 const STAGES=['placed','accepted','assigned','picked','delivering','delivered'];
 const SLABEL={placed:'جديد',accepted:'اتقبل',assigned:'اتعيّن مندوب',picked:'المندوب استلم',
   delivering:'في الطريق',delivered:'اتسلّم'};
-let S={tab:'new',orders:[],expenses:[],cashCounted:'',bizType:'grocery',password:'',customStoreName:'',phone:'',availableDriver:null,reviews:[],merchantId:'m1',shopPhoto:'',vodafoneCash:'',
+let S={tab:'new',orders:[],expenses:[],cashCounted:'',bizType:'grocery',password:'',customStoreName:'',phone:'',availableDriver:null,reviews:[],merchantId:'m1',shopPhoto:'',vodafoneCash:'',bizBio:'',
   sub:{status:'trial',daysLeft:14,price:99},
   customerStats:{},
   products:[
@@ -559,7 +560,7 @@ onBus(d=>{
     return;
   }
   if(d.type==='support:reply'&&d.to&&d.to.includes('merchant')){
-    toast('📩 رد الدعم الفني: '+d.reply); return;
+    toast('📩 وصلك رد من الدعم الفني'); openSupportReplySheet(d.ticketId,d.reply); return;
   }
   if(d.type==='feedback:submitted'&&d.to&&d.to.includes('merchant')){
     S.reviews.unshift({orderId:d.orderId,rating:d.merchantRating,complaint:d.complaint,customerName:d.customerName});
@@ -711,16 +712,48 @@ function submitTicket(){
   emit({to:['owner'],type:'support:ticket',ticketId,role:'merchant',roleName:'تاجر',fromName:BIZ().name,category:cat,message:msg});
   closeSheet(); toast('✓ اتبعت طلبك للدعم — هيرد عليك في أقرب وقت');
 }
+function openSupportReplySheet(ticketId,reply){
+  openSheet('رد الدعم الفني',`
+    <div class="tiny muted mb">بخصوص تذكرتك</div>
+    <div class="card" style="padding:14px;margin-bottom:16px;line-height:1.8">${reply}</div>
+    <div class="tiny muted mb" style="margin-bottom:10px">مشكلتك اتحلّت؟</div>
+    <button class="btn btn-p" style="width:100%" onclick="confirmSupportResolved('${ticketId}')">✅ آه، اتحلّت</button>
+    <button class="btn btn-o mt" style="width:100%" onclick="denySupportResolved('${ticketId}')">❌ لسه مش اتحلّت</button>`);
+}
+function confirmSupportResolved(ticketId){
+  emit({to:['owner'],type:'support:confirm_resolved',ticketId,role:'merchant'});
+  closeSheet(); toast('تمام، شكرًا لتأكيدك 🙏');
+}
+function denySupportResolved(ticketId){
+  openSheet('وضّح المشكلة أكتر',`
+    <div class="fld" style="margin-bottom:10px"><label>ايه اللي لسه مش تمام؟</label>
+      <textarea id="supFollowup" rows="3" class="sup-fld"></textarea></div>
+    <button class="btn btn-p" style="width:100%" onclick="sendSupportFollowup('${ticketId}')">إرسال للدعم تاني</button>`);
+}
+function sendSupportFollowup(ticketId){
+  const note=document.getElementById('supFollowup').value.trim();
+  emit({to:['owner'],type:'support:not_resolved',ticketId,role:'merchant',note});
+  closeSheet(); toast('اتبعتت ملاحظتك — التذكرة اتفتحت تاني');
+}
 function openSettings(){
   openSheet('الإعدادات',`
     <div class="fld"><label>نوع نشاطك الحالي</label>
       <div class="card" style="padding:12px;display:flex;align-items:center;gap:10px">
         <span style="font-size:20px">${BIZ().icon}</span><b>${BIZ().label}</b></div></div>
+    <div class="sec-t" style="margin-top:18px"><h3>النبذة التعريفية</h3></div>
+    <div class="fld"><label>عرّف عملاءك بمحلك (بتظهر لهم في صفحة المحل)</label>
+      <textarea id="bizBioInput" rows="3" class="sup-fld" placeholder="مثال: بنبيع خضار وفاكهة طازة يوميًا، وتوصيل سريع لحد الباب">${S.bizBio||''}</textarea></div>
+    <button class="btn btn-o" style="width:100%" onclick="saveBizBio()">حفظ النبذة</button>
     <div class="sec-t" style="margin-top:18px"><h3>تغيير كلمة المرور</h3></div>
     <div class="fld"><label>كلمة المرور الحالية</label><input id="mpOld" type="password" placeholder="••••••••"></div>
     <div class="fld"><label>كلمة المرور الجديدة</label><input id="mpNew" type="password" placeholder="••••••••"></div>
     <div class="fld"><label>تأكيد كلمة المرور</label><input id="mpConf" type="password" placeholder="••••••••"></div>
     <button class="btn btn-p" style="width:100%" onclick="saveMerchantPassword()">حفظ كلمة المرور</button>`);
+}
+function saveBizBio(){
+  const v=document.getElementById('bizBioInput').value.trim();
+  S.bizBio=v; emit({to:['customer','owner'],type:'merchant:bio_updated',merchantId:S.merchantId,bio:v,merchantName:BIZ().name});
+  toast('اتحفظت النبذة التعريفية ✓');
 }
 function saveMerchantPassword(){
   const o=document.getElementById('mpOld').value,n=document.getElementById('mpNew').value,c=document.getElementById('mpConf').value;
