@@ -525,19 +525,21 @@ function downloadQR(){
   const c=document.getElementById('qrCanvas'); if(!c)return;
   const a=document.createElement('a'); a.download='basita-shop-qr.png'; a.href=c.toDataURL(); a.click();
 }
-function pickupToken(orderId,minuteOffset){
-  return 'BASITA-PICKUP-'+orderId+'-'+(Math.floor(Date.now()/60000)-(minuteOffset||0));
+function pickupCode(orderId,minuteOffset){
+  const epoch=Math.floor(Date.now()/60000)-(minuteOffset||0);
+  const seed=orderId+'-'+epoch;
+  let h=0; for(let i=0;i<seed.length;i++){ h=(h*31+seed.charCodeAt(i))>>>0; }
+  return String(h%10000).padStart(4,'0');
 }
-let pickupRefreshT=null;
-function fillPickupQRs(){
-  if(!window.QRCode||!QRCode.toDataURL)return;
-  const imgs=document.querySelectorAll('[id^="pkqr-"]');
-  imgs.forEach(img=>{
-    const oid=img.id.replace('pkqr-','');
-    QRCode.toDataURL(pickupToken(oid,0),{width:86,margin:1}).then(url=>{img.src=url}).catch(()=>{});
-  });
-  clearInterval(pickupRefreshT);
-  if(imgs.length) pickupRefreshT=setInterval(fillPickupQRs,15000);
+function confirmPickup(orderId){
+  const el=document.getElementById('pcIn-'+orderId); if(!el)return;
+  const v=el.value.trim();
+  const valid=v===pickupCode(orderId,0)||v===pickupCode(orderId,1);
+  if(!valid){toast('الكود غلط أو انتهت صلاحيته — اطلب من المندوب الكود الحالي');return}
+  const o=S.orders.find(x=>x.id===orderId); if(!o)return;
+  o.stage='picked';
+  emit({to:['customer','driver'],type:'order:status',orderId,status:'picked'});
+  render(); toast('✓ اتأكد استلام '+(o.driver||'المندوب')+' للطلب');
 }
 function addExpense(){
   const amt=+document.getElementById('expAmt').value||0;
@@ -581,9 +583,15 @@ function oCard(o){
         <span><b>كريم عبد الله</b><span>⭐ ٤.٩ · متاح الآن · ٣ دقايق</span></span></div>
         <button class="btn2 btn-p2" style="width:100%" onclick="assign('${o.id}')">عيّن كريم كمندوب</button></div>`:''}
       ${o.driver&&!o._pickDriver&&o.stage==='assigned'?
-        `<div class="pickupqr"><img id="pkqr-${o.id}" width="72" height="72" alt="QR الاستلام">
-         <span class="tiny muted">المندوب <b style="color:var(--txt)">${o.driver}</b> يمسح الكود ده لتأكيد استلامه.
-         🔒 الكود بيتجدد كل دقيقة لوحده ومش هيشتغل خالص بعد التسليم — لحماية بيانات العميل.</span></div>`:''}
+        `<div class="pickupqr" style="flex-direction:column;align-items:stretch;gap:9px">
+         <span class="tiny muted">اطلب من <b style="color:var(--txt)">${o.driver}</b> يقولك الكود الظاهر عنده، واكتبه هنا:</span>
+         <div style="display:flex;gap:8px">
+           <input id="pcIn-${o.id}" maxlength="4" inputmode="numeric" placeholder="كود ٤ أرقام"
+             style="flex:1;padding:10px;border:1px solid var(--line);border-radius:10px;text-align:center;font-family:'Cairo';font-size:17px;letter-spacing:4px;background:#fff">
+           <button class="btn2 btn-p2" onclick="confirmPickup('${o.id}')">تأكيد</button>
+         </div>
+         <span class="tiny" style="color:var(--ac-d)">🔒 الكود بيتغيّر كل دقيقة تلقائيًا لحماية بيانات العميل</span>
+       </div>`:''}
       ${o.driver&&!o._pickDriver&&o.stage!=='delivered'&&o.stage!=='assigned'?
         `<div class="tiny muted mt">🛵 المندوب: <b style="color:var(--txt)">${o.driver}</b></div>`:''}
       ${o.stage==='delivered'?`<button class="btn2 btn-o2 mt" style="width:100%" onclick="viewInvoice('${o.id}')">🧾 عرض وطباعة الفاتورة</button>`:''}
@@ -694,7 +702,6 @@ function render(){
       ${bn}<span class="i">${i}</span><span>${n}</span></button>`}).join('');
   renderSubBanner();
   if((S.view||'list')==='qr') setTimeout(drawShopQR,30);
-  setTimeout(fillPickupQRs,30);
   setTimeout(()=>S.orders.forEach(o=>o._flash=false),900);
 }
 </script>
