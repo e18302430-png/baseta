@@ -126,6 +126,12 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
   display:grid;place-items:center;font-family:'Cairo';font-size:15px;flex:0 0 auto}
 .me b{font-size:14px;display:block}
 .status-tg{margin-inline-start:auto;display:flex;background:var(--surf2);border-radius:11px;padding:3px;gap:2px}
+.float-support{position:absolute;bottom:calc(var(--nav) + 14px);inset-inline-start:14px;z-index:35;
+  width:50px;height:50px;border-radius:50%;background:var(--ac);color:#fff;font-size:21px;border:0;
+  display:grid;place-items:center;box-shadow:0 12px 26px -8px rgba(91,110,245,.55)}
+.float-support:active{transform:scale(.92)}
+.sup-fld{width:100%;padding:13px;border:1.5px solid var(--line);border-radius:12px;background:var(--surf2);
+  color:var(--txt);resize:vertical;font-family:inherit;font-size:14px}
 .status-tg button{padding:7px 12px;border-radius:8px;font-size:11.5px;font-weight:700;color:var(--txt3)}
 .status-tg button[aria-pressed="true"]{background:var(--ok);color:#fff}
 .status-tg button.busy[aria-pressed="true"]{background:var(--warn);color:#211602}
@@ -156,6 +162,18 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
 .tstep.on{background:var(--ac)}
 
 .bdg{font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px}
+.row{display:flex;align-items:center;gap:11px;padding:12px 13px;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.row .av{width:36px;height:36px;border-radius:11px;background:var(--ac-l);color:var(--ac-d);
+  display:grid;place-items:center;font-size:16px;flex:0 0 auto}
+.row .n{font-weight:700;font-size:13.5px}
+.row .s{font-size:11.5px;color:var(--txt2)}
+.row .end{margin-inline-start:auto;text-align:end;flex:0 0 auto}
+.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
+.kpi{background:var(--surf);border:1px solid var(--line);border-radius:14px;padding:12px;box-shadow:var(--sh)}
+.kpi .l{font-size:11px;color:var(--txt2)}
+.kpi .v{font-family:'Cairo';font-size:21px;margin-top:1px}
+.kpi .v.ok{color:var(--ok)}.kpi .v.warn{color:var(--warn)}
 .b-new{background:var(--ac-l);color:var(--ac-d)}
 .b-prog{background:#FFF3DE;color:#B87610}
 .b-ok{background:#E3F9F1;color:#00925F}
@@ -308,6 +326,7 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
     </div>
     <div id="settleTop"></div>
     <div class="body" id="screen"></div>
+    <button class="float-support" onclick="openSupportSheet()" aria-label="الدعم الفني">🆘</button>
     <div class="nav" id="nav"></div>
     <div class="toast" id="toast"></div>
   </div>
@@ -428,7 +447,19 @@ function startShift(){
     },400);
   },600);
 }
-function toast(m){const t=document.getElementById('toast');if(!t)return;t.textContent=m;t.classList.add('show');
+function playNotifySound(){
+  try{
+    const ctx=new (window.AudioContext||window.webkitAudioContext)();
+    const o=ctx.createOscillator(),g=ctx.createGain();
+    o.connect(g);g.connect(ctx.destination);
+    o.type='sine';o.frequency.value=880;
+    g.gain.setValueAtTime(.0001,ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(.14,ctx.currentTime+.01);
+    g.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+.28);
+    o.start();o.stop(ctx.currentTime+.3);
+  }catch(e){}
+}
+function toast(m){playNotifySound();const t=document.getElementById('toast');if(!t)return;t.textContent=m;t.classList.add('show');
   clearTimeout(window._tT);window._tT=setTimeout(()=>t.classList.remove('show'),2600)}
 
 const STEPS=['assigned','picked','delivering','delivered'];
@@ -439,7 +470,7 @@ function distanceKm(a,b){
   const x=Math.sin(dLat/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLng/2)**2;
   return (R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x))).toFixed(1);
 }
-let S={view:'tasks',avail:true,tasks:[],history:[],shiftTotal:0,settling:false,password:'',driverName:'',vehicle:'🛵',phone:'',ratings:[]};
+let S={view:'tasks',avail:true,tasks:[],history:[],shiftTotal:0,settling:false,password:'',driverName:'',vehicle:'🛵',phone:'',ratings:[],tips:[]};
 const $=s=>document.querySelector(s);
 const M=n=>Math.round(n).toLocaleString('en');
 
@@ -448,6 +479,9 @@ onBus(d=>{
     S.tasks=[]; S.history=[]; S.shiftTotal=0; S.settling=false;
     render(); toast('🗑️ اتصفّرت بيانات المهام من لوحة المالك');
     return;
+  }
+  if(d.type==='support:reply'&&d.to&&d.to.includes('driver')){
+    toast('📩 رد الدعم الفني: '+d.reply); return;
   }
   if(d.type==='feedback:submitted'&&d.to&&d.to.includes('driver')){
     S.ratings.unshift({orderId:d.orderId,rating:d.driverRating});
@@ -459,6 +493,20 @@ onBus(d=>{
     return;
   }
   if(!d.to||!d.to.includes('driver'))return;
+  if(d.type==='tip:sent'&&d.to&&d.to.includes('driver')){
+    S.tips.unshift({orderId:d.orderId,amount:d.amount,customerName:d.customerName,status:'pending',
+      at:new Date().toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'})});
+    toast('🎁 إكرامية جديدة: '+d.amount+' ج من '+d.customerName);
+    render(); return;
+  }
+  if(d.type==='tip:payout'&&d.to&&d.to.includes('driver')){
+    S.tips.filter(t=>t.status==='pending').forEach(t=>t.status='paid');
+    toast('💰 اتصرفت لك إكراميات بقيمة '+d.amount+' ج من صاحب المنصة');
+    render(); return;
+  }
+  if(d.type==='customer:message'&&d.to&&d.to.includes('driver')){
+    toast('👤 رسالة من العميل: '+d.message); return;
+  }
   if(d.type==='order:status'&&d.status==='picked'){
     const t=S.tasks.find(x=>x.id===d.orderId);
     if(t){ t.stage='picked'; toast('✓ التاجر أكّد استلامك للطلب'); }
@@ -474,6 +522,52 @@ onBus(d=>{
 
 function maskPhone(ph){ if(!ph||ph.length<6) return '••••••'; return ph.slice(0,4)+' •••• '+ph.slice(-2); }
 function maskedCall(){ toast('📞 هيتم توصيلك برقم وسيط — رقم العميل الحقيقي محمي ومش بيتشاف'); }
+let contactTaskId=null;
+function openContactSheet(taskId){
+  contactTaskId=taskId;
+  const el=document.createElement('div'); el.id='dContactWrap';
+  const presets=['أنا في الطريق إليك 🛵','وصلت تحت البيت','مش لاقي العنوان، ممكن توضحلي أكتر؟','المحل اتأخر شوية في تجهيز طلبك'];
+  el.innerHTML=`<div style="position:absolute;inset:0;background:rgba(0,0,0,.4);z-index:70" onclick="closeContactSheet()"></div>
+  <div style="position:absolute;inset-inline:0;bottom:0;background:#fff;border-radius:22px 22px 0 0;z-index:71;
+    max-height:80%;overflow-y:auto;padding:20px 18px 26px;box-shadow:0 -10px 40px rgba(0,0,0,.25)">
+    <div style="display:flex;align-items:center;margin-bottom:6px">
+      <h3 style="font-family:Cairo;font-size:16px;color:#151833">راسل العميل</h3>
+      <button style="margin-inline-start:auto;width:32px;height:32px;border-radius:10px;background:var(--surf2);font-size:16px" onclick="closeContactSheet()">✕</button></div>
+    <p class="tiny muted" style="margin:0 0 14px">الرسالة بتوصله داخل تطبيقه — من غير ما رقمك يتشاف</p>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
+      ${presets.map(p=>`<button class="btn2 btn-o2" style="width:100%;text-align:right;justify-content:flex-start" onclick="sendQuickMsg('${p.replace(/'/g,"\\'")}')">${p}</button>`).join('')}
+    </div>
+    <div class="fld" style="margin-bottom:10px"><label>أو اكتب رسالة مخصصة</label>
+      <input id="customMsg" placeholder="اكتب هنا..."></div>
+    <button class="btn2 btn-p2" style="width:100%" onclick="sendCustomMsg()">إرسال</button>
+  </div>`;
+  document.getElementById('app').appendChild(el);
+}
+function closeContactSheet(){ document.getElementById('dContactWrap')?.remove(); }
+function sendQuickMsg(msg){
+  emit({to:['customer'],type:'driver:message',orderId:contactTaskId,message:msg,driverName:S.driverName||'كريم عبد الله'});
+  closeContactSheet(); toast('اتبعتت الرسالة للعميل ✓');
+}
+function sendCustomMsg(){
+  const v=document.getElementById('customMsg').value.trim();
+  if(!v){toast('اكتب رسالة الأول');return}
+  sendQuickMsg(v);
+}
+function openRouteMap(taskId){
+  const t=S.tasks.find(x=>x.id===taskId); if(!t||!t.geo)return;
+  const dest=t.geo.lat+','+t.geo.lng;
+  const openWith=origin=>{
+    const url='https://www.google.com/maps/dir/?api=1'+(origin?'&origin='+origin:'')+'&destination='+dest+'&travelmode=driving';
+    window.open(url,'_blank','noopener');
+  };
+  if(!navigator.geolocation){ openWith(null); return; }
+  toast('بنحدد موقعك الحالي عشان أدق مسار…');
+  navigator.geolocation.getCurrentPosition(
+    pos=>openWith(pos.coords.latitude.toFixed(5)+','+pos.coords.longitude.toFixed(5)),
+    ()=>openWith(null),
+    {timeout:6000}
+  );
+}
 function acceptTask(id){const t=S.tasks.find(x=>x.id===id); t.accepted=true; render(); toast('اتقبلت المهمة');}
 
 /* ═══════ التصوير الإجباري قبل التسليم ═══════ */
@@ -544,6 +638,31 @@ function renderSettleTop(){
 }
 
 /* ═══════ الإعدادات وتغيير كلمة المرور ═══════ */
+function openSupportSheet(){
+  const el=document.createElement('div'); el.id='dSupWrap';
+  el.innerHTML=`<div style="position:absolute;inset:0;background:rgba(0,0,0,.4);z-index:70" onclick="closeSupportSheet()"></div>
+  <div style="position:absolute;inset-inline:0;bottom:0;background:#fff;border-radius:22px 22px 0 0;z-index:71;
+    max-height:85%;overflow-y:auto;padding:20px 18px 26px;box-shadow:0 -10px 40px rgba(0,0,0,.25)">
+    <div style="display:flex;align-items:center;margin-bottom:14px">
+      <h3 style="font-family:Cairo;font-size:16px;color:#151833">تواصل مع الدعم الفني</h3>
+      <button style="margin-inline-start:auto;width:32px;height:32px;border-radius:10px;background:var(--surf2);font-size:16px" onclick="closeSupportSheet()">✕</button></div>
+    <div class="fld"><label>نوع المشكلة</label><select id="supCat">
+      <option>مشكلة في مهمة</option><option>مشكلة في الخريطة</option><option>مشكلة تقنية</option><option>مشكلة في التسوية المالية</option><option>تانى</option></select></div>
+    <div class="fld" style="margin-bottom:10px"><label>اكتب مشكلتك</label>
+      <textarea id="supMsg" rows="4" class="sup-fld"></textarea></div>
+    <button class="btn2 btn-p2" style="width:100%" onclick="submitTicket()">إرسال للدعم الفني</button>
+  </div>`;
+  document.getElementById('app').appendChild(el);
+}
+function closeSupportSheet(){ document.getElementById('dSupWrap')?.remove(); }
+function submitTicket(){
+  const cat=document.getElementById('supCat').value;
+  const msg=document.getElementById('supMsg').value.trim();
+  if(!msg){toast('اكتب مشكلتك الأول');return}
+  const ticketId='T'+Math.floor(1000+Math.random()*9000);
+  emit({to:['owner'],type:'support:ticket',ticketId,role:'driver',roleName:'مندوب',fromName:S.driverName||'كريم عبد الله',category:cat,message:msg});
+  closeSupportSheet(); toast('✓ اتبعت طلبك للدعم — هيرد عليك في أقرب وقت');
+}
 function openDriverSettings(){
   const el=document.createElement('div'); el.id='dSheetWrap';
   el.innerHTML=`<div style="position:absolute;inset:0;background:rgba(0,0,0,.4);z-index:70" onclick="closeDriverSettings()"></div>
@@ -623,14 +742,14 @@ function vTasks(){
           <span class="bdg b-prog">مهمة نشطة</span></div>
         <div class="tb">
           <div class="taddr"><span class="k">📍</span><span>${t.addr}</span></div>
-          ${t.geo?`<a href="https://www.google.com/maps/dir/?api=1&destination=${t.geo.lat},${t.geo.lng}" target="_blank" rel="noopener"
-              style="display:flex;align-items:center;gap:8px;text-decoration:none;background:var(--ac-l);color:var(--ac-d);
-              padding:9px 12px;border-radius:11px;font-size:12.5px;font-weight:700;margin:6px 0">
-              🗺️ افتح خريطة الطريق للعميل
-              <span class="tiny" style="margin-inline-start:auto;font-weight:500;color:var(--txt2)">≈ ${distanceKm(SHOP_GEO,t.geo)} كم</span></a>`:
+          ${t.geo?`<button onclick="openRouteMap('${t.id}')"
+              style="display:flex;align-items:center;gap:8px;width:100%;text-align:right;border:0;cursor:pointer;background:var(--ac-l);color:var(--ac-d);
+              padding:9px 12px;border-radius:11px;font-size:12.5px;font-weight:700;margin:6px 0;font-family:inherit">
+              🗺️ افتح مسار دقيق من موقعك الحالي
+              <span class="tiny" style="margin-inline-start:auto;font-weight:500;color:var(--txt2)">≈ ${distanceKm(SHOP_GEO,t.geo)} كم من المحل</span></button>`:
             `<div class="tiny muted" style="padding:6px 0">📍 العميل ماكانش فعّل موقعه وقت الطلب</div>`}
           <div class="taddr"><span class="k">📞</span><span class="num" dir="ltr">${maskPhone(t.ph)}</span>
-            <button class="btn2 btn-o2" style="flex:0 0 auto;padding:6px 12px;font-size:11px;margin-inline-start:8px" onclick="maskedCall()">📞 اتصال</button></div>
+            <button class="btn2 btn-o2" style="flex:0 0 auto;padding:6px 12px;font-size:11px;margin-inline-start:8px" onclick="openContactSheet('${t.id}')">💬 راسله</button></div>
           <div class="tsteps">${STEPS.map((s,i)=>`<div class="tstep ${i<=idx?'on':''}"></div>`).join('')}</div>
           ${t.stage==='assigned'?
             `<div style="text-align:center;padding:14px;background:var(--ac-l);border-radius:12px">
@@ -661,8 +780,33 @@ function vHistory(){
     <div class="tb" style="padding-top:0"><div class="tiny muted">🔒 التذكرة اتقفلت تلقائيًا الساعة <span class="num">${t.closedAt||''}</span> — العنوان ورقم العميل اتمسحوا من سجلك</div></div></div>`).join('')}
     <div style="height:12px"></div></div>`;
 }
-const V={tasks:vTasks,history:vHistory};
-const NAV=[['tasks','📋','المهام'],['history','🗂️','السجل']];
+function vWallet(){
+  const pending=S.tips.filter(t=>t.status==='pending');
+  const paid=S.tips.filter(t=>t.status==='paid');
+  const pendingTotal=pending.reduce((s,t)=>s+t.amount,0);
+  const paidTotal=paid.reduce((s,t)=>s+t.amount,0);
+  return `<div class="pad" style="padding-top:14px">
+    <div class="card" style="padding:20px;text-align:center;background:linear-gradient(135deg,var(--ac-l),#fff)">
+      <div class="tiny muted">إكراميات معلّقة</div>
+      <div class="kufi num" style="font-size:32px;color:var(--ac-d);margin:5px 0">${pendingTotal} ج</div>
+      <div class="tiny muted">هتوصلك من صاحب المنصة قريب</div>
+    </div>
+    <div class="kpis mt">
+      <div class="kpi"><div class="l">إجمالي اتصرف</div><div class="v num ok">${paidTotal} ج</div></div>
+      <div class="kpi"><div class="l">عدد الإكراميات</div><div class="v num">${S.tips.length}</div></div>
+    </div>
+    <div class="sec-t"><h3>سجل الإكراميات</h3></div>
+    ${S.tips.length?`<div class="card">${S.tips.map(t=>`<div class="row">
+      <span class="av">🎁</span>
+      <span style="flex:1"><span class="n">${t.customerName}</span><span class="s">طلب <span class="num">${t.orderId}</span> · ${t.at}</span></span>
+      <span class="end"><b class="num">${t.amount} ج</b>
+        <span class="bdg ${t.status==='paid'?'b-ok':'b-new'}" style="display:block;margin-top:3px">${t.status==='paid'?'اتصرفت':'معلّقة'}</span></span>
+    </div>`).join('')}</div>`:`<div class="empty"><div class="e">🎁</div><h4>مفيش إكراميات لسه</h4>
+      <p class="tiny">هتظهر هنا أول ما عميل يديك واحدة</p></div>`}
+    <div style="height:12px"></div></div>`;
+}
+const V={tasks:vTasks,history:vHistory,wallet:vWallet};
+const NAV=[['tasks','📋','المهام'],['wallet','🎁','الإكراميات'],['history','🗂️','السجل']];
 function render(){
   $('#statusTg').innerHTML=`
     <button aria-pressed="${S.avail}" onclick="S.avail=true;render()">متاح</button>
@@ -670,8 +814,10 @@ function render(){
   const rb=$('#ratingBadge'); if(rb)rb.textContent=S.ratings.length?'⭐ '+(S.ratings.reduce((s,r)=>s+r.rating,0)/S.ratings.length).toFixed(1):'';
   $('#screen').innerHTML=(V[S.view]||vTasks)();
   const pendN=S.tasks.filter(t=>!t.accepted).length;
+  const pendTips=S.tips.filter(t=>t.status==='pending').length;
   $('#nav').innerHTML=NAV.map(([v,i,n])=>{
-    const bn=(v==='tasks'&&pendN)?`<span class="bn num">${pendN}</span>`:'';
+    const bn=(v==='tasks'&&pendN)?`<span class="bn num">${pendN}</span>`:
+             (v==='wallet'&&pendTips)?`<span class="bn num">${pendTips}</span>`:'';
     return `<button aria-pressed="${S.view===v}" onclick="S.view='${v}';render()">
       ${bn}<span class="i">${i}</span><span>${n}</span></button>`}).join('');
   renderSettleTop();
