@@ -35,6 +35,20 @@ input{font-family:inherit;font-size:16px}
 #boot .bar{width:130px;height:3px;background:rgba(255,255,255,.14);border-radius:9px;margin:20px auto 0;overflow:hidden}
 #boot .bar i{display:block;height:100%;width:0;background:#9AA8FF;animation:ld 1.3s ease forwards;border-radius:9px}
 @keyframes ld{to{width:100%}}
+#boot .mk path{stroke-dasharray:90;stroke-dashoffset:90;animation:drawPath 850ms cubic-bezier(.2,.8,.2,1) forwards}
+#boot .mk circle{opacity:0;transform:scale(.3);transform-box:fill-box;transform-origin:center;
+  animation:popIn 480ms cubic-bezier(.34,1.56,.64,1) 650ms forwards}
+@keyframes drawPath{to{stroke-dashoffset:0}}
+@keyframes popIn{to{opacity:1;transform:scale(1)}}
+#boot b{display:inline-block;position:relative;overflow:hidden;
+  clip-path:inset(0 100% 0 0);animation:reveal 650ms cubic-bezier(.2,.8,.2,1) 480ms forwards}
+@keyframes reveal{to{clip-path:inset(0 0 0 0)}}
+#boot b::after{content:"";position:absolute;inset:0;mix-blend-mode:overlay;
+  background:linear-gradient(100deg,transparent,rgba(255,255,255,.55),transparent);
+  background-size:220% 100%;background-position:200% 0;animation:sheenSweep 850ms ease 900ms forwards}
+@keyframes sheenSweep{to{background-position:-120% 0}}
+#boot span{display:block;opacity:0;transform:translateY(7px);animation:fadeUp 480ms ease 1050ms forwards}
+@keyframes fadeUp{to{opacity:1;transform:none}}
 
 #loginFlow{position:absolute;inset:0;z-index:100;background:var(--bg);display:flex;flex-direction:column;
   padding:32px 26px;opacity:0;transform:translateY(14px);transition:opacity .5s ease,transform .5s ease;pointer-events:none}
@@ -289,6 +303,7 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
         <button class="live" style="border:0;background:rgba(0,0,0,.04);border-radius:9px;padding:5px 9px;margin-inline-start:auto" onclick="openDriverSettings()">⚙️ الإعدادات</button>
       </div>
       <div class="me"><span class="av" id="topAv">ك</span><b id="topName">كريم عبد الله</b>
+        <span class="tiny" id="ratingBadge" style="color:var(--ac-d);font-weight:700;margin-inline-start:6px"></span>
         <div class="status-tg" id="statusTg"></div></div>
     </div>
     <div id="settleTop"></div>
@@ -424,7 +439,7 @@ function distanceKm(a,b){
   const x=Math.sin(dLat/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLng/2)**2;
   return (R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x))).toFixed(1);
 }
-let S={view:'tasks',avail:true,tasks:[],history:[],shiftTotal:0,settling:false,password:'',driverName:'',vehicle:'🛵',phone:''};
+let S={view:'tasks',avail:true,tasks:[],history:[],shiftTotal:0,settling:false,password:'',driverName:'',vehicle:'🛵',phone:'',ratings:[]};
 const $=s=>document.querySelector(s);
 const M=n=>Math.round(n).toLocaleString('en');
 
@@ -432,6 +447,11 @@ onBus(d=>{
   if(d.type==='platform:reset'){
     S.tasks=[]; S.history=[]; S.shiftTotal=0; S.settling=false;
     render(); toast('🗑️ اتصفّرت بيانات المهام من لوحة المالك');
+    return;
+  }
+  if(d.type==='feedback:submitted'&&d.to&&d.to.includes('driver')){
+    S.ratings.unshift({orderId:d.orderId,rating:d.driverRating});
+    render(); toast('⭐ استلمت تقييم: '+d.driverRating+'/5');
     return;
   }
   if(d.type==='shift:settled'&&d.to&&d.to.includes('driver')){
@@ -647,6 +667,7 @@ function render(){
   $('#statusTg').innerHTML=`
     <button aria-pressed="${S.avail}" onclick="S.avail=true;render()">متاح</button>
     <button class="busy" aria-pressed="${!S.avail}" onclick="S.avail=false;render()">مشغول</button>`;
+  const rb=$('#ratingBadge'); if(rb)rb.textContent=S.ratings.length?'⭐ '+(S.ratings.reduce((s,r)=>s+r.rating,0)/S.ratings.length).toFixed(1):'';
   $('#screen').innerHTML=(V[S.view]||vTasks)();
   const pendN=S.tasks.filter(t=>!t.accepted).length;
   $('#nav').innerHTML=NAV.map(([v,i,n])=>{
