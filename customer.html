@@ -36,6 +36,20 @@ input,select{font-family:inherit;font-size:16px}
 #boot .bar{width:130px;height:3px;background:rgba(255,255,255,.12);border-radius:9px;margin:20px auto 0;overflow:hidden}
 #boot .bar i{display:block;height:100%;width:0;background:#5FE3B4;animation:ld 1.3s ease forwards;border-radius:9px}
 @keyframes ld{to{width:100%}}
+#boot .mk path{stroke-dasharray:90;stroke-dashoffset:90;animation:drawPath 850ms cubic-bezier(.2,.8,.2,1) forwards}
+#boot .mk circle{opacity:0;transform:scale(.3);transform-box:fill-box;transform-origin:center;
+  animation:popIn 480ms cubic-bezier(.34,1.56,.64,1) 650ms forwards}
+@keyframes drawPath{to{stroke-dashoffset:0}}
+@keyframes popIn{to{opacity:1;transform:scale(1)}}
+#boot b{display:inline-block;position:relative;overflow:hidden;
+  clip-path:inset(0 100% 0 0);animation:reveal 650ms cubic-bezier(.2,.8,.2,1) 480ms forwards}
+@keyframes reveal{to{clip-path:inset(0 0 0 0)}}
+#boot b::after{content:"";position:absolute;inset:0;mix-blend-mode:overlay;
+  background:linear-gradient(100deg,transparent,rgba(255,255,255,.55),transparent);
+  background-size:220% 100%;background-position:200% 0;animation:sheenSweep 850ms ease 900ms forwards}
+@keyframes sheenSweep{to{background-position:-120% 0}}
+#boot span{display:block;opacity:0;transform:translateY(7px);animation:fadeUp 480ms ease 1050ms forwards}
+@keyframes fadeUp{to{opacity:1;transform:none}}
 
 #authFlow{position:absolute;inset:0;z-index:100;background:var(--bg);display:flex;flex-direction:column;
   opacity:0;transform:translateY(14px);transition:opacity .5s ease,transform .5s ease;pointer-events:none}
@@ -178,6 +192,10 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
   box-shadow:0 1px 3px rgba(0,0,0,.2);transition:.3s;font-style:normal}
 .sw.on{background:var(--ac)}
 .sw.on i{transform:translateX(-18px)}
+.stars{display:flex;gap:7px;font-size:27px;color:var(--line);line-height:1}
+.stars span{cursor:pointer;transition:.15s;-webkit-tap-highlight-color:transparent}
+.stars span.on{color:var(--warn)}
+.stars span:active{transform:scale(1.2)}
 
 .empty{text-align:center;padding:50px 22px;color:var(--txt3)}
 .empty .e{font-size:42px}
@@ -610,6 +628,18 @@ function vTrack(){
       <div class="card" style="padding:10px;text-align:center">
         <img src="${o.deliveryPhoto}" style="width:100%;border-radius:12px;max-height:220px;object-fit:cover">
         <div class="tiny muted mt">صوّرها المندوب وقت التسليم لضمان وصول طلبك صح</div></div>`:''}
+    ${o.stage==='delivered'&&!o.feedbackSubmitted?`
+      <div class="sec-t"><h3>قيّم تجربتك</h3></div>
+      <div class="card" style="padding:16px">
+        <div class="tiny muted mb">قيّم المتجر</div>
+        <div class="stars" id="starsShop">${[1,2,3,4,5].map(n=>`<span data-n="${n}" onclick="setStar('shop',${n})">★</span>`).join('')}</div>
+        <div class="tiny muted mb mt">قيّم المندوب${o.driver?' — '+o.driver:''}</div>
+        <div class="stars" id="starsDriver">${[1,2,3,4,5].map(n=>`<span data-n="${n}" onclick="setStar('driver',${n})">★</span>`).join('')}</div>
+        <div class="fld mt" style="margin-bottom:10px"><label>عندك شكوى أو ملاحظة؟ (اختياري)</label>
+          <input id="complaintInput" placeholder="اكتب هنا لو في مشكلة"></div>
+        <button class="btn btn-p" onclick="submitFeedback('${o.id}')">إرسال التقييم</button>
+      </div>`:o.feedbackSubmitted?`<div class="card mt" style="padding:16px;text-align:center;color:var(--ac-d)">
+        <span style="font-size:22px">✓</span><div class="tiny mt" style="color:var(--txt2)">شكرًا لتقييمك</div></div>`:''}
     ${o.stage!=='delivered'?`<div class="card mt" style="padding:13px;display:flex;align-items:center;gap:10px">
       <span style="font-size:20px">🔁</span>
       <span style="flex:1"><b style="font-size:13px;display:block">كرر الطلب ده كل أسبوع</b>
@@ -625,6 +655,22 @@ function vTrack(){
 function toggleRecurring(id){
   const o=S.orders.find(x=>x.id===id); o.recurring=!o.recurring; render();
   toast(o.recurring?'تمام — هنفكّرك الأسبوع الجاي بنفس الطلب':'اتلغى التكرار');
+}
+let ratingShop=0, ratingDriver=0;
+function setStar(type,n){
+  if(type==='shop')ratingShop=n; else ratingDriver=n;
+  const box=document.getElementById(type==='shop'?'starsShop':'starsDriver');
+  if(box)box.querySelectorAll('span').forEach(s=>s.classList.toggle('on',+s.dataset.n<=n));
+}
+function submitFeedback(orderId){
+  if(!ratingShop||!ratingDriver){toast('قيّم المتجر والمندوب الأول');return}
+  const o=S.orders.find(x=>x.id===orderId); if(!o)return;
+  const complaint=(document.getElementById('complaintInput')||{}).value?.trim()||'';
+  o.feedbackSubmitted=true;
+  emit({to:['merchant','driver','owner'],type:'feedback:submitted',orderId,
+    merchantRating:ratingShop,driverRating:ratingDriver,complaint,driverName:o.driver,customerName:o.name});
+  ratingShop=0; ratingDriver=0;
+  render(); toast('شكرًا لتقييمك 🙏');
 }
 function vOrders(){
   if(!S.orders.length)return `<div class="empty"><div class="e">📦</div><h4>مفيش طلبات لسه</h4>
