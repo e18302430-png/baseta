@@ -153,7 +153,6 @@ p.lsub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13px;line-he
     <p class="lsub">الوصول ده خاص بيك انت بس — صاحب المنصة</p>
     <div class="fld mt"><label>رمز الدخول</label>
       <input id="pinInput" type="password" maxlength="4" inputmode="numeric" placeholder="••••"></div>
-    <div class="demo-hint">🔑 رمز التجربة: <b class="num">1234</b></div>
     <div class="spacer"></div>
     <button class="btn btn-p" onclick="doLogin()">دخول</button>
   </div>
@@ -184,11 +183,21 @@ function emit(msg){
   try{ bc&&bc.postMessage(msg); }catch(e){}
   try{ localStorage.setItem('basita_bus', JSON.stringify(msg)); }catch(e){}
 }
+const _seenMsgIds=new Set();
+function _dedupe(fn){
+  return d=>{
+    if(!d||!d.id||_seenMsgIds.has(d.id))return;
+    _seenMsgIds.add(d.id);
+    if(_seenMsgIds.size>300){ _seenMsgIds.delete(_seenMsgIds.values().next().value); }
+    fn(d);
+  };
+}
 function onBus(fn){
-  window.addEventListener('message', e=>{ if(e.data&&e.data.__basita&&e.data.from!==ROLE) fn(e.data) });
-  if(bc) bc.onmessage=e=>{ if(e.data&&e.data.from!==ROLE) fn(e.data) };
+  const wrapped=_dedupe(fn);
+  window.addEventListener('message', e=>{ if(e.data&&e.data.__basita&&e.data.from!==ROLE) wrapped(e.data) });
+  if(bc) bc.onmessage=e=>{ if(e.data&&e.data.from!==ROLE) wrapped(e.data) };
   window.addEventListener('storage', e=>{ if(e.key==='basita_bus'&&e.newValue){
-    try{const d=JSON.parse(e.newValue); if(d.from!==ROLE) fn(d)}catch(_){} }});
+    try{const d=JSON.parse(e.newValue); if(d.from!==ROLE) wrapped(d)}catch(_){} }});
 }
 
 setTimeout(()=>document.getElementById('boot').classList.add('gone'),1300);
@@ -196,7 +205,7 @@ setTimeout(()=>document.getElementById('loginFlow').classList.add('show'),1350);
 
 function doLogin(){
   const v=document.getElementById('pinInput').value.trim();
-  if(v!==S.pin){toast('الرمز غلط — جرّب 1234');return}
+  if(v!==S.pin){toast('الرمز غلط');return}
   document.getElementById('loginFlow').classList.remove('show');
   setTimeout(()=>{document.getElementById('mainApp').classList.add('show');render()},350);
 }
@@ -312,6 +321,65 @@ function vMerchants(){
     </div>
     <div style="height:14px"></div></div>`;
 }
+function exportBackup(){
+  const data=JSON.stringify({merchants:S.merchants,events:S.events,flags:S.flags,exportedAt:new Date().toISOString()},null,2);
+  const blob=new Blob([data],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download='basita-backup-'+new Date().toISOString().slice(0,10)+'.json'; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+  toast('اتحمّلت النسخة الاحتياطية ✓');
+}
+function importBackupFile(input){
+  const file=input.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      if(data.merchants)S.merchants=data.merchants;
+      if(data.events)S.events=data.events;
+      if(data.flags)S.flags=data.flags;
+      render(); toast('اتستعادت النسخة الاحتياطية بنجاح ✓');
+    }catch(err){ toast('الملف مش صالح — اتأكد إنه نسخة احتياطية صحيحة'); }
+  };
+  reader.readAsText(file);
+  input.value='';
+}
+let resetConfirmStep=false, resetConfirmT=null;
+function requestReset(){
+  if(!resetConfirmStep){
+    resetConfirmStep=true; render();
+    clearTimeout(resetConfirmT);
+    resetConfirmT=setTimeout(()=>{resetConfirmStep=false;render();},6000);
+    return;
+  }
+  clearTimeout(resetConfirmT);
+  S.merchants.forEach(m=>{ m.status='trial'; m.daysLeft=14; m.slaBreaches=0; delete m.pendingAmount; });
+  S.events=[];
+  emit({to:['customer','merchant','driver'],type:'platform:reset'});
+  resetConfirmStep=false;
+  render(); toast('🗑️ اتصفّرت بيانات الشبكة كلها في كل التطبيقات');
+}
+function vData(){
+  return `<div class="pad" style="padding-top:14px">
+    <div class="sec-t" style="margin-top:0"><h3>نسخة احتياطية</h3></div>
+    <div class="card" style="padding:14px">
+      <div class="tiny muted mb">احفظ نسخة من بيانات الشبكة (التجّار، الأحداث، الإعدادات) على جهازك</div>
+      <button class="btn2 btn-p2" style="width:100%" onclick="exportBackup()">⬇️ تحميل نسخة احتياطية</button>
+    </div>
+    <div class="sec-t"><h3>استعادة نسخة</h3></div>
+    <div class="card" style="padding:14px">
+      <div class="tiny muted mb">ارفع ملف نسخة احتياطية سابقة لاستعادته</div>
+      <input type="file" accept=".json" id="restoreFile" style="display:none" onchange="importBackupFile(this)">
+      <button class="btn2 btn-p2" style="width:100%" onclick="document.getElementById('restoreFile').click()">⬆️ رفع نسخة احتياطية</button>
+    </div>
+    <div class="sec-t"><h3 style="color:var(--danger)">منطقة الخطر</h3></div>
+    <div class="card" style="padding:14px;border-color:rgba(232,93,82,.3)">
+      <div class="tiny" style="color:var(--danger)">ده هيصفّر الطلبات والمهام والسجلات في كل التطبيقات (العميل، التاجر، المندوب) — العملية دي لا رجعة فيها. أسماء المحلات وأنواع نشاطها هتفضل زي ما هي.</div>
+      <button class="btn2" style="width:100%;background:rgba(232,93,82,.14);color:var(--danger);margin-top:10px" onclick="requestReset()">
+        ${resetConfirmStep?'⚠️ اضغط تاني للتأكيد النهائي':'🗑️ حذف كل بيانات الشبكة'}</button>
+    </div>
+    <div style="height:14px"></div></div>`;
+}
 function vFlags(){
   return `<div class="pad" style="padding-top:14px">
     <div class="alert info mb">💡 <span>تقدر تشغّل أو توقف أي ميزة فورًا من غير تحديث للتطبيق</span></div>
@@ -334,8 +402,8 @@ function vMap(){
     <div class="alert info mt">🗺️ الهيكل الجغرافي جدول واحد ذاتي المرجعية — إضافة قرية جديدة صف واحد بس، من غير أي تعديل في الكود.</div>
     <div style="height:14px"></div></div>`;
 }
-const V={overview:vOverview,merchants:vMerchants,flags:vFlags,map:vMap};
-const NAV=[['overview','📊','نظرة عامة'],['merchants','🏪','التجّار'],['flags','🎛️','الإعدادات'],['map','🗺️','الخريطة']];
+const V={overview:vOverview,merchants:vMerchants,flags:vFlags,map:vMap,data:vData};
+const NAV=[['overview','📊','نظرة عامة'],['merchants','🏪','التجّار'],['flags','🎛️','الإعدادات'],['map','🗺️','الخريطة'],['data','🗄️','البيانات']];
 function render(){
   const pending=S.merchants.filter(m=>m.status==='pending').length;
   $('#kpis2')?.remove();
