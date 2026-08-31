@@ -445,6 +445,8 @@ function finishSignup(){
   const nm=document.getElementById('nmInput').value.trim()||'صديقنا';
   document.getElementById('hiName').textContent=nm.split(' ')[0];
   S.co.name=nm; S.co.lm=document.getElementById('lmInput').value;
+  S.co.id=S.co.id||('c_'+(S.co.ph||Math.random().toString(36).slice(2)));
+  emit({to:['owner'],type:'customer:register',customerId:S.co.id,name:nm,phone:S.co.ph,landmark:S.co.lm});
   toast('اتعمل حسابك بنجاح 🎉');
   mountApp();
 }
@@ -555,7 +557,7 @@ function placeOrder(){
   if(!shop){toast('اختار محل الأول');return}
   const items=cItems(); const fee=5;
   const id='B'+Math.floor(1000+Math.random()*9000);
-  const order={id,merchantId:shop.id,shopName:shop.name,name:c.name,ph:c.ph||'01015974104',
+  const order={id,merchantId:shop.id,shopName:shop.name,customerId:c.id,name:c.name,ph:c.ph||'01015974104',
     addr:`${c.lm} — بيت ${c.house}`,geo:c.geo,
     items:items.map(({p,q})=>({n:p.n,q,p:p.p,u:p.u})),fee,total:cSub()+fee,stage:'placed',driver:null,recurring:false};
   S.orders.unshift(order); S.cart={}; S.cartShop=null;
