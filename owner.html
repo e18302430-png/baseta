@@ -110,6 +110,7 @@ p.lsub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13px;line-he
 .b-trial{background:rgba(240,169,59,.15);color:var(--warn)}
 .b-active{background:rgba(23,199,135,.15);color:var(--ok)}
 .b-pending{background:rgba(95,212,232,.15);color:var(--ac)}
+.b-danger{background:rgba(232,93,82,.15);color:var(--danger)}
 .b-grace{background:rgba(232,93,82,.15);color:var(--danger)}
 
 .btn2{display:flex;align-items:center;justify-content:center;gap:7px;padding:10px 14px;
@@ -131,9 +132,10 @@ p.lsub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13px;line-he
 .sw.on i{transform:translateX(-18px)}
 
 .nav{position:absolute;inset-inline:0;bottom:0;height:var(--nav);background:rgba(16,18,24,.97);
-  backdrop-filter:blur(14px);border-top:1px solid var(--line);display:flex;z-index:40}
-.nav button{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
-  color:var(--txt3);font-size:10px;font-weight:600;position:relative}
+  backdrop-filter:blur(14px);border-top:1px solid var(--line);display:flex;z-index:40;overflow-x:auto;scrollbar-width:none}
+.nav::-webkit-scrollbar{display:none}
+.nav button{flex:0 0 auto;min-width:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  color:var(--txt3);font-size:10px;font-weight:600;position:relative;padding:0 6px}
 .nav button[aria-pressed="true"]{color:var(--ac)}
 .nav .i{font-size:18px}
 .nav .bn{position:absolute;top:6px;inset-inline-end:calc(50% - 18px);background:var(--danger);color:#fff;
@@ -254,9 +256,12 @@ function toast(m){playNotifySound();pushNotify(m);const t=document.getElementByI
 
 let S={view:'overview',
   merchants:[],
+  customers:[],
   events:[],
   tickets:[],
   tips:[],
+  driverApplications:[],
+  membersTab:'customers',
   vodafoneCash:'01001234567',
   pin:'1234',
   flags:[
@@ -268,10 +273,49 @@ const $=s=>document.querySelector(s);
 const M=n=>Math.round(n).toLocaleString('en');
 
 onBus(d=>{
+  if(d.type==='customer:register'){
+    if(!S.customers.find(c=>c.customerId===d.customerId)){
+      S.customers.unshift({customerId:d.customerId,name:d.name,phone:d.phone,landmark:d.landmark,
+        at:new Date().toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'}),orders:0,spent:0});
+      S.events.unshift({t:'👤 عميل جديد انضم للمنصة — '+d.name,at:'الآن'});
+      render();
+    }
+    return;
+  }
+  if(d.type==='order:new'){
+    const c=S.customers.find(c=>c.customerId===d.order?.customerId);
+    if(c){ c.orders=(c.orders||0)+1; c.spent=(c.spent||0)+(d.order.total||0); }
+  }
+  if(d.type==='order:status'&&d.status==='delivered'){
+    const m=S.merchants.find(m=>m.id===d.merchantId);
+    if(m){ m.salesTotal=(m.salesTotal||0)+(d.total||0); m.ordersDelivered=(m.ordersDelivered||0)+1; }
+    if(d.driverId){
+      const a=S.driverApplications.find(a=>a.driverId===d.driverId);
+      if(a){ a.deliveries=(a.deliveries||0)+1; a.earnings=(a.earnings||0)+(d.total||0); }
+    }
+    render();
+  }
+  if(d.type==='driver:register'){
+    S.driverApplications.unshift({driverId:d.driverId,driverName:d.driverName,vehicle:d.vehicle,phone:d.phone,
+      idCardPhoto:d.idCardPhoto,selfiePhoto:d.selfiePhoto,status:'pending',at:new Date().toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'})});
+    S.events.unshift({t:'🛵 مندوب جديد سجّل وبانتظار المراجعة — '+d.driverName,at:'الآن'});
+    toast('🔒 مندوب جديد محتاج مراجعة هوية — '+d.driverName);
+    render(); return;
+  }
   if(d.type==='support:ticket'){
-    S.tickets.unshift({...d,status:'open',at:new Date().toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'})});
+    S.tickets.unshift({...d,status:'open',replies:[],at:new Date().toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'})});
     toast('🆘 تذكرة دعم جديدة من '+d.roleName+' — '+d.fromName);
     render(); return;
+  }
+  if(d.type==='support:confirm_resolved'){
+    const t=S.tickets.find(x=>x.ticketId===d.ticketId);
+    if(t){ t.status='resolved'; S.events.unshift({t:'✅ '+t.roleName+' ('+t.fromName+') أكّد إن تذكرة الدعم اتحلّت',at:'الآن'}); toast('✅ '+t.roleName+' أكّد حل التذكرة'); render(); }
+    return;
+  }
+  if(d.type==='support:not_resolved'){
+    const t=S.tickets.find(x=>x.ticketId===d.ticketId);
+    if(t){ t.status='reopened'; if(d.note){t.replies=t.replies||[]; t.replies.push({from:t.role,text:d.note,at:new Date().toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'})});} S.events.unshift({t:'⚠️ '+t.roleName+' ('+t.fromName+') قال إن المشكلة لسه مش اتحلت',at:'الآن'}); toast('⚠️ التذكرة اتفتحت تاني — المشكلة لسه موجودة'); render(); }
+    return;
   }
   if(d.type==='tip:sent'){
     S.tips.unshift({orderId:d.orderId,amount:d.amount,driverName:d.driverName,customerName:d.customerName,status:'pending',
@@ -499,36 +543,54 @@ function replyTicket(id){
   const el=document.getElementById('reply-'+id);
   const reply=el.value.trim();
   if(!reply){toast('اكتب الرد الأول');return}
-  t.status='resolved'; t.reply=reply;
+  t.status='awaiting_confirm'; t.replies=t.replies||[]; t.replies.push({from:'owner',text:reply,at:new Date().toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'})});
   emit({to:[t.role],type:'support:reply',ticketId:id,reply});
-  render(); toast('اتبعت الرد لـ'+t.roleName);
+  render(); toast('اتبعت الرد لـ'+t.roleName+' — التذكرة هتقفل لما يأكد إن المشكلة اتحلّت');
+}
+function reopenTicketFromOwner(id){
+  const t=S.tickets.find(x=>x.ticketId===id); if(!t)return;
+  t.status='open'; render(); toast('التذكرة رجعت مفتوحة');
 }
 function vSupport(){
   const open=S.tickets.filter(t=>t.status==='open');
+  const waiting=S.tickets.filter(t=>t.status==='awaiting_confirm');
+  const reopened=S.tickets.filter(t=>t.status==='reopened');
   const resolved=S.tickets.filter(t=>t.status==='resolved');
   const roleIcon={customer:'👤',merchant:'🏪',driver:'🛵'};
   if(!S.tickets.length)return `<div class="pad" style="padding-top:14px">
     <div class="alert info">🆘 لسه مفيش تذاكر دعم — أي مشكلة تتبعت من أي تطبيق هتظهر هنا فورًا</div></div>`;
+  const activeList=[...reopened,...open];
   return `<div class="pad" style="padding-top:14px">
-    ${open.length?`<div class="sec-t" style="margin-top:0"><h3>تذاكر مفتوحة</h3><span class="num">${open.length}</span></div>
-      ${open.map(t=>`<div class="card mb" style="padding:14px">
+    ${activeList.length?`<div class="sec-t" style="margin-top:0"><h3>تذاكر محتاجة رد</h3><span class="num">${activeList.length}</span></div>
+      ${activeList.map(t=>`<div class="card mb" style="padding:14px;${t.status==='reopened'?'border-color:rgba(232,93,82,.4)':''}">
         <div style="display:flex;align-items:center;gap:9px;margin-bottom:9px">
           <span style="font-size:18px">${roleIcon[t.role]||'❓'}</span>
           <b style="font-size:13.5px">${t.roleName} — ${t.fromName}</b>
-          <span class="bdg b-trial" style="margin-inline-start:auto">${t.category}</span></div>
-        <div class="tiny" style="color:var(--txt);line-height:1.7;margin-bottom:11px">${t.message}</div>
+          <span class="bdg ${t.status==='reopened'?'b-danger':'b-trial'}" style="margin-inline-start:auto">${t.status==='reopened'?'اتفتحت تاني':t.category}</span></div>
+        <div class="tiny" style="color:var(--txt);line-height:1.7;margin-bottom:9px">${t.message}</div>
+        ${(t.replies||[]).length?`<div class="tiny muted" style="margin-bottom:9px;background:var(--surf2);padding:9px;border-radius:9px">
+          ${t.replies.map(r=>`<div style="margin-bottom:4px"><b style="color:var(--txt)">${r.from==='owner'?'ردّك':t.roleName}:</b> ${r.text}</div>`).join('')}</div>`:''}
         <div class="tiny muted" style="margin-bottom:9px">${t.at}</div>
         <textarea id="reply-${t.ticketId}" placeholder="اكتب ردك هنا..." rows="2"
           style="width:100%;padding:11px;border:1px solid var(--line);border-radius:11px;background:var(--surf2);
           color:var(--txt);resize:vertical;font-family:inherit;font-size:13px;margin-bottom:9px"></textarea>
-        <button class="btn2 btn-p2" style="width:100%" onclick="replyTicket('${t.ticketId}')">إرسال الرد وإغلاق التذكرة</button>
+        <button class="btn2 btn-p2" style="width:100%" onclick="replyTicket('${t.ticketId}')">إرسال الرد</button>
       </div>`).join('')}` :''}
+    ${waiting.length?`<div class="sec-t"><h3>بانتظار تأكيد ${waiting[0]?waiting[0].roleName:''}</h3><span class="num">${waiting.length}</span></div>
+      ${waiting.map(t=>`<div class="card mb" style="padding:14px;border-color:rgba(95,212,232,.35)">
+        <div style="display:flex;align-items:center;gap:9px;margin-bottom:9px">
+          <span style="font-size:18px">${roleIcon[t.role]||'❓'}</span>
+          <b style="font-size:13.5px">${t.roleName} — ${t.fromName}</b>
+          <span class="bdg b-pending" style="margin-inline-start:auto">بانتظار التأكيد</span></div>
+        <div class="tiny muted">اتبعت الرد — لسه مستني ${t.roleName} يأكد إن المشكلة اتحلّت فعلًا</div>
+        <button class="btn2" style="width:100%;margin-top:9px;background:transparent;border:1px solid var(--line);color:var(--txt2)" onclick="reopenTicketFromOwner('${t.ticketId}')">فتح التذكرة تاني</button>
+      </div>`).join('')}`:''}
     ${resolved.length?`<div class="sec-t"><h3>تذاكر اتحلّت</h3><span class="num">${resolved.length}</span></div>
       <div class="card">${resolved.map(t=>`<div class="row">
         <span class="av">${roleIcon[t.role]||'❓'}</span>
         <span style="flex:1"><span class="n">${t.roleName} — ${t.fromName}</span>
           <span class="s">${t.message.slice(0,40)}${t.message.length>40?'…':''}</span></span>
-        <span class="bdg b-active">اتحلّت</span></div>`).join('')}</div>`:''}
+        <span class="bdg b-active">✅ أكّد الحل</span></div>`).join('')}</div>`:''}
     <div style="height:14px"></div></div>`;
 }
 function payoutDriver(driverName){
@@ -616,12 +678,73 @@ function vMap(){
     <div class="alert info mt">🗺️ الهيكل الجغرافي جدول واحد ذاتي المرجعية — إضافة قرية جديدة صف واحد بس، من غير أي تعديل في الكود.</div>
     <div style="height:14px"></div></div>`;
 }
-const V={overview:vOverview,merchants:vMerchants,support:vSupport,wallets:vWallets,flags:vFlags,map:vMap,data:vData};
-const NAV=[['overview','📊','عامة'],['merchants','🏪','تجّار'],['support','🆘','دعم'],['wallets','🎁','إكراميات'],['flags','🎛️','إعدادات'],['map','🗺️','خريطة'],['data','🗄️','بيانات']];
+function switchMembersTab(t){ S.membersTab=t; render(); }
+function vMembers(){
+  const t=S.membersTab||'customers';
+  const tabs=[['customers','👤','عملاء',S.customers.length],['merchants','🏪','تجّار',S.merchants.length],
+    ['drivers','🛵','مناديب',S.driverApplications.filter(a=>a.status==='approved').length]];
+  const tabsHtml=`<div style="display:flex;gap:8px;margin-bottom:14px">${tabs.map(([k,i,n,c])=>
+    `<button onclick="switchMembersTab('${k}')" style="flex:1;padding:10px;border-radius:12px;border:1.5px solid ${t===k?'var(--ac)':'var(--line)'};
+      background:${t===k?'var(--ac-l)':'transparent'};color:${t===k?'var(--ac-d)':'var(--txt2)'};font-family:Cairo;font-size:12px;font-weight:700">
+      ${i} ${n} <span class="num">(${c})</span></button>`).join('')}</div>`;
+  let body='';
+  if(t==='customers'){
+    body=!S.customers.length?`<div class="alert info">👤 لسه مفيش عملاء مسجّلين — أي حد يعمل حساب في تطبيق العميل هيظهر هنا</div>`:
+      `<div class="card">${S.customers.map(c=>`<div class="row">
+        <span class="av">👤</span><span style="flex:1"><span class="n">${c.name}</span>
+        <span class="s" dir="ltr">${c.phone||''} ${c.landmark?'· '+c.landmark:''}</span></span>
+        <b class="num end">${c.orders||0} طلب</b></div>`).join('')}</div>`;
+  } else if(t==='merchants'){
+    body=!S.merchants.length?`<div class="alert info">🏪 لسه مفيش تجّار مسجّلين</div>`:
+      `<div class="card">${S.merchants.map(m=>`<div class="row">
+        <span class="av">${m.icon||'🏪'}</span><span style="flex:1"><span class="n">${m.name}</span>
+        <span class="s">${m.type||''}</span></span><b class="num end">${M(m.salesTotal||0)} ج</b></div>`).join('')}</div>`;
+  } else {
+    const drivers=S.driverApplications.filter(a=>a.status==='approved');
+    body=!drivers.length?`<div class="alert info">🛵 لسه مفيش مناديب موثّقين</div>`:
+      `<div class="card">${drivers.map(a=>`<div class="row">
+        <span class="av">🛵</span><span style="flex:1"><span class="n">${a.driverName}</span>
+        <span class="s" dir="ltr">${a.phone||''}</span></span><b class="num end">${a.deliveries||0} توصيلة</b></div>`).join('')}</div>`;
+  }
+  return `<div class="pad" style="padding-top:14px">${tabsHtml}${body}<div style="height:14px"></div></div>`;
+}
+function vAnalytics(){
+  const topCustomers=[...S.customers].sort((a,b)=>(b.orders||0)-(a.orders||0)).slice(0,5).filter(c=>c.orders);
+  const totalSales=S.merchants.reduce((s,m)=>s+(m.salesTotal||0),0)||1;
+  const topMerchants=[...S.merchants].sort((a,b)=>(b.salesTotal||0)-(a.salesTotal||0)).slice(0,5).filter(m=>m.salesTotal);
+  const drivers=[...S.driverApplications.filter(a=>a.status==='approved')].sort((a,b)=>(b.deliveries||0)-(a.deliveries||0));
+  const topDriver=drivers[0];
+  return `<div class="pad" style="padding-top:14px">
+    <div class="sec-t" style="margin-top:0"><h3>🏆 الأكتر طلبًا</h3></div>
+    ${topCustomers.length?`<div class="card">${topCustomers.map((c,i)=>`<div class="row">
+      <span class="av">${['🥇','🥈','🥉','4️⃣','5️⃣'][i]}</span><span style="flex:1"><span class="n">${c.name}</span>
+      <span class="s">${M(c.spent||0)} ج إجمالي</span></span><b class="num end">${c.orders} طلب</b></div>`).join('')}</div>`:
+      `<div class="alert info">📊 لسه مفيش طلبات كفاية نبني بيها الترتيب</div>`}
+    <div class="sec-t"><h3>💰 أعلى نسبة مبيعات</h3></div>
+    ${topMerchants.length?`<div class="card">${topMerchants.map(m=>{
+        const pct=Math.round((m.salesTotal/totalSales)*100);
+        return `<div class="row" style="flex-direction:column;align-items:stretch;gap:6px">
+        <div style="display:flex;align-items:center;gap:9px"><span class="av">${m.icon||'🏪'}</span>
+          <span style="flex:1"><span class="n">${m.name}</span></span><b class="num end">${pct}%</b></div>
+        <div style="height:6px;background:var(--surf2);border-radius:4px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:var(--ac);border-radius:4px"></div></div>
+        </div>`;}).join('')}</div>`:
+      `<div class="alert info">📊 لسه مفيش مبيعات كفاية نحسب بيها النسب</div>`}
+    <div class="sec-t"><h3>🛵 أنشط مندوب</h3></div>
+    ${topDriver&&topDriver.deliveries?`<div class="card" style="padding:16px;display:flex;align-items:center;gap:12px">
+      <span style="font-size:26px">🏆</span><span style="flex:1"><b>${topDriver.driverName}</b>
+      <div class="tiny muted">${topDriver.deliveries} توصيلة مكتملة</div></span>
+      <b class="num" style="color:var(--ok)">${M(topDriver.earnings||0)} ج</b></div>`:
+      `<div class="alert info">🛵 لسه مفيش توصيلات كفاية نحدد بيها الأنشط</div>`}
+    <div style="height:14px"></div></div>`;
+}
+const V={overview:vOverview,merchants:vMerchants,security:vSecurity,members:vMembers,analytics:vAnalytics,support:vSupport,wallets:vWallets,flags:vFlags,map:vMap,data:vData};
+const NAV=[['overview','📊','عامة'],['merchants','🏪','تجّار'],['security','🔒','الأمان'],['members','👥','الأعضاء'],['analytics','📈','تحليلات'],['support','🆘','دعم'],['wallets','🎁','إكراميات'],['flags','🎛️','إعدادات'],['map','🗺️','خريطة'],['data','🗄️','بيانات']];
 function render(){
   const pending=S.merchants.filter(m=>['awaiting_approval','payment_review'].includes(m.status)).length;
-  const openTix=S.tickets.filter(t=>t.status==='open').length;
+  const openTix=S.tickets.filter(t=>t.status==='open'||t.status==='reopened').length;
   const pendTips=S.tips.filter(t=>t.status==='pending').length;
+  const pendDrivers=S.driverApplications.filter(a=>a.status==='pending').length;
   $('#kpis2')?.remove();
   const kp=document.createElement('div'); kp.className='kpis2'; kp.id='kpis2';
   kp.innerHTML=`<div class="kpi2"><div class="l">تجّار نشطين</div><div class="v num">${S.merchants.length}</div></div>
@@ -630,10 +753,61 @@ function render(){
   $('#screen').innerHTML=(V[S.view]||vOverview)();
   $('#nav').innerHTML=NAV.map(([v,i,n])=>{
     const bn=(v==='merchants'&&pending)?`<span class="bn num">${pending}</span>`:
+             (v==='security'&&pendDrivers)?`<span class="bn num">${pendDrivers}</span>`:
              (v==='support'&&openTix)?`<span class="bn num">${openTix}</span>`:
              (v==='wallets'&&pendTips)?`<span class="bn num">${pendTips}</span>`:'';
     return `<button aria-pressed="${S.view===v}" onclick="S.view='${v}';render()">
       ${bn}<span class="i">${i}</span><span>${n}</span></button>`}).join('');
+}
+function approveDriver(driverId){
+  const a=S.driverApplications.find(x=>x.driverId===driverId); if(!a)return;
+  a.status='approved';
+  emit({to:['driver'],type:'driver:approved',driverId});
+  S.events.unshift({t:'✅ اتوافق على المندوب '+a.driverName,at:'الآن'});
+  render(); toast('اتوافق على '+a.driverName+' ✓');
+}
+function rejectDriver(driverId){
+  const a=S.driverApplications.find(x=>x.driverId===driverId); if(!a)return;
+  const reason=prompt('سبب الرفض (هيتبعت للمندوب):','الصور مش واضحة، حاول تاني بصورة أوضح');
+  if(reason===null)return;
+  a.status='rejected'; a.reason=reason;
+  emit({to:['driver'],type:'driver:rejected',driverId,reason});
+  S.events.unshift({t:'❌ اترفض المندوب '+a.driverName,at:'الآن'});
+  render(); toast('اترفض '+a.driverName);
+}
+function vSecurity(){
+  const pending=S.driverApplications.filter(a=>a.status==='pending');
+  const approved=S.driverApplications.filter(a=>a.status==='approved');
+  const rejected=S.driverApplications.filter(a=>a.status==='rejected');
+  if(!S.driverApplications.length)return `<div class="pad" style="padding-top:14px">
+    <div class="alert info">🔒 لسه مفيش طلبات توثيق مناديب — أي مندوب يسجّل هيظهر هنا فورًا ببطاقته وصورته الشخصية</div></div>`;
+  return `<div class="pad" style="padding-top:14px">
+    ${pending.length?`<div class="sec-t" style="margin-top:0"><h3>بانتظار المراجعة</h3><span class="num">${pending.length}</span></div>
+      ${pending.map(a=>`<div class="card mb" style="padding:14px">
+        <div style="display:flex;align-items:center;gap:9px;margin-bottom:11px">
+          <span style="font-size:18px">🛵</span><b style="font-size:13.5px">${a.driverName}</b>
+          <span class="tiny muted" style="margin-inline-start:auto" dir="ltr">${a.phone||''}</span></div>
+        <div style="display:flex;gap:8px;margin-bottom:11px">
+          <div style="flex:1"><div class="tiny muted mb">صورة البطاقة</div>
+            <img src="${a.idCardPhoto}" style="width:100%;height:100px;object-fit:cover;border-radius:10px;border:1px solid var(--line)"></div>
+          <div style="flex:1"><div class="tiny muted mb">الصورة الشخصية</div>
+            <img src="${a.selfiePhoto}" style="width:100%;height:100px;object-fit:cover;border-radius:10px;border:1px solid var(--line)"></div>
+        </div>
+        <div class="tiny muted" style="margin-bottom:11px">وسيلة التوصيل: ${a.vehicle} · ${a.at}</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn2 btn-p2" style="flex:1" onclick="approveDriver('${a.driverId}')">✅ موافقة</button>
+          <button class="btn2" style="flex:1;background:rgba(232,93,82,.14);color:var(--danger)" onclick="rejectDriver('${a.driverId}')">❌ رفض</button>
+        </div>
+      </div>`).join('')}`:''}
+    ${approved.length?`<div class="sec-t"><h3>مناديب موثّقين</h3><span class="num">${approved.length}</span></div>
+      <div class="card">${approved.map(a=>`<div class="row">
+        <span class="av">🛵</span><span style="flex:1"><span class="n">${a.driverName}</span>
+        <span class="s" dir="ltr">${a.phone||''}</span></span><span class="bdg b-active">موثّق</span></div>`).join('')}</div>`:''}
+    ${rejected.length?`<div class="sec-t"><h3>مرفوضين</h3><span class="num">${rejected.length}</span></div>
+      <div class="card">${rejected.map(a=>`<div class="row">
+        <span class="av">🛵</span><span style="flex:1"><span class="n">${a.driverName}</span>
+        <span class="s">${a.reason||''}</span></span><span class="bdg b-danger">مرفوض</span></div>`).join('')}</div>`:''}
+    <div style="height:14px"></div></div>`;
 }
 </script>
 </body></html>
