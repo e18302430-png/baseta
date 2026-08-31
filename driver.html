@@ -695,7 +695,8 @@ function confirmDeliveryPhoto(){
   const id=deliverOrderId; const t=S.tasks.find(x=>x.id===id);
   closePhotoUI();
   t.stage='delivered';
-  emit({to:['customer','merchant'],type:'order:status',orderId:id,status:'delivered',photo:capturedPhoto});
+  emit({to:['customer','merchant'],type:'order:status',orderId:id,status:'delivered',photo:capturedPhoto,
+    driverName:S.driverName||'كريم عبد الله',driverId:S.driverId,merchantId:t.merchantId,customerId:t.customerId,total:t.total});
   S.shiftTotal+=(t.total||0);
   delete t.addr; delete t.ph; t.closedAt=new Date().toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'});
   S.history.unshift(t); S.tasks=S.tasks.filter(x=>x.id!==id); S.avail=true;
