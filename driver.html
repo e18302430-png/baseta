@@ -4,7 +4,6 @@
 <title>بسيطة · المندوب</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <style>
 :root{
   --bg:#F6F7FC;--surf:#FFFFFF;--surf2:#EEF0FA;--line:#E4E7F5;
@@ -227,20 +226,6 @@ p.lsub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
       <button class="qr-cta" onclick="capturePhoto()">📸 التقط الصورة</button>
     </div>
   </div>
-
-  <div class="scanbg" id="scanUI">
-    <div class="scan-top"><button onclick="stopScan()">✕</button>
-      <b style="color:#fff;font-family:'Cairo'">امسح كود الاستلام من التاجر</b></div>
-    <div class="scan-stage">
-      <video id="scanVideo" autoplay playsinline muted></video>
-      <div class="scan-frame"></div>
-      <div class="scan-hint">وجّه الكاميرا على الكود اللي التاجر واريهولك</div>
-    </div>
-    <div class="scan-fallback">
-      <input id="manualCode" placeholder="أو اكتب الكود يدويًا لو الكاميرا مش متاحة">
-      <button class="qr-cta" onclick="submitManualCode()">تأكيد بدون مسح</button>
-    </div>
-  </div>
 </div>
 
 <script>
@@ -296,6 +281,10 @@ onBus(d=>{
     return;
   }
   if(!d.to||!d.to.includes('driver'))return;
+  if(d.type==='order:status'&&d.status==='picked'){
+    const t=S.tasks.find(x=>x.id===d.orderId);
+    if(t){ t.stage='picked'; toast('✓ التاجر أكّد استلامك للطلب'); }
+  }
   if(d.type==='order:assign'){
     const hasActive=S.tasks.some(x=>x.accepted);
     S.tasks.push({...d.order,stage:'assigned',accepted:false,batchHint:hasActive});
@@ -406,50 +395,18 @@ function saveDriverPassword(){
 }
 
 let scanOrderId=null, scanStream=null, scanRAF=null;
-function startScan(orderId){
-  scanOrderId=orderId;
-  const mi=document.getElementById('manualCode');
-  mi.value=''; mi.placeholder='الكود بيتجدد كل دقيقة — اكتب اللي شايفه دلوقتي بالظبط';
-  document.getElementById('scanUI').classList.add('show');
-  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
-    toast('الكاميرا مش متاحة هنا — استخدم الإدخال اليدوي'); return;
-  }
-  navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}).then(stream=>{
-    scanStream=stream;
-    const v=document.getElementById('scanVideo'); v.srcObject=stream;
-    tickScan();
-  }).catch(()=>{ toast('اترفض إذن الكاميرا — استخدم الإدخال اليدوي تحت'); });
+function pickupCode(orderId,minuteOffset){
+  const epoch=Math.floor(Date.now()/60000)-(minuteOffset||0);
+  const seed=orderId+'-'+epoch;
+  let h=0; for(let i=0;i<seed.length;i++){ h=(h*31+seed.charCodeAt(i))>>>0; }
+  return String(h%10000).padStart(4,'0');
 }
-function tickScan(){
-  const v=document.getElementById('scanVideo');
-  if(v&&v.readyState===v.HAVE_ENOUGH_DATA&&window.jsQR){
-    const c=document.createElement('canvas'); c.width=v.videoWidth||300; c.height=v.videoHeight||300;
-    const ctx=c.getContext('2d'); ctx.drawImage(v,0,0,c.width,c.height);
-    const img=ctx.getImageData(0,0,c.width,c.height);
-    const res=jsQR(img.data,c.width,c.height);
-    if(res&&res.data){ handleScanResult(res.data); return; }
-  }
-  scanRAF=requestAnimationFrame(tickScan);
-}
-function handleScanResult(text){
-  const valid=text===pickupToken(scanOrderId,0)||text===pickupToken(scanOrderId,1);
-  if(valid){ const id=scanOrderId; stopScan(); advance(id); toast('اتأكد الاستلام بالمسح ✓'); }
-  else scanRAF=requestAnimationFrame(tickScan);
-}
-function pickupToken(orderId,minuteOffset){
-  return 'BASITA-PICKUP-'+orderId+'-'+(Math.floor(Date.now()/60000)-(minuteOffset||0));
-}
-function submitManualCode(){
-  const v=document.getElementById('manualCode').value.trim();
-  const valid=v===pickupToken(scanOrderId,0)||v===pickupToken(scanOrderId,1);
-  if(!valid){ toast('الكود مش صحيح أو انتهت صلاحيته — اطلب من التاجر يوريك الكود الحالي'); return; }
-  const id=scanOrderId; stopScan(); advance(id); toast('اتأكد الاستلام يدويًا ✓');
-}
-function stopScan(){
-  document.getElementById('scanUI').classList.remove('show');
-  if(scanRAF) cancelAnimationFrame(scanRAF); scanRAF=null;
-  if(scanStream){ scanStream.getTracks().forEach(t=>t.stop()); scanStream=null; }
-}
+setInterval(()=>{
+  document.querySelectorAll('[id^="pcode-"]').forEach(el=>{
+    const oid=el.id.replace('pcode-','');
+    el.textContent=pickupCode(oid,0);
+  });
+},5000);
 function advance(id){
   const t=S.tasks.find(x=>x.id===id);
   const seq=['assigned','picked','delivering'];
@@ -480,7 +437,11 @@ function vTasks(){
             <button class="btn2 btn-o2" style="flex:0 0 auto;padding:6px 12px;font-size:11px;margin-inline-start:8px" onclick="maskedCall()">📞 اتصال</button></div>
           <div class="tsteps">${STEPS.map((s,i)=>`<div class="tstep ${i<=idx?'on':''}"></div>`).join('')}</div>
           ${t.stage==='assigned'?
-            `<button class="btn2 btn-p2" onclick="startScan('${t.id}')">📷 امسح كود الاستلام من التاجر</button>`:
+            `<div style="text-align:center;padding:14px;background:var(--ac-l);border-radius:12px">
+               <div class="tiny muted">قول الكود ده للتاجر عشان يأكّد استلامك</div>
+               <div class="kufi num" id="pcode-${t.id}" style="font-size:32px;letter-spacing:8px;color:var(--ac-d);margin:6px 0">${pickupCode(t.id,0)}</div>
+               <div class="tiny" style="color:var(--ac-d)">🔒 بيتجدد كل دقيقة تلقائيًا</div>
+             </div>`:
             t.stage==='delivering'?
             `<button class="btn2 btn-p2" onclick="openDeliveryCam('${t.id}')">📸 صوّر الطلب وأكّد التسليم</button>`:
             nextLabel?`<button class="btn2 btn-p2" onclick="advance('${t.id}')">${nextLabel}</button>`:''}
