@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>بسيطة · العميل</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<style>
+:root{
+  --bg:#F7F8FB;--surf:#FFFFFF;--surf2:#F0F2F6;--line:#E7EAF0;
+  --txt:#10141C;--txt2:#5B6472;--txt3:#98A0AE;
+  --ac:#00B67A;--ac-d:#00925F;--ac-l:#E3F9F1;
+  --warn:#F5A623;--danger:#EF4A3E;--r:18px;--nav:66px;
+  --sh:0 8px 24px -10px rgba(16,20,28,.10);--sh-lg:0 20px 50px -20px rgba(16,20,28,.20);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--txt);font-family:'IBM Plex Sans Arabic',sans-serif;font-size:14.5px;
+  display:flex;justify-content:center;-webkit-font-smoothing:antialiased}
+h1,h2,h3,.kufi{font-family:'Cairo';font-weight:800;margin:0;letter-spacing:-.3px}
+.num{font-variant-numeric:tabular-nums}
+button{font-family:inherit;cursor:pointer;border:0;background:none;color:inherit}
+input,select{font-family:inherit;font-size:16px}
+:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+
+.app{width:100%;max-width:412px;height:100vh;background:var(--bg);display:flex;flex-direction:column;position:relative;overflow:hidden}
+
+#boot{position:absolute;inset:0;z-index:200;background:linear-gradient(160deg,#04120C,#062018 60%,#04120C);
+  display:grid;place-items:center;transition:opacity .6s ease,visibility .6s}
+#boot.gone{opacity:0;visibility:hidden;pointer-events:none}
+#boot .in{text-align:center}
+#boot .mk{width:64px;height:64px;margin:0 auto 16px;animation:bootIn .8s cubic-bezier(.2,.8,.2,1)}
+@keyframes bootIn{from{opacity:0;transform:scale(.7) rotate(-10deg)}}
+#boot b{font-family:'Cairo';color:#fff;font-size:19px;letter-spacing:2px;display:block}
+#boot span{color:#5FE3B4;font-size:10.5px;letter-spacing:3px;font-weight:600}
+#boot .bar{width:130px;height:3px;background:rgba(255,255,255,.12);border-radius:9px;margin:20px auto 0;overflow:hidden}
+#boot .bar i{display:block;height:100%;width:0;background:#5FE3B4;animation:ld 1.3s ease forwards;border-radius:9px}
+@keyframes ld{to{width:100%}}
+
+#authFlow{position:absolute;inset:0;z-index:100;background:var(--bg);display:flex;flex-direction:column;
+  opacity:0;transform:translateY(14px);transition:opacity .5s ease,transform .5s ease;pointer-events:none}
+#authFlow.show{opacity:1;transform:none;pointer-events:auto}
+.astage{flex:1;display:none;flex-direction:column;padding:26px 24px;position:relative;overflow-y:auto}
+.astage.on{display:flex;animation:slideIn .4s cubic-bezier(.2,.8,.2,1)}
+@keyframes slideIn{from{opacity:0;transform:translateX(16px)}}
+.aback{width:36px;height:36px;border-radius:11px;background:var(--surf2);display:grid;place-items:center;
+  font-size:17px;margin-bottom:18px}
+.aprog{display:flex;gap:5px;margin-bottom:22px}
+.aprog i{height:4px;flex:1;border-radius:3px;background:var(--line);font-style:normal}
+.aprog i.on{background:var(--ac)}
+
+.hero-ill{width:100%;max-width:220px;height:170px;margin:6px auto 20px;position:relative}
+.wmark{width:72px;height:72px;margin:0 auto 22px}
+h1.atitle{font-size:24px;text-align:center;line-height:1.4}
+p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-height:1.7}
+
+.spacer{flex:1}
+.fld{margin-bottom:14px}
+.fld label{display:block;font-size:12.5px;font-weight:600;margin-bottom:7px;color:var(--txt2)}
+.fld input,.fld select{width:100%;padding:15px;border:1.5px solid var(--line);border-radius:14px;
+  background:var(--surf2);color:var(--txt);outline:0;transition:.2s}
+.fld input:focus,.fld select:focus{border-color:var(--ac);background:var(--surf)}
+.fld select option{background:#fff}
+
+.otp-row{display:flex;gap:10px;justify-content:center;margin:8px 0 6px}
+.otp-row input{width:52px;height:60px;text-align:center;font-size:24px;font-weight:800;font-family:'Cairo';
+  border:1.5px solid var(--line);border-radius:15px;background:var(--surf2)}
+.otp-row input:focus{border-color:var(--ac);background:var(--surf)}
+.resend{text-align:center;font-size:13px;color:var(--txt2);margin-top:14px}
+.resend b{color:var(--ac);font-weight:700}
+.demo-hint{background:var(--ac-l);color:var(--ac-d);border-radius:12px;padding:11px 14px;font-size:12.5px;
+  text-align:center;margin-top:14px;border:1px dashed rgba(0,182,122,.35)}
+
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:16px;
+  border-radius:15px;font-family:'Cairo';font-weight:700;font-size:15px;transition:.15s}
+.btn:active{transform:scale(.98)}
+.btn-p{background:var(--ac);color:#fff;box-shadow:0 10px 26px -10px rgba(0,182,122,.55)}
+.btn-o{background:var(--surf);border:1.5px solid var(--line);color:var(--txt)}
+.btn:disabled{opacity:.4;pointer-events:none}
+
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:16px;
+  border-radius:15px;font-family:'Cairo';font-weight:700;font-size:15px}
+
+/* ═══════════ التطبيق الأساسي ═══════════ */
+#mainApp{position:absolute;inset:0;display:flex;flex-direction:column;opacity:0;transition:opacity .5s ease .1s}
+#mainApp.show{opacity:1}
+.top{padding:14px 16px 12px;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20;
+  background:rgba(247,248,251,.92);backdrop-filter:blur(14px)}
+.top-r{display:flex;align-items:center;gap:10px}
+.mark{width:30px;height:30px;flex:0 0 auto}
+.brand b{font-family:'Cairo';font-size:15px;display:block;line-height:1.1;color:var(--txt)}
+.brand span{font-size:9px;color:var(--ac-d);letter-spacing:1.6px;font-weight:600}
+.live{margin-inline-start:auto;display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--txt3)}
+.live i{width:6px;height:6px;border-radius:50%;background:var(--ac);animation:pu 2s infinite;display:block}
+@keyframes pu{0%,100%{box-shadow:0 0 0 0 rgba(0,182,122,.5)}50%{box-shadow:0 0 0 5px rgba(0,182,122,0)}}
+.loc{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--txt2);margin-top:10px}
+.loc b{color:var(--txt);font-weight:600}
+.hi{margin-inline-start:auto;font-size:12px;color:var(--txt2)}
+.hi b{color:var(--txt)}
+
+.body{flex:1;overflow-y:auto;padding-bottom:calc(var(--nav) + 12px)}
+.body::-webkit-scrollbar{width:0}
+.pad{padding:0 16px}
+
+.hero{margin:14px 16px 0;border-radius:20px;padding:18px;position:relative;overflow:hidden;
+  background:linear-gradient(135deg,var(--ac-l),#fff);border:1px solid rgba(0,182,122,.18)}
+.hero .e{font-size:13px;color:var(--ac-d);font-weight:600}
+.hero h2{font-size:19px;margin-top:5px;color:var(--txt)}
+.hero p{font-size:12.5px;color:var(--txt2);margin:5px 0 0}
+
+.sec-t{display:flex;align-items:center;justify-content:space-between;margin:20px 0 11px}
+.sec-t h3{font-size:14.5px}
+.sec-t span{font-size:11px;color:var(--txt3)}
+
+.prod{display:flex;gap:12px;align-items:center;padding:12px;border-radius:16px;border:1px solid var(--line);
+  background:var(--surf);margin-bottom:9px;transition:.2s;box-shadow:var(--sh)}
+.prod:active{transform:scale(.98)}
+.prod .ph{width:50px;height:50px;border-radius:13px;background:var(--surf2);display:grid;place-items:center;font-size:23px;flex:0 0 auto}
+.prod .n{font-weight:700;font-size:13.5px;color:var(--txt)}
+.prod .u{font-size:11px;color:var(--txt3)}
+.prod .pr{font-family:'Cairo';font-weight:800;font-size:14.5px;color:var(--ac-d);margin-top:2px}
+.prod .act{margin-inline-start:auto}
+.add{width:34px;height:34px;border-radius:11px;background:var(--ac);color:#fff;font-size:19px;
+  display:grid;place-items:center;font-weight:700;transition:.15s}
+.add:active{transform:scale(.85)}
+.stp{display:flex;align-items:center;background:var(--ac);border-radius:11px;padding:2px}
+.stp button{width:28px;height:28px;color:#fff;font-size:17px;border-radius:8px;display:grid;place-items:center;font-weight:700}
+.stp .q{min-width:22px;text-align:center;color:#fff;font-weight:700;font-size:13px}
+
+.cartbar{position:absolute;inset-inline:12px;bottom:calc(var(--nav) + 10px);z-index:30;
+  background:var(--ac);color:#fff;border-radius:16px;padding:13px 16px;display:flex;align-items:center;gap:11px;
+  box-shadow:0 16px 36px -10px rgba(0,182,122,.5);transform:translateY(160%);
+  transition:transform .4s cubic-bezier(.2,.8,.2,1)}
+.cartbar.show{transform:none}
+.cartbar .c{background:rgba(255,255,255,.22);width:26px;height:26px;border-radius:9px;display:grid;place-items:center;font-weight:800;font-size:12px}
+.cartbar .t{font-family:'Cairo';margin-inline-start:auto;font-size:14.5px}
+
+.nav{position:absolute;inset-inline:0;bottom:0;height:var(--nav);background:rgba(255,255,255,.97);
+  backdrop-filter:blur(14px);border-top:1px solid var(--line);display:flex;z-index:40}
+.nav button{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  color:var(--txt3);font-size:10px;font-weight:600;position:relative}
+.nav button[aria-pressed="true"]{color:var(--ac-d)}
+.nav .i{width:20px;height:20px}
+.nav .bn{position:absolute;top:6px;inset-inline-end:calc(50% - 18px);background:var(--danger);color:#fff;
+  font-size:9px;min-width:15px;height:15px;border-radius:8px;display:grid;place-items:center;font-weight:700}
+
+.card{background:var(--surf);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh)}
+.row{display:flex;justify-content:space-between;padding:9px 0;font-size:13.5px}
+
+.tl-i{display:flex;gap:12px;position:relative;padding-bottom:19px}
+.tl-i:last-child{padding-bottom:0}
+.tl-i::before{content:"";position:absolute;inset-inline-end:12px;top:24px;bottom:0;width:2px;background:var(--line)}
+.tl-i:last-child::before{display:none}
+.tl-i.done::before{background:var(--ac)}
+.tl-d{width:26px;height:26px;border-radius:50%;background:var(--surf2);border:2px solid var(--line);
+  display:grid;place-items:center;flex:0 0 auto;font-size:12px;z-index:1;transition:.4s}
+.tl-i.done .tl-d{background:var(--ac);border-color:var(--ac);color:#fff}
+.tl-i.now .tl-d{background:#fff;border-color:var(--warn);color:var(--warn);
+  box-shadow:0 0 0 4px rgba(245,166,35,.16);animation:pn 1.8s infinite}
+@keyframes pn{50%{box-shadow:0 0 0 8px rgba(245,166,35,.03)}}
+.tl-t{font-weight:600;font-size:13.5px;padding-top:2px;color:var(--txt)}
+.tl-s{font-size:11px;color:var(--warn);font-weight:700}
+.tl-i:not(.done):not(.now) .tl-t{color:var(--txt3);font-weight:500}
+
+.bdg{font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px}
+.b-ac{background:var(--ac-l);color:var(--ac-d)}
+.b-w{background:#FFF3DE;color:#B87610}
+.b-d{background:#FDE8E6;color:#C23327}
+.sw{width:44px;height:26px;border-radius:20px;background:var(--line);position:relative;transition:.3s;flex:0 0 auto}
+.sw i{position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:#fff;
+  box-shadow:0 1px 3px rgba(0,0,0,.2);transition:.3s;font-style:normal}
+.sw.on{background:var(--ac)}
+.sw.on i{transform:translateX(-18px)}
+
+.empty{text-align:center;padding:50px 22px;color:var(--txt3)}
+.empty .e{font-size:42px}
+.empty h4{font-size:15px;color:var(--txt);margin:10px 0 5px}
+
+.shbg{position:absolute;inset:0;background:rgba(16,20,28,.4);z-index:50;opacity:0;pointer-events:none;transition:.3s}
+.shbg.show{opacity:1;pointer-events:auto}
+.sheet{position:absolute;inset-inline:0;bottom:0;background:#fff;border-radius:24px 24px 0 0;z-index:51;
+  transform:translateY(100%);transition:transform .35s cubic-bezier(.2,.8,.2,1);max-height:85%;
+  display:flex;flex-direction:column;box-shadow:var(--sh-lg)}
+.sheet.show{transform:none}
+.grab{width:36px;height:4px;background:var(--line);border-radius:9px;margin:9px auto 0}
+.sh-h{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+.sh-h h3{font-size:15px}
+.back{width:32px;height:32px;border-radius:10px;background:var(--surf2);display:grid;place-items:center;font-size:16px}
+.sh-b{overflow-y:auto;padding:15px}
+
+.toast{position:absolute;bottom:calc(var(--nav) + 74px);inset-inline:15px;background:#10141C;color:#fff;
+  padding:12px 15px;border-radius:13px;font-size:12.5px;z-index:60;
+  transform:translateY(20px);opacity:0;transition:.3s;pointer-events:none;text-align:center}
+.toast.show{transform:none;opacity:1}
+.mt{margin-top:12px}.mb{margin-bottom:12px}.muted{color:var(--txt2)}.tiny{font-size:11.5px}
+
+.qrentry{display:flex;align-items:center;gap:11px;margin:14px 16px 0;padding:14px;border-radius:18px;
+  background:linear-gradient(120deg,#0B0F14,#1B222B 55%,#0B0F14);color:#fff;position:relative;overflow:hidden;
+  box-shadow:0 12px 28px -14px rgba(0,0,0,.5)}
+.qrentry::before{content:"";position:absolute;inset:0;background:linear-gradient(120deg,transparent,rgba(0,214,143,.16),transparent);
+  background-size:200% 100%;animation:sheen 3.5s linear infinite}
+@keyframes sheen{to{background-position:-200% 0}}
+.qrentry .ic{width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.1);display:grid;place-items:center;
+  font-size:19px;position:relative;z-index:1}
+.qrentry b{font-size:13.5px;display:block;position:relative;z-index:1}
+.qrentry span{font-size:11px;color:#B7BFC9;position:relative;z-index:1}
+.qrentry button{margin-inline-start:auto;background:var(--ac);color:#fff;font-family:'Cairo';font-weight:700;
+  font-size:12.5px;padding:9px 14px;border-radius:10px;position:relative;z-index:1;box-shadow:0 6px 16px -6px rgba(0,182,122,.6)}
+
+.scanbg{position:absolute;inset:0;background:#000;z-index:80;display:none;flex-direction:column}
+.scanbg.show{display:flex}
+.scan-top{display:flex;align-items:center;gap:11px;padding:16px;color:#fff}
+.scan-top button{width:34px;height:34px;border-radius:11px;background:rgba(255,255,255,.15);display:grid;place-items:center;font-size:16px;color:#fff}
+.scan-stage{flex:1;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.scan-stage video{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
+.scan-frame{width:220px;height:220px;border:3px solid #fff;border-radius:20px;position:relative;z-index:2;
+  box-shadow:0 0 0 2000px rgba(0,0,0,.45)}
+.scan-hint{position:absolute;bottom:80px;inset-inline:20px;text-align:center;color:#fff;font-size:13px;z-index:2}
+.scan-fallback{padding:16px;background:#0B0E1F}
+.scan-fallback input{width:100%;padding:13px;border-radius:12px;border:1.5px solid rgba(255,255,255,.15);
+  background:rgba(255,255,255,.08);color:#fff;text-align:center;font-family:'Cairo';margin-bottom:10px}
+.qr-cta{display:flex;align-items:center;justify-content:center;gap:8px;background:var(--ac);color:#fff;
+  padding:12.5px;border-radius:12px;font-family:'Cairo';font-weight:700;font-size:13px;width:100%}
+</style></head>
+<body>
+<div class="app" id="app">
+
+  <div id="boot"><div class="in">
+    <svg class="mk" viewBox="0 0 64 64"><rect width="64" height="64" rx="19" fill="#0F241F"/>
+      <path d="M16 46 L26 46 L26 36 L38 36 L38 25 L49 25" fill="none" stroke="#00E39B" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="49" cy="25" r="4.6" fill="#F5A623"/></svg>
+    <b>بسيطة</b><span>تطبيق العميل</span><div class="bar"><i></i></div></div></div>
+
+  <div id="authFlow">
+    <div class="astage on" id="st-welcome">
+      <div class="spacer" style="flex:.3"></div>
+      <svg class="hero-ill" viewBox="0 0 220 170"><defs><radialGradient id="g1"><stop offset="0%" stop-color="#00E39B" stop-opacity=".25"/><stop offset="100%" stop-color="#00E39B" stop-opacity="0"/></radialGradient></defs>
+        <circle cx="110" cy="85" r="82" fill="url(#g1)"/>
+        <rect x="55" y="55" width="110" height="80" rx="16" fill="#fff" stroke="#00B67A" stroke-width="2"/>
+        <rect x="70" y="70" width="80" height="10" rx="5" fill="#E3F9F1"/>
+        <rect x="70" y="88" width="55" height="10" rx="5" fill="#E3F9F1"/>
+        <circle cx="150" cy="112" r="14" fill="#00B67A"/><path d="M144 112 l4 4 8-9" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="70" cy="112" r="6" fill="#F5A623"/></svg>
+      <h1 class="atitle">اطلب من محلات حيّك<br>في ثواني معدودة</h1>
+      <p class="asub">بقالة، مخبز، خضار وأكتر — كله من غير ما تمسك التليفون</p>
+      <div class="spacer"></div>
+      <button class="btn btn-p" onclick="goAuth('phone','signup')">إنشاء حساب جديد</button>
+      <button class="btn btn-o mt" onclick="goAuth('phone','login')">عندي حساب بالفعل</button>
+    </div>
+
+    <div class="astage" id="st-phone">
+      <button class="aback" onclick="goAuth('welcome')">→</button>
+      <div class="aprog"><i class="on"></i><i></i><i></i></div>
+      <svg class="wmark" viewBox="0 0 72 72"><circle cx="36" cy="36" r="36" fill="#E3F9F1"/>
+        <path d="M24 20h13l4 10-5 4c2 5 6 9 11 11l4-5 10 4v13c-20 1-37-16-37-37Z" fill="none" stroke="#00B67A" stroke-width="2.6" stroke-linejoin="round"/></svg>
+      <h1 class="atitle">رقم موبايلك</h1>
+      <p class="asub">هنبعتلك كود تحقق سريع عليه</p>
+      <div class="fld mt"><label>رقم الموبايل</label>
+        <input id="phInput" type="tel" dir="ltr" placeholder="01xxxxxxxxx" style="text-align:center;font-family:'Cairo';letter-spacing:1px"></div>
+      <div class="spacer"></div>
+      <button class="btn btn-p" onclick="sendOtp()">متابعة</button>
+    </div>
+
+    <div class="astage" id="st-otp">
+      <button class="aback" onclick="goAuth('phone')">→</button>
+      <div class="aprog"><i class="on"></i><i class="on"></i><i></i></div>
+      <h1 class="atitle">اكتب كود التحقق</h1>
+      <p class="asub">اتبعت رسالة على <b id="otpPhone" class="num" dir="ltr" style="color:var(--txt)"></b></p>
+      <div class="otp-row mt" id="otpRow">
+        <input maxlength="1" inputmode="numeric"><input maxlength="1" inputmode="numeric">
+        <input maxlength="1" inputmode="numeric"><input maxlength="1" inputmode="numeric"></div>
+      <div class="demo-hint">🔑 كود التجربة: <b class="num">1234</b></div>
+      <div class="resend">مستلمتش الكود؟ <b onclick="toast('اتبعت تاني')">إعادة الإرسال</b></div>
+      <div class="spacer"></div>
+      <button class="btn btn-p" onclick="verifyOtp()">تأكيد</button>
+    </div>
+
+    <div class="astage" id="st-profile">
+      <div class="aprog"><i class="on"></i><i class="on"></i><i class="on"></i></div>
+      <svg class="wmark" viewBox="0 0 72 72"><circle cx="36" cy="36" r="36" fill="#FFF3DE"/>
+        <circle cx="36" cy="29" r="10" fill="none" stroke="#F5A623" stroke-width="2.6"/>
+        <path d="M18 55c3-9 10-14 18-14s15 5 18 14" fill="none" stroke="#F5A623" stroke-width="2.6" stroke-linecap="round"/></svg>
+      <h1 class="atitle">كمّل بياناتك</h1>
+      <p class="asub">آخر خطوة وتقدر تبدأ تطلب</p>
+      <div class="fld mt"><label>الاسم</label><input id="nmInput" placeholder="اسمك بالكامل"></div>
+      <div class="fld"><label>أقرب معلم ليك</label><select id="lmInput">
+        <option>جنب الجامع الكبير</option><option>أول شارع المدرسة</option>
+        <option>عند المحول</option><option>قدام الوحدة الصحية</option></select></div>
+      <div class="spacer"></div>
+      <button class="btn btn-p" onclick="finishSignup()">ابدأ التسوق</button>
+    </div>
+  </div>
+
+  <div id="mainApp">
+    <div class="top">
+      <div class="top-r">
+        <svg class="mark" viewBox="0 0 32 32"><rect width="32" height="32" rx="10" fill="#0F241F"/>
+          <path d="M8 23 L14 23 L14 17 L20 17 L20 11 L25 11" fill="none" stroke="#00B67A" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="25" cy="11" r="3" fill="#F5A623"/></svg>
+        <div class="brand"><b>بسيطة</b><span>تطبيق العميل</span></div>
+        <div class="live"><i></i> متصل</div>
+      </div>
+      <div class="loc">📍 <b>المنيل</b> · طلخا
+        <span class="hi">أهلاً <b id="hiName">منى</b> 👋</span></div>
+    </div>
+    <div class="body" id="screen"></div>
+    <div class="cartbar" id="cartbar" onclick="go('cart')">
+      <span class="c num" id="cartCount">0</span><span>عرض السلة</span>
+      <span class="t num" id="cartTotal">0 ج</span></div>
+    <div class="nav" id="nav"></div>
+    <div class="shbg" id="shbg" onclick="closeSheet()"></div>
+    <div class="sheet" id="sheet"><div class="grab"></div>
+      <div class="sh-h"><h3 id="shT"></h3><button class="back" style="margin-inline-start:auto" onclick="closeSheet()">✕</button></div>
+      <div class="sh-b" id="shB"></div></div>
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <div class="scanbg" id="scanUI">
+    <div class="scan-top"><button onclick="stopScan()">✕</button>
+      <b style="color:#fff;font-family:'Cairo'">امسح QR المحل</b></div>
+    <div class="scan-stage">
+      <video id="scanVideo" autoplay playsinline muted></video>
+      <div class="scan-frame"></div>
+      <div class="scan-hint">وجّه الكاميرا على كود المحل الملصق على الباب</div>
+    </div>
+    <div class="scan-fallback">
+      <input id="manualCode" placeholder="أو اكتب الكود يدويًا">
+      <button class="qr-cta" onclick="submitManualCode()">تأكيد بدون مسح</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const ROLE='customer';
+const bc=('BroadcastChannel' in window)?new BroadcastChannel('basita_sync'):null;
+function emit(msg){
+  msg.__basita=true; msg.from=ROLE; msg.ts=Date.now(); msg.id=msg.id||Math.random().toString(36).slice(2);
+  try{ if(window.parent!==window) window.parent.postMessage(msg,'*'); }catch(e){}
+  try{ bc&&bc.postMessage(msg); }catch(e){}
+  try{ localStorage.setItem('basita_bus', JSON.stringify(msg)); }catch(e){}
+}
+function onBus(fn){
+  window.addEventListener('message', e=>{ if(e.data&&e.data.__basita&&e.data.from!==ROLE) fn(e.data) });
+  if(bc) bc.onmessage=e=>{ if(e.data&&e.data.from!==ROLE) fn(e.data) };
+  window.addEventListener('storage', e=>{ if(e.key==='basita_bus'&&e.newValue){
+    try{const d=JSON.parse(e.newValue); if(d.from!==ROLE) fn(d)}catch(_){} }});
+}
+
+setTimeout(()=>document.getElementById('boot').classList.add('gone'),1300);
+setTimeout(()=>document.getElementById('authFlow').classList.add('show'),1350);
+
+let authMode='signup';
+function goAuth(stage,mode){
+  if(mode)authMode=mode;
+  document.querySelectorAll('.astage').forEach(s=>s.classList.remove('on'));
+  document.getElementById('st-'+stage).classList.add('on');
+}
+function sendOtp(){
+  const v=document.getElementById('phInput').value.trim();
+  if(!/^01[0125]\d{8}$/.test(v)){toast('اكتب رقم موبايل مصري صحيح');return}
+  document.getElementById('otpPhone').textContent=v;
+  S.co.ph=v;
+  goAuth('otp');
+  setTimeout(()=>document.querySelector('#otpRow input').focus(),350);
+}
+document.addEventListener('input',e=>{
+  if(e.target.parentElement&&e.target.parentElement.id==='otpRow'){
+    if(e.target.value){const n=e.target.nextElementSibling;if(n)n.focus()}
+  }
+});
+document.addEventListener('keydown',e=>{
+  if(e.target.parentElement&&e.target.parentElement.id==='otpRow'&&e.key==='Backspace'&&!e.target.value){
+    const p=e.target.previousElementSibling;if(p)p.focus();
+  }
+});
+function verifyOtp(){
+  const code=[...document.querySelectorAll('#otpRow input')].map(i=>i.value).join('');
+  if(code!=='1234'){toast('الكود غلط — جرّب 1234');return}
+  if(authMode==='login'){
+    toast('أهلاً بيكي تاني، منى 👋');
+    document.getElementById('hiName').textContent='منى';
+    mountApp();
+  } else {
+    goAuth('profile');
+  }
+}
+function finishSignup(){
+  const nm=document.getElementById('nmInput').value.trim()||'صديقنا';
+  document.getElementById('hiName').textContent=nm.split(' ')[0];
+  S.co.name=nm; S.co.lm=document.getElementById('lmInput').value;
+  toast('اتعمل حسابك بنجاح 🎉');
+  mountApp();
+}
+function mountApp(){
+  document.getElementById('authFlow').classList.remove('show');
+  setTimeout(()=>{document.getElementById('mainApp').classList.add('show');render()},300);
+}
+
+let PRODS=[
+ {id:1,n:'سكر أبيض',br:'السلطان',u:'كجم',p:38,i:'🍬'},{id:2,n:'أرز مصري',br:'الضحى',u:'كجم',p:32,i:'🍚'},
+ {id:3,n:'زيت عباد الشمس',br:'عافية',u:'٩٠٠ مل',p:78,i:'🫒'},{id:4,n:'لبن كامل الدسم',br:'جهينة',u:'١ لتر',p:42,i:'🥛'},
+ {id:5,n:'شاي ناعم',br:'ليبتون',u:'٢٥٠ جم',p:52,i:'🍵'},{id:6,n:'مياه معدنية',br:'حياة',u:'١.٥ لتر',p:8,i:'💧'},
+ {id:7,n:'بيض بلدي',br:'',u:'طبق ٣٠',p:135,i:'🥚'},{id:8,n:'جبنة بيضاء',br:'دومتي',u:'٥٠٠ جم',p:58,i:'🧀'},
+];
+const LM=['جنب الجامع الكبير','أول شارع المدرسة','عند المحول','قدام الوحدة الصحية'];
+const STAGES=['placed','accepted','assigned','picked','delivering','delivered'];
+const SLABEL={placed:'تم استلام طلبك',accepted:'ماركت أبو حمزة قبل الطلب',assigned:'اتعيّن مندوب توصيل',
+  picked:'المندوب استلم طلبك من المحل',delivering:'في الطريق إليك دلوقتي',delivered:'وصلك الطلب 🎉'};
+
+let S={view:'home',cart:{},orders:[],oid:null,co:{name:'منى',ph:'',lm:LM[0],house:'12',geo:null},pin:'1234'};
+const $=s=>document.querySelector(s);
+const M=n=>Math.round(n).toLocaleString('en');
+const P=id=>PRODS.find(x=>x.id===id);
+
+let tT;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');
+  clearTimeout(tT);tT=setTimeout(()=>t.classList.remove('show'),2400)}
+function openSheet(t,h){$('#shT').textContent=t;$('#shB').innerHTML=h;$('#sheet').classList.add('show');$('#shbg').classList.add('show')}
+function closeSheet(){$('#sheet').classList.remove('show');$('#shbg').classList.remove('show')}
+function go(v,a){S.view=v;if(v==='track')S.oid=a;$('#screen').scrollTop=0;render()}
+
+const cItems=()=>Object.entries(S.cart).map(([id,q])=>({p:P(+id),q}));
+const cSub=()=>cItems().reduce((s,{p,q})=>s+p.p*q,0);
+const cCount=()=>Object.values(S.cart).reduce((a,b)=>a+b,0);
+function addCart(id){S.cart[id]=(S.cart[id]||0)+1;render()}
+function qty(id,d){const n=(S.cart[id]||0)+d;if(n<=0)delete S.cart[id];else S.cart[id]=n;render()}
+let scanStream=null, scanRAF=null;
+function startScan(){
+  document.getElementById('manualCode').value='';
+  document.getElementById('scanUI').classList.add('show');
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    toast('الكاميرا مش متاحة هنا — استخدم الإدخال اليدوي'); return;
+  }
+  navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}).then(stream=>{
+    scanStream=stream;
+    const v=document.getElementById('scanVideo'); v.srcObject=stream;
+    tickScan();
+  }).catch(()=>{ toast('اترفض إذن الكاميرا — استخدم الإدخال اليدوي تحت'); });
+}
+function tickScan(){
+  const v=document.getElementById('scanVideo');
+  if(v&&v.readyState===v.HAVE_ENOUGH_DATA&&window.jsQR){
+    const c=document.createElement('canvas'); c.width=v.videoWidth||300; c.height=v.videoHeight||300;
+    const ctx=c.getContext('2d'); ctx.drawImage(v,0,0,c.width,c.height);
+    const img=ctx.getImageData(0,0,c.width,c.height);
+    const res=jsQR(img.data,c.width,c.height);
+    if(res&&res.data){ handleScanResult(res.data); return; }
+  }
+  scanRAF=requestAnimationFrame(tickScan);
+}
+function handleScanResult(text){
+  if(text==='BASITA-SHOP-1'){ stopScan(); go('home'); toast('🎉 دخلت متجر ماركت أبو حمزة مباشرة من الكود'); }
+  else scanRAF=requestAnimationFrame(tickScan);
+}
+function submitManualCode(){
+  const v=document.getElementById('manualCode').value.trim();
+  if(v!=='BASITA-SHOP-1'){ toast('الكود مش معروف'); return; }
+  stopScan(); go('home'); toast('🎉 دخلت متجر ماركت أبو حمزة مباشرة من الكود');
+}
+function stopScan(){
+  document.getElementById('scanUI').classList.remove('show');
+  if(scanRAF) cancelAnimationFrame(scanRAF); scanRAF=null;
+  if(scanStream){ scanStream.getTracks().forEach(t=>t.stop()); scanStream=null; }
+}
+function updBar(){const c=cCount();
+  $('#cartbar').classList.toggle('show',c>0&&!['cart','checkout','track'].includes(S.view));
+  $('#cartCount').textContent=c;$('#cartTotal').textContent=M(cSub())+' ج'}
+
+function placeOrder(){
+  const c=S.co;
+  if(!c.house.trim()){toast('اكتب رقم البيت');return}
+  if(!c.geo){toast('لازم تفعّل موقعك الأول');return}
+  const items=cItems(); const fee=5;
+  const id='B'+Math.floor(1000+Math.random()*9000);
+  const order={id,name:c.name,ph:c.ph||'01015974104',addr:`${c.lm} — بيت ${c.house}`,geo:c.geo,
+    items:items.map(({p,q})=>({n:p.n,q,p:p.p,u:p.u})),fee,total:cSub()+fee,stage:'placed',driver:null,recurring:false};
+  S.orders.unshift(order); S.cart={};
+  emit({to:['merchant'],type:'order:new',order});
+  go('track',id);
+  toast('الطلب اتبعت للتاجر — شغّل تطبيق التاجر وشوفه وصل');
+}
+onBus(d=>{
+  if(d.type==='catalog:sync'&&d.to&&d.to.includes('customer')){
+    PRODS=d.products;
+    if(['home','cart','checkout'].includes(S.view)) render();
+    toast('اتحدّثت أصناف المحل');
+    return;
+  }
+  const o=S.orders.find(x=>x.id===d.orderId);
+  if(!o||!d.to||!d.to.includes('customer'))return;
+  if(d.type==='order:accept') o.stage='accepted';
+  if(d.type==='order:assign'){o.stage='assigned';o.driver=d.driverName}
+  if(d.type==='order:status'){
+    o.stage=d.status;
+    if(d.photo) o.deliveryPhoto=d.photo;
+  }
+  render();
+  if(S.view==='track'&&S.oid===o.id) toast('تحديث جديد على طلبك');
+});
+
+function vHome(){
+  return `<div class="pad">
+    <div class="hero"><div class="e">ماركت أبو حمزة</div><h2>مفتوح دلوقتي</h2>
+      <p>توصيل ١٥-٢٥ دقيقة · رسوم التوصيل ٥ ج</p></div>
+    <div class="qrentry"><span class="ic">🔗</span>
+      <span><b>عندك كود محل؟</b><span>امسحه وادخل متجره على طول</span></span>
+      <button onclick="startScan()">امسح QR</button></div>
+    <div class="sec-t"><h3>الأصناف</h3><span class="num">${PRODS.length} صنف</span></div>
+    ${PRODS.map(p=>`<div class="prod"><span class="ph">${p.i}</span>
+      <span style="flex:1"><span class="n">${p.n}${p.br?` <span class="muted tiny">${p.br}</span>`:''}</span>
+      <span class="u">${p.u}</span><span class="pr num">${M(p.p)} ج</span></span>
+      <span class="act">${S.cart[p.id]?`<span class="stp"><button onclick="qty(${p.id},1)">+</button>
+        <span class="q num">${S.cart[p.id]}</span><button onclick="qty(${p.id},-1)">−</button></span>`:
+        `<button class="add" onclick="addCart(${p.id})">+</button>`}</span></div>`).join('')}
+    <div style="height:8px"></div></div>`;
+}
+function vCart(){
+  const it=cItems();
+  if(!it.length)return `<div class="empty"><div class="e">🛒</div><h4>السلة فاضية</h4>
+    <p class="tiny">ضيف أصناف من المتجر</p>
+    <button class="btn btn-p" style="max-width:180px;margin:auto" onclick="go('home')">تصفح المتجر</button></div>`;
+  const sub=cSub(),tot=sub+5;
+  return `<div class="pad" style="padding-top:14px">
+    <div class="card">${it.map(({p,q})=>`<div class="prod"><span class="ph">${p.i}</span>
+      <span style="flex:1"><span class="n">${p.n}</span><span class="u">${p.u}</span></span>
+      <span class="stp"><button onclick="qty(${p.id},1)">+</button><span class="q num">${q}</span>
+      <button onclick="qty(${p.id},-1)">−</button></span></div>`).join('')}</div>
+    <div class="card mt" style="padding:13px">
+      <div class="row"><span class="muted">المجموع</span><b class="num">${M(sub)} ج</b></div>
+      <div class="row"><span class="muted">التوصيل</span><b class="num">٥ ج</b></div>
+      <div class="row" style="border-top:1px solid var(--line);margin-top:5px;padding-top:9px">
+        <b>الإجمالي</b><b class="num kufi" style="font-size:17px;color:var(--ac-d)">${M(tot)} ج</b></div></div>
+    <button class="btn btn-p mt" onclick="go('checkout')">إتمام الطلب</button>
+    <div style="height:14px"></div></div>`;
+}
+function vCheckout(){
+  const c=S.co,tot=cSub()+5;
+  const hasGeo=!!S.co.geo;
+  return `<div class="pad" style="padding-top:14px">
+    <h3 class="mb">بيانات التوصيل</h3>
+    <div class="card mb" style="padding:14px;${hasGeo?'':'border-color:#F0A93B'}">
+      ${hasGeo?`<div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:20px">📍</span>
+        <span><b style="display:block;font-size:13.5px">تم تحديد موقعك بدقة</b>
+        <span class="tiny muted">هيوصل للمندوب عشان يلاقيك بسهولة</span></span></div>`:
+      `<div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:20px">🚫</span>
+        <span style="flex:1"><b style="display:block;font-size:13.5px;color:#B87610">لازم تفعّل موقعك الأول</b>
+        <span class="tiny muted">من غيره مش هنقدر نوصّلك الطلب بدقة</span></span>
+        <button class="btn2 btn-p2" style="flex:0 0 auto" onclick="requestLocation()">فعّل الموقع</button></div>`}
+    </div>
+    <div class="fld"><label>أقرب معلم</label><select onchange="S.co.lm=this.value">
+      ${LM.map(l=>`<option ${c.lm===l?'selected':''}>${l}</option>`).join('')}</select></div>
+    <div class="fld"><label>رقم البيت</label><input value="${c.house}" placeholder="بيت ١٢" oninput="S.co.house=this.value"></div>
+    <div class="card" style="padding:13px"><div class="row"><b>الإجمالي</b>
+      <b class="num kufi" style="font-size:17px;color:var(--ac-d)">${M(tot)} ج</b></div></div>
+    <button class="btn btn-p mt" onclick="${hasGeo?'placeOrder()':'requestLocation(true)'}">
+      ${hasGeo?'أرسل الطلب':'فعّل الموقع وابعت الطلب'}</button>
+    <div style="height:14px"></div></div>`;
+}
+function requestLocation(thenPlace){
+  if(!navigator.geolocation){toast('المتصفح مش بيدعم تحديد الموقع');return}
+  toast('بنحدد موقعك…');
+  navigator.geolocation.getCurrentPosition(
+    pos=>{
+      S.co.geo={lat:+pos.coords.latitude.toFixed(5),lng:+pos.coords.longitude.toFixed(5)};
+      toast('✓ اتحدد موقعك بنجاح');
+      if(thenPlace) placeOrder(); else render();
+    },
+    ()=>{ toast('محتاجين إذن الموقع عشان نقدر نوصّلك — فعّله من إعدادات المتصفح'); render(); },
+    {timeout:8000}
+  );
+}
+function vTrack(){
+  const o=S.orders.find(x=>x.id===S.oid); if(!o)return vOrders();
+  const cur=STAGES.indexOf(o.stage);
+  return `<div class="pad" style="padding-top:14px">
+    <div class="card mb" style="padding:15px;text-align:center">
+      <div class="tiny muted">رقم الطلب</div><div class="kufi" style="font-size:20px">${o.id}</div>
+      ${o.driver?`<div class="bdg b-ac mt">المندوب: ${o.driver}</div>`:''}</div>
+    <div class="card" style="padding:16px 14px">${STAGES.map((s,i)=>`
+      <div class="tl-i ${i<cur?'done':i===cur?'now done':''}"><span class="tl-d">${i<=cur?'✓':''}</span>
+      <span><span class="tl-t">${SLABEL[s]}</span>${i===cur?'<span class="tl-s">دلوقتي</span>':''}</span></div>`).join('')}</div>
+    ${o.stage==='delivered'&&o.deliveryPhoto?`<div class="sec-t"><h3>صورة إثبات التسليم</h3></div>
+      <div class="card" style="padding:10px;text-align:center">
+        <img src="${o.deliveryPhoto}" style="width:100%;border-radius:12px;max-height:220px;object-fit:cover">
+        <div class="tiny muted mt">صوّرها المندوب وقت التسليم لضمان وصول طلبك صح</div></div>`:''}
+    ${o.stage!=='delivered'?`<div class="card mt" style="padding:13px;display:flex;align-items:center;gap:10px">
+      <span style="font-size:20px">🔁</span>
+      <span style="flex:1"><b style="font-size:13px;display:block">كرر الطلب ده كل أسبوع</b>
+        <span class="tiny muted">هنفكّرك تطلب نفس الأصناف أوتوماتيك</span></span>
+      <div class="sw ${o.recurring?'on':''}" onclick="toggleRecurring('${o.id}')"><i></i></div></div>`:''}
+    <div class="sec-t"><h3>ملخص الطلب</h3></div>
+    <div class="card">${o.items.map(i=>`<div class="row"><span>${i.n} <span class="tiny muted">×${i.q}</span></span>
+      <b class="num">${M(i.p*i.q)} ج</b></div>`).join('')}
+      <div class="row" style="border-top:1px solid var(--line);padding-top:9px"><b>الإجمالي</b>
+      <b class="num kufi" style="color:var(--ac-d)">${M(o.total)} ج</b></div></div>
+    <div style="height:14px"></div></div>`;
+}
+function toggleRecurring(id){
+  const o=S.orders.find(x=>x.id===id); o.recurring=!o.recurring; render();
+  toast(o.recurring?'تمام — هنفكّرك الأسبوع الجاي بنفس الطلب':'اتلغى التكرار');
+}
+function vOrders(){
+  if(!S.orders.length)return `<div class="empty"><div class="e">📦</div><h4>مفيش طلبات لسه</h4>
+    <p class="tiny">أول ما تطلب هتلاقيه هنا</p></div>`;
+  return `<div class="pad" style="padding-top:14px">${S.orders.map(o=>{
+    return `<button class="card mb" style="width:100%;text-align:right;padding:13px" onclick="go('track','${o.id}')">
+    <div class="row"><b class="kufi">${o.id}</b>
+      <span class="bdg ${o.stage==='delivered'?'b-ac':'b-w'}">${SLABEL[o.stage]}</span></div>
+    <div class="tiny muted mt">${o.items.length} أصناف · <span class="num">${M(o.total)}</span> ج
+      ${o.recurring?' · 🔁 متكرر أسبوعيًا':''}</div></button>`}).join('')}
+    <div style="height:14px"></div></div>`;
+}
+function vAccount(){
+  return `<div class="pad" style="padding-top:14px">
+    <div class="card" style="padding:17px;text-align:center">
+      <div style="width:62px;height:62px;border-radius:19px;background:var(--ac-l);color:var(--ac-d);
+        display:grid;place-items:center;font-size:26px;margin:0 auto 9px">👤</div>
+      <b style="font-size:16px">${S.co.name||'زائر'}</b>
+      <div class="tiny muted num" dir="ltr">${S.co.ph||''}</div></div>
+    <div class="card mt">
+      <button class="row" style="width:100%;text-align:right" onclick="openPinSheet()">
+        <span class="av">🔒</span><span><span class="n">تغيير رمز الدخول السريع</span>
+        <span class="s">بدل ما تدخل كود التحقق كل مرة</span></span><span class="end muted">‹</span></button>
+      ${[['📍','عناويني'],['❤️','المفضلة'],['🔔','الإشعارات'],['🏪','سجّل محلك'],['☎️','الدعم']].map(([i,n])=>
+      `<button class="row" style="width:100%;text-align:right" onclick="toast('${n}')">
+        <span class="av">${i}</span><span class="n">${n}</span><span class="end muted">‹</span></button>`).join('')}
+    </div>
+    <p class="tiny muted" style="text-align:center;margin-top:20px">بسيطة · بنرقمن مصر نشاط ورا نشاط 🇪🇬</p>
+    <div style="height:12px"></div></div>`;
+}
+function openPinSheet(){
+  openSheet('تغيير رمز الدخول',`
+    <div class="fld"><label>الرمز الحالي</label><input id="pOld" type="password" maxlength="4" inputmode="numeric" placeholder="••••"></div>
+    <div class="fld"><label>الرمز الجديد</label><input id="pNew" type="password" maxlength="4" inputmode="numeric" placeholder="••••"></div>
+    <div class="fld"><label>تأكيد الرمز الجديد</label><input id="pConf" type="password" maxlength="4" inputmode="numeric" placeholder="••••"></div>
+    <button class="btn btn-p mt" onclick="savePin()">حفظ الرمز الجديد</button>`);
+}
+function savePin(){
+  const o=document.getElementById('pOld').value, n=document.getElementById('pNew').value, c=document.getElementById('pConf').value;
+  if(o!==S.pin){toast('الرمز الحالي غلط');return}
+  if(n.length!==4){toast('الرمز الجديد لازم ٤ أرقام');return}
+  if(n!==c){toast('الرمز الجديد والتأكيد مش متطابقين');return}
+  S.pin=n; closeSheet(); toast('اتغيّر رمزك بنجاح ✓');
+}
+const V={home:vHome,cart:vCart,checkout:vCheckout,track:vTrack,orders:vOrders,account:vAccount};
+const NAV=[['home','🏠','المتجر'],['orders','📦','طلباتي'],['account','👤','حسابي']];
+function render(){
+  $('#screen').innerHTML=(V[S.view]||vHome)();
+  $('#nav').innerHTML=NAV.map(([v,i,n])=>{
+    const bn=(v==='orders'&&S.orders.some(o=>o.stage!=='delivered'))?`<span class="bn">•</span>`:'';
+    return `<button aria-pressed="${S.view===v||(v==='home'&&['cart','checkout','track'].includes(S.view))}"
+      onclick="go('${v}')">${bn}<span class="i">${i}</span><span>${n}</span></button>`}).join('');
+  updBar();
+}
+</script>
+</body></html>
