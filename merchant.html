@@ -310,6 +310,8 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
       <div class="fld"><label>نوع نشاطك</label><select id="mStoreType">
         <option value="grocery">🛒 بقالة / سوبرماركت</option>
         <option value="pharmacy">💊 صيدلية</option>
+        <option value="restaurant">🍔 مطعم</option>
+        <option value="cafe">☕ كافيه</option>
         <option value="bakery">🥖 مخبز</option>
         <option value="other">🏪 نشاط تاني</option></select></div>
       <div class="fld"><label>كلمة المرور</label><input id="mNewPass" type="password" placeholder="••••••••"></div>
@@ -466,7 +468,10 @@ function proceedToStoreOpen(){
         document.getElementById('storeOpen').classList.remove('show');
         document.getElementById('mainApp').classList.add('show');
         render();
-        emit({to:['owner'],type:'merchant:online',merchantId:S.merchantId,merchantName:BIZ().name,bizLabel:BIZ().label,bizIcon:BIZ().icon});
+        emit({to:['owner','customer'],type:'merchant:online',merchantId:S.merchantId,merchantName:BIZ().name,
+          bizLabel:BIZ().label,bizIcon:BIZ().icon,bizTypeKey:S.bizType});
+        syncCatalog();
+        if(S.shopPhoto) emit({to:['customer'],type:'shop:photo_updated',merchantId:S.merchantId,photo:S.shopPhoto});
       },500);
     },3000);
   },350);
@@ -474,6 +479,8 @@ function proceedToStoreOpen(){
 const BIZ_TYPES={
   grocery:{name:'ماركت أبو حمزة',icon:'🛒',label:'بقالة'},
   pharmacy:{name:'صيدلية الشفاء',icon:'💊',label:'صيدلية'},
+  restaurant:{name:'مطعم الأصايل',icon:'🍔',label:'مطعم'},
+  cafe:{name:'كافيه الزهور',icon:'☕',label:'كافيه'},
   bakery:{name:'مخبز النور',icon:'🥖',label:'مخبز'},
   other:{name:'محلي',icon:'🏪',label:'نشاط عام'},
 };
@@ -524,7 +531,7 @@ let S={tab:'new',orders:[],expenses:[],cashCounted:'',bizType:'grocery',password
   days:['السبت','الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','اليوم']};
 const $=s=>document.querySelector(s);
 const M=n=>Math.round(n).toLocaleString('en');
-function syncCatalog(){ emit({to:['customer'],type:'catalog:sync',products:S.products}); }
+function syncCatalog(){ emit({to:['customer'],type:'catalog:sync',merchantId:S.merchantId,merchantName:BIZ().name,products:S.products}); }
 
 const SLA_LIMIT=45000; // 45 ثانية (مصغّرة للعرض التجريبي بدل دقايق حقيقية)
 setInterval(()=>{
@@ -560,6 +567,7 @@ onBus(d=>{
   }
   if(!d.to||!d.to.includes('merchant'))return;
   if(d.type==='order:new'){
+    if(d.order.merchantId&&d.order.merchantId!==S.merchantId) { render(); return; }
     const o={...d.order,stage:'placed',placedTs:Date.now()};
     S.orders.unshift(o);
     const key=o.ph||o.name;
@@ -1023,7 +1031,7 @@ function uploadShopPhoto(input){
   const reader=new FileReader();
   reader.onload=e=>{
     S.shopPhoto=e.target.result;
-    emit({to:['customer'],type:'shop:photo_updated',photo:S.shopPhoto});
+    emit({to:['customer'],type:'shop:photo_updated',merchantId:S.merchantId,photo:S.shopPhoto});
     render(); toast('اتحدّثت صورة متجرك — العميل شايفها فورًا 📷');
   };
   reader.readAsDataURL(file);
