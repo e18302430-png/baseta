@@ -221,16 +221,43 @@ function doLogin(){
   const v=document.getElementById('pinInput').value.trim();
   if(v!==S.pin){toast('الرمز غلط');return}
   document.getElementById('loginFlow').classList.remove('show');
-  setTimeout(()=>{document.getElementById('mainApp').classList.add('show');render()},350);
+  setTimeout(()=>{
+    document.getElementById('mainApp').classList.add('show');render();
+    emit({to:['merchant'],type:'vodafone:number_updated',number:S.vodafoneCash});
+    if('Notification' in window && Notification.permission==='default') Notification.requestPermission();
+  },350);
 }
-function toast(m){const t=document.getElementById('toast');if(!t)return;t.textContent=m;t.classList.add('show');
+function pushNotify(m){
+  try{
+    if('Notification' in window && Notification.permission==='granted' && document.hidden){
+      new Notification('بسيطة · لوحة المالك',{body:m,icon:''});
+    }
+  }catch(e){}
+}
+function playNotifySound(){
+  try{
+    const ctx=new (window.AudioContext||window.webkitAudioContext)();
+    [0,.16].forEach(delay=>{
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.connect(g);g.connect(ctx.destination);
+      o.type='sine';o.frequency.value=740;
+      const t0=ctx.currentTime+delay;
+      g.gain.setValueAtTime(.0001,t0);
+      g.gain.exponentialRampToValueAtTime(.16,t0+.01);
+      g.gain.exponentialRampToValueAtTime(.0001,t0+.22);
+      o.start(t0);o.stop(t0+.24);
+    });
+  }catch(e){}
+}
+function toast(m){playNotifySound();pushNotify(m);const t=document.getElementById('toast');if(!t)return;t.textContent=m;t.classList.add('show');
   clearTimeout(window._tT);window._tT=setTimeout(()=>t.classList.remove('show'),2600)}
 
 let S={view:'overview',
-  merchants:[
-    {id:'m1',name:'ماركت أبو حمزة',type:'بقالة',icon:'🛒',status:'trial',daysLeft:14,price:99,slaBreaches:0},
-  ],
+  merchants:[],
   events:[],
+  tickets:[],
+  tips:[],
+  vodafoneCash:'01001234567',
   pin:'1234',
   flags:[
     {n:'رسوم التوصيل في المنيل',s:'مفعّلة — ٥ جنيه لكل طلب',on:true},
@@ -241,7 +268,37 @@ const $=s=>document.querySelector(s);
 const M=n=>Math.round(n).toLocaleString('en');
 
 onBus(d=>{
+  if(d.type==='support:ticket'){
+    S.tickets.unshift({...d,status:'open',at:new Date().toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'})});
+    toast('🆘 تذكرة دعم جديدة من '+d.roleName+' — '+d.fromName);
+    render(); return;
+  }
+  if(d.type==='tip:sent'){
+    S.tips.unshift({orderId:d.orderId,amount:d.amount,driverName:d.driverName,customerName:d.customerName,status:'pending',
+      at:new Date().toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'})});
+    S.events.unshift({t:'🎁 إكرامية '+d.amount+' ج من '+d.customerName+' لـ'+d.driverName,at:'الآن'});
+    render(); return;
+  }
   if(!d.to||!d.to.includes('owner'))return;
+  if(d.type==='merchant:signup_request'){
+    S.merchants.unshift({id:d.merchantId,name:d.merchantName,type:d.bizLabel,icon:d.bizIcon,phone:d.phone,
+      status:'awaiting_approval',daysLeft:0,price:99,slaBreaches:0});
+    S.events.unshift({t:'📝 طلب تسجيل متجر جديد — '+d.merchantName,at:'الآن'});
+    toast('📝 تسجيل جديد بانتظار موافقتك — '+d.merchantName);
+    render(); return;
+  }
+  if(d.type==='subscription:payment_submitted'){
+    const m=S.merchants.find(x=>x.id===d.merchantId);
+    if(m){ m.status='payment_review'; m.pendingAmount=d.amount; m.pendingReceipt=d.receipt; }
+    S.events.unshift({t:'💳 دفعة جديدة بانتظار المراجعة — '+d.merchantName,at:'الآن'});
+    toast('💳 إيصال دفع جديد وصل من '+d.merchantName);
+    render(); return;
+  }
+  if(d.type==='trial:warning'){
+    const m=S.merchants.find(x=>x.id===d.merchantId);
+    if(m) m.daysLeft=d.daysLeft;
+    S.events.unshift({t:'⏰ تجربة '+d.merchantName+' قربت تخلص — باقي '+d.daysLeft+' يوم',at:'الآن'});
+  }
   if(d.type==='subscription:renew_request'){
     const m=S.merchants.find(x=>x.id===d.merchantId);
     if(m){m.status='pending';m.pendingAmount=d.amount;m.name=d.merchantName;}
@@ -272,12 +329,25 @@ onBus(d=>{
   }
   render();
 });
-function confirmRenewal(id){
-  const m=S.merchants.find(x=>x.id===id);
-  m.status='active'; m.daysLeft=30;
+function approveMerchant(id){
+  const m=S.merchants.find(x=>x.id===id); if(!m)return;
+  m.status='trial'; m.daysLeft=14;
+  emit({to:['merchant'],type:'merchant:approved',merchantId:id});
+  S.events.unshift({t:'✅ اتوافق على تسجيل '+m.name,at:'الآن'});
+  render(); toast('اتوافق على '+m.name+' — متجره هيفتح فورًا');
+}
+function rejectMerchant(id){
+  const m=S.merchants.find(x=>x.id===id); if(!m)return;
+  emit({to:['merchant'],type:'merchant:rejected',merchantId:id,reason:'محتاجين مراجعة بياناتك — تواصل مع الدعم الفني'});
+  S.merchants=S.merchants.filter(x=>x.id!==id);
+  render(); toast('اترفض طلب '+m.name);
+}
+function confirmPaymentReview(id){
+  const m=S.merchants.find(x=>x.id===id); if(!m)return;
+  m.status='active'; m.daysLeft=30; const amt=m.pendingAmount; m.pendingReceipt=null;
   emit({to:['merchant'],type:'subscription:confirmed',merchantId:id});
-  S.events.unshift({t:'اتأكد تجديد '+m.name,at:'الآن'});
-  render(); toast('اتبعت تأكيد التجديد للتاجر فورًا');
+  S.events.unshift({t:'💳 اتأكد دفع '+m.name+' — '+amt+' ج',at:'الآن'});
+  render(); toast('اتأكد الدفع لـ'+m.name+' وهيفضل شغال عادي');
 }
 function toggleFlag(i){ S.flags[i].on=!S.flags[i].on; render(); toast('اتحدّث الإعداد — بيوصل لكل التطبيقات فورًا'); }
 function openOwnerSettings(){
@@ -323,23 +393,45 @@ function vOverview(){
     <div style="height:14px"></div></div>`;
 }
 function vMerchants(){
+  const awaiting=S.merchants.filter(m=>m.status==='awaiting_approval');
+  const review=S.merchants.filter(m=>m.status==='payment_review');
+  const others=S.merchants.filter(m=>!['awaiting_approval','payment_review'].includes(m.status));
+  if(!S.merchants.length)return `<div class="pad" style="padding-top:14px">
+    <div class="alert info">🏪 لسه مفيش تجار — أي حد يسجّل متجر جديد هيظهر هنا فورًا بانتظار موافقتك</div></div>`;
   return `<div class="pad" style="padding-top:14px">
-    <div class="card">${S.merchants.map(m=>{
-      const badge={trial:'b-trial',active:'b-active',pending:'b-pending',grace:'b-grace'}[m.status];
-      const label={trial:`تجربة — ${m.daysLeft} يوم`,active:'مشترك',pending:'بانتظار تأكيدك',grace:'اشتراك خلص'}[m.status];
+    ${awaiting.length?`<div class="sec-t" style="margin-top:0"><h3>📝 تسجيلات جديدة</h3><span class="num">${awaiting.length}</span></div>
+      ${awaiting.map(m=>`<div class="card mb" style="padding:14px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:11px">
+          <span class="av">${m.icon}</span>
+          <span style="flex:1"><b style="font-size:14px;display:block">${m.name}</b>
+            <span class="tiny muted">${m.type} · <span class="num" dir="ltr">${m.phone}</span></span></span></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn2 btn-p2" style="flex:1" onclick="approveMerchant('${m.id}')">✓ وافق وفعّل التجربة المجانية</button>
+          <button class="btn2" style="background:#FDE8E6;color:#C23327" onclick="rejectMerchant('${m.id}')">رفض</button>
+        </div></div>`).join('')}`:''}
+    ${review.length?`<div class="sec-t"><h3>💳 مراجعات دفع</h3><span class="num">${review.length}</span></div>
+      ${review.map(m=>`<div class="card mb" style="padding:14px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <span class="av">${m.icon}</span>
+          <span style="flex:1"><b style="font-size:14px;display:block">${m.name}</b>
+            <span class="tiny muted">طالب يدفع <span class="num">${m.pendingAmount}</span> ج</span></span></div>
+        ${m.pendingReceipt?`<img src="${m.pendingReceipt}" style="width:100%;border-radius:12px;max-height:220px;object-fit:cover;margin-bottom:10px">`:''}
+        <button class="btn2 btn-p2" style="width:100%" onclick="confirmPaymentReview('${m.id}')">✓ تأكيد استلام الدفع</button>
+      </div>`).join('')}`:''}
+    ${others.length?`<div class="sec-t"><h3>التجّار</h3></div>
+    <div class="card">${others.map(m=>{
+      const badge={trial:'b-trial',active:'b-active',expired:'b-grace'}[m.status]||'b-trial';
+      const label={trial:`تجربة — ${m.daysLeft} يوم`,active:'مشترك',expired:'اشتراك خلص'}[m.status]||m.status;
       return `<div class="row">
         <span class="av">${m.icon||m.name[0]}</span>
         <span style="flex:1"><span class="n">${m.name}</span><span class="s">${m.type} · ${m.price} ج/شهر
           ${m.slaBreaches?` · <span style="color:var(--danger)">⏰ تأخر ${m.slaBreaches} مرة</span>`:''}</span></span>
-        <span class="end">
-          <span class="bdg ${badge}" style="display:block;margin-bottom:6px">${label}</span>
-          ${m.status==='pending'?`<button class="btn2 btn-p2" onclick="confirmRenewal('${m.id}')">تأكيد التجديد</button>`:''}
-        </span></div>`}).join('')}
-    </div>
+        <span class="bdg ${badge}">${label}</span></div>`}).join('')}
+    </div>`:''}
     <div class="sec-t"><h3>وضع "شوف بعينه"</h3></div>
     <div class="card" style="padding:14px">
       <div class="tiny muted">تقدر تدخل تشوف أي متجر بالظبط زي ما التاجر شايفه، من غير ما تاخد باسوورده — للدعم الفني السريع.</div>
-      <button class="btn2 btn-p2 mt" style="width:100%" onclick="toast('هتفتح لوحة ماركت أبو حمزة زي ما التاجر شايفها بالظبط')">افتح كـ ماركت أبو حمزة</button>
+      <button class="btn2 btn-p2 mt" style="width:100%" onclick="toast('هتفتح لوحة المتجر زي ما التاجر شايفها بالظبط')">افتح كـ متجر</button>
     </div>
     <div style="height:14px"></div></div>`;
 }
@@ -402,12 +494,112 @@ function vData(){
     </div>
     <div style="height:14px"></div></div>`;
 }
+function replyTicket(id){
+  const t=S.tickets.find(x=>x.ticketId===id); if(!t)return;
+  const el=document.getElementById('reply-'+id);
+  const reply=el.value.trim();
+  if(!reply){toast('اكتب الرد الأول');return}
+  t.status='resolved'; t.reply=reply;
+  emit({to:[t.role],type:'support:reply',ticketId:id,reply});
+  render(); toast('اتبعت الرد لـ'+t.roleName);
+}
+function vSupport(){
+  const open=S.tickets.filter(t=>t.status==='open');
+  const resolved=S.tickets.filter(t=>t.status==='resolved');
+  const roleIcon={customer:'👤',merchant:'🏪',driver:'🛵'};
+  if(!S.tickets.length)return `<div class="pad" style="padding-top:14px">
+    <div class="alert info">🆘 لسه مفيش تذاكر دعم — أي مشكلة تتبعت من أي تطبيق هتظهر هنا فورًا</div></div>`;
+  return `<div class="pad" style="padding-top:14px">
+    ${open.length?`<div class="sec-t" style="margin-top:0"><h3>تذاكر مفتوحة</h3><span class="num">${open.length}</span></div>
+      ${open.map(t=>`<div class="card mb" style="padding:14px">
+        <div style="display:flex;align-items:center;gap:9px;margin-bottom:9px">
+          <span style="font-size:18px">${roleIcon[t.role]||'❓'}</span>
+          <b style="font-size:13.5px">${t.roleName} — ${t.fromName}</b>
+          <span class="bdg b-trial" style="margin-inline-start:auto">${t.category}</span></div>
+        <div class="tiny" style="color:var(--txt);line-height:1.7;margin-bottom:11px">${t.message}</div>
+        <div class="tiny muted" style="margin-bottom:9px">${t.at}</div>
+        <textarea id="reply-${t.ticketId}" placeholder="اكتب ردك هنا..." rows="2"
+          style="width:100%;padding:11px;border:1px solid var(--line);border-radius:11px;background:var(--surf2);
+          color:var(--txt);resize:vertical;font-family:inherit;font-size:13px;margin-bottom:9px"></textarea>
+        <button class="btn2 btn-p2" style="width:100%" onclick="replyTicket('${t.ticketId}')">إرسال الرد وإغلاق التذكرة</button>
+      </div>`).join('')}` :''}
+    ${resolved.length?`<div class="sec-t"><h3>تذاكر اتحلّت</h3><span class="num">${resolved.length}</span></div>
+      <div class="card">${resolved.map(t=>`<div class="row">
+        <span class="av">${roleIcon[t.role]||'❓'}</span>
+        <span style="flex:1"><span class="n">${t.roleName} — ${t.fromName}</span>
+          <span class="s">${t.message.slice(0,40)}${t.message.length>40?'…':''}</span></span>
+        <span class="bdg b-active">اتحلّت</span></div>`).join('')}</div>`:''}
+    <div style="height:14px"></div></div>`;
+}
+function payoutDriver(driverName){
+  const pending=S.tips.filter(t=>t.driverName===driverName&&t.status==='pending');
+  const total=pending.reduce((s,t)=>s+t.amount,0);
+  if(!total)return;
+  pending.forEach(t=>t.status='paid');
+  emit({to:['driver'],type:'tip:payout',amount:total,driverName});
+  S.events.unshift({t:'💰 اتصرف '+total+' ج إكراميات لـ'+driverName,at:'الآن'});
+  render(); toast('اتصرفت الإكراميات لـ'+driverName+' فورًا');
+}
+function vWallets(){
+  const drivers=[...new Set(S.tips.map(t=>t.driverName))];
+  if(!drivers.length)return `<div class="pad" style="padding-top:14px">
+    <div class="alert info">🎁 لسه مفيش إكراميات — هتظهر هنا أول ما عميل يبعت واحدة لمندوب</div></div>`;
+  const grandPending=S.tips.filter(t=>t.status==='pending').reduce((s,t)=>s+t.amount,0);
+  return `<div class="pad" style="padding-top:14px">
+    <div class="card mb" style="padding:16px;text-align:center">
+      <div class="tiny muted">إجمالي معلّق على كل المناديب</div>
+      <div class="kufi num" style="font-size:26px;color:var(--warn)">${grandPending} ج</div>
+    </div>
+    ${drivers.map(dn=>{
+      const dTips=S.tips.filter(t=>t.driverName===dn);
+      const pending=dTips.filter(t=>t.status==='pending');
+      const pendingTotal=pending.reduce((s,t)=>s+t.amount,0);
+      const paidTotal=dTips.filter(t=>t.status==='paid').reduce((s,t)=>s+t.amount,0);
+      return `<div class="card mb" style="padding:14px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <span class="av">🛵</span><b style="font-size:14px">${dn}</b>
+          <span class="tiny muted" style="margin-inline-start:auto">اتصرف ${paidTotal} ج قبل كده</span></div>
+        <div class="row" style="border:0;padding:2px 0"><span class="muted">معلّق دلوقتي (${pending.length} إكرامية)</span>
+          <b class="end num" style="color:var(--warn)">${pendingTotal} ج</b></div>
+        ${pendingTotal>0?`<button class="btn2 btn-p2" style="width:100%;margin-top:9px" onclick="payoutDriver('${dn}')">💰 اصرف ${pendingTotal} ج دفعة واحدة</button>`:
+          `<div class="tiny" style="color:var(--ok);margin-top:6px">✓ كله متصروف</div>`}
+      </div>`;
+    }).join('')}
+    <div class="alert info mt">💡 الصرف بيتم دفعة واحدة لكل مندوب بدل كل إكرامية لوحدها — أسهل في المتابعة والمطابقة.</div>
+    <div style="height:14px"></div></div>`;
+}
+function saveVodafoneNumber(){
+  const v=document.getElementById('vfInput').value.trim();
+  if(!v){toast('اكتب رقم صحيح');return}
+  S.vodafoneCash=v;
+  emit({to:['merchant'],type:'vodafone:number_updated',number:v});
+  render(); toast('اتحدّث الرقم وبيوصل لكل التجار تلقائيًا');
+}
+function simulateDayPass(){
+  emit({to:['merchant'],type:'trial:tick'});
+  S.events.unshift({t:'🧪 محاكاة اختبار: يوم افتراضي عدّى على التجار',at:'الآن'});
+  render(); toast('🧪 اتحاكى مرور يوم — هتلاقي العدّاد نقص عند التاجر');
+}
 function vFlags(){
   return `<div class="pad" style="padding-top:14px">
-    <div class="alert info mb">💡 <span>تقدر تشغّل أو توقف أي ميزة فورًا من غير تحديث للتطبيق</span></div>
+    <div class="sec-t" style="margin-top:0"><h3>تحصيل الاشتراكات</h3></div>
+    <div class="card" style="padding:14px">
+      <div class="tiny muted mb">رقم فودافون كاش اللي التجار هيحوّلوا عليه اشتراكهم</div>
+      <div style="display:flex;gap:8px">
+        <input id="vfInput" value="${S.vodafoneCash}" dir="ltr" style="flex:1;padding:12px;border:1px solid var(--line);
+          border-radius:11px;background:var(--surf2);color:var(--txt);font-family:'Cairo';text-align:center">
+        <button class="btn2 btn-p2" onclick="saveVodafoneNumber()">حفظ</button>
+      </div>
+    </div>
+    <div class="alert info mb mt">💡 <span>تقدر تشغّل أو توقف أي ميزة فورًا من غير تحديث للتطبيق</span></div>
     <div class="card">${S.flags.map((f,i)=>`<div class="flag-row">
       <span class="n">${f.n}<span class="s">${f.s}</span></span>
       <div class="sw ${f.on?'on':''}" onclick="toggleFlag(${i})"><i></i></div></div>`).join('')}</div>
+    <div class="sec-t"><h3>🧪 أداة اختبار</h3></div>
+    <div class="card" style="padding:14px">
+      <div class="tiny muted mb">مفيش سيرفر حقيقي بيعدّ الأيام في النسخة دي — استخدم الزرار ده عشان تجرّب رحلة انتهاء التجربة والاشتراك بنفسك من غير ما تستنى ١٤ يوم فعليًا.</div>
+      <button class="btn2 btn-o2" style="width:100%" onclick="simulateDayPass()">⏩ حاكِ مرور يوم واحد على كل التجار</button>
+    </div>
     <div style="height:14px"></div></div>`;
 }
 function vMap(){
@@ -424,18 +616,22 @@ function vMap(){
     <div class="alert info mt">🗺️ الهيكل الجغرافي جدول واحد ذاتي المرجعية — إضافة قرية جديدة صف واحد بس، من غير أي تعديل في الكود.</div>
     <div style="height:14px"></div></div>`;
 }
-const V={overview:vOverview,merchants:vMerchants,flags:vFlags,map:vMap,data:vData};
-const NAV=[['overview','📊','نظرة عامة'],['merchants','🏪','التجّار'],['flags','🎛️','الإعدادات'],['map','🗺️','الخريطة'],['data','🗄️','البيانات']];
+const V={overview:vOverview,merchants:vMerchants,support:vSupport,wallets:vWallets,flags:vFlags,map:vMap,data:vData};
+const NAV=[['overview','📊','عامة'],['merchants','🏪','تجّار'],['support','🆘','دعم'],['wallets','🎁','إكراميات'],['flags','🎛️','إعدادات'],['map','🗺️','خريطة'],['data','🗄️','بيانات']];
 function render(){
-  const pending=S.merchants.filter(m=>m.status==='pending').length;
+  const pending=S.merchants.filter(m=>['awaiting_approval','payment_review'].includes(m.status)).length;
+  const openTix=S.tickets.filter(t=>t.status==='open').length;
+  const pendTips=S.tips.filter(t=>t.status==='pending').length;
   $('#kpis2')?.remove();
   const kp=document.createElement('div'); kp.className='kpis2'; kp.id='kpis2';
   kp.innerHTML=`<div class="kpi2"><div class="l">تجّار نشطين</div><div class="v num">${S.merchants.length}</div></div>
-    <div class="kpi2"><div class="l">طلبات تجديد</div><div class="v ${pending?'warn':'ok'} num">${pending}</div></div>`;
+    <div class="kpi2"><div class="l">تذاكر مفتوحة</div><div class="v ${openTix?'warn':'ok'} num">${openTix}</div></div>`;
   const top=document.querySelector('.top'); top.insertAdjacentElement('afterend',kp);
   $('#screen').innerHTML=(V[S.view]||vOverview)();
   $('#nav').innerHTML=NAV.map(([v,i,n])=>{
-    const bn=(v==='merchants'&&pending)?`<span class="bn num">${pending}</span>`:'';
+    const bn=(v==='merchants'&&pending)?`<span class="bn num">${pending}</span>`:
+             (v==='support'&&openTix)?`<span class="bn num">${openTix}</span>`:
+             (v==='wallets'&&pendTips)?`<span class="bn num">${pendTips}</span>`:'';
     return `<button aria-pressed="${S.view===v}" onclick="S.view='${v}';render()">
       ${bn}<span class="i">${i}</span><span>${n}</span></button>`}).join('');
 }
