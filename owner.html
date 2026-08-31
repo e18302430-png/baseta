@@ -35,6 +35,20 @@ input{font-family:inherit;font-size:16px}
 #boot .bar{width:130px;height:3px;background:rgba(255,255,255,.1);border-radius:9px;margin:20px auto 0;overflow:hidden}
 #boot .bar i{display:block;height:100%;width:0;background:var(--ac);animation:ld 1.3s ease forwards;border-radius:9px}
 @keyframes ld{to{width:100%}}
+#boot .mk path{stroke-dasharray:90;stroke-dashoffset:90;animation:drawPath 850ms cubic-bezier(.2,.8,.2,1) forwards}
+#boot .mk circle{opacity:0;transform:scale(.3);transform-box:fill-box;transform-origin:center;
+  animation:popIn 480ms cubic-bezier(.34,1.56,.64,1) 650ms forwards}
+@keyframes drawPath{to{stroke-dashoffset:0}}
+@keyframes popIn{to{opacity:1;transform:scale(1)}}
+#boot b{display:inline-block;position:relative;overflow:hidden;
+  clip-path:inset(0 100% 0 0);animation:reveal 650ms cubic-bezier(.2,.8,.2,1) 480ms forwards}
+@keyframes reveal{to{clip-path:inset(0 0 0 0)}}
+#boot b::after{content:"";position:absolute;inset:0;mix-blend-mode:overlay;
+  background:linear-gradient(100deg,transparent,rgba(255,255,255,.55),transparent);
+  background-size:220% 100%;background-position:200% 0;animation:sheenSweep 850ms ease 900ms forwards}
+@keyframes sheenSweep{to{background-position:-120% 0}}
+#boot span{display:block;opacity:0;transform:translateY(7px);animation:fadeUp 480ms ease 1050ms forwards}
+@keyframes fadeUp{to{opacity:1;transform:none}}
 
 #loginFlow{position:absolute;inset:0;z-index:100;background:var(--bg);display:flex;flex-direction:column;
   padding:32px 26px;opacity:0;transform:translateY(14px);transition:opacity .5s ease,transform .5s ease;pointer-events:none}
@@ -247,6 +261,14 @@ onBus(d=>{
     if(m)m.slaBreaches=(m.slaBreaches||0)+1;
     S.events.unshift({t:'⏰ '+d.merchantName+' اتأخر في الرد على طلب '+d.orderId,at:'الآن'});
     toast('⏰ تنبيه: '+d.merchantName+' اتأخر في الرد');
+  }
+  if(d.type==='feedback:submitted'){
+    if(d.complaint){
+      S.events.unshift({t:'⚠️ شكوى من '+d.customerName+': '+d.complaint,at:'الآن'});
+      toast('⚠️ شكوى جديدة وصلت من عميل');
+    } else {
+      S.events.unshift({t:'⭐ تقييم جديد — المتجر '+d.merchantRating+'/٥ · المندوب '+d.driverRating+'/٥',at:'الآن'});
+    }
   }
   render();
 });
