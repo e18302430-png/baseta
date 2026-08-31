@@ -107,6 +107,7 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
 .cl-item .ck{width:22px;height:22px;border-radius:50%;border:1.5px solid rgba(255,255,255,.2);display:grid;place-items:center;
   flex:0 0 auto;font-size:11px;transition:.3s}
 .cl-item.done .ck{background:var(--ok);border-color:var(--ok);color:#04180F}
+@keyframes pendingPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.08);opacity:.75}}
 
 /* ═══ التطبيق الأساسي ═══ */
 #mainApp{position:absolute;inset:0;display:flex;flex-direction:column;opacity:0;transition:opacity .5s ease .1s}
@@ -142,6 +143,12 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
   font-size:12px;padding:8px 12px;border-radius:10px;white-space:nowrap}
 .pickupqr{display:flex;align-items:center;gap:10px;margin-top:10px;padding:10px;border-radius:12px;background:var(--surf2)}
 .pickupqr img{border-radius:8px;background:#fff;flex:0 0 auto}
+.float-support{position:absolute;bottom:calc(var(--nav) + 14px);inset-inline-start:14px;z-index:35;
+  width:50px;height:50px;border-radius:50%;background:var(--ac);color:#211602;font-size:21px;border:0;
+  display:grid;place-items:center;box-shadow:0 12px 26px -8px rgba(231,154,30,.55)}
+.float-support:active{transform:scale(.92)}
+.sup-fld{width:100%;padding:13px;border:1.5px solid var(--line);border-radius:12px;background:var(--surf2);
+  color:var(--txt);resize:vertical;font-family:inherit;font-size:14px}
 
 .chips{display:flex;gap:7px;overflow-x:auto;padding:14px 16px 4px;scrollbar-width:none}
 .chips::-webkit-scrollbar{display:none}
@@ -308,9 +315,24 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
       <div class="fld"><label>كلمة المرور</label><input id="mNewPass" type="password" placeholder="••••••••"></div>
       <div class="fld"><label>تأكيد كلمة المرور</label><input id="mNewPassConf" type="password" placeholder="••••••••"></div>
       <div class="spacer"></div>
-      <button class="btn btn-p" onclick="finishMerchantSignup()">افتح متجري</button>
+      <button class="btn btn-p" onclick="finishMerchantSignup()">أرسل طلب التسجيل</button>
     </div>
 
+  </div>
+
+  <div id="pendingApproval" style="position:absolute;inset:0;z-index:95;background:var(--bg);display:none;
+    flex-direction:column;align-items:center;justify-content:center;padding:36px;text-align:center">
+    <div style="width:84px;height:84px;border-radius:26px;background:var(--ac-l);display:grid;place-items:center;
+      font-size:36px;margin-bottom:20px;animation:pendingPulse 2s ease-in-out infinite">⏳</div>
+    <h2 style="font-size:20px;color:var(--txt)">طلبك بانتظار الموافقة</h2>
+    <p style="color:var(--txt2);font-size:13.5px;margin:10px 0 26px;max-width:280px;line-height:1.8">
+      صاحب المنصة بيراجع طلبك دلوقتي. أول ما يوافق، متجرك هيفتح تلقائيًا من غير ما تعمل حاجة.</p>
+    <div class="card" style="padding:16px;max-width:280px;width:100%">
+      <div class="row" style="border:0;padding:5px 0"><span class="muted">اسم المتجر</span>
+        <b class="end" id="paStoreName">—</b></div>
+      <div class="row" style="border:0;padding:5px 0"><span class="muted">نوع النشاط</span>
+        <b class="end" id="paStoreType">—</b></div>
+    </div>
   </div>
 
   <div id="storeOpen">
@@ -340,6 +362,7 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
     <div id="settleBanner"></div>
     <div class="kpis" id="kpis"></div>
     <div class="body" id="screen"></div>
+    <button class="float-support" onclick="openSupportSheet()" aria-label="الدعم الفني">🆘</button>
     <div class="nav" id="nav"></div>
     <div class="toast" id="toast"></div>
   </div>
@@ -412,9 +435,14 @@ function finishMerchantSignup(){
   if(pass.length<4){toast('كلمة المرور قصيرة أوي');return}
   if(pass!==conf){toast('كلمة المرور والتأكيد مش متطابقين');return}
   S.bizType=type; S.customStoreName=name; S.password=pass; S.phone=mSignupPhone;
+  S.merchantId='m'+Date.now();
   applyBizIdentity();
-  toast('اتعمل متجرك بنجاح 🎉');
-  proceedToStoreOpen();
+  document.getElementById('paStoreName').textContent=name;
+  document.getElementById('paStoreType').textContent=BIZ().label;
+  document.getElementById('loginFlow').classList.remove('show');
+  setTimeout(()=>{ document.getElementById('pendingApproval').style.display='flex'; },350);
+  emit({to:['owner'],type:'merchant:signup_request',merchantId:S.merchantId,merchantName:name,
+    bizLabel:BIZ().label,bizIcon:BIZ().icon,phone:mSignupPhone});
 }
 function doLogin(){
   const ph=document.getElementById('mPhone').value.trim();
@@ -438,7 +466,7 @@ function proceedToStoreOpen(){
         document.getElementById('storeOpen').classList.remove('show');
         document.getElementById('mainApp').classList.add('show');
         render();
-        emit({to:['owner'],type:'merchant:online',merchantId:'m1',merchantName:BIZ().name,bizLabel:BIZ().label,bizIcon:BIZ().icon});
+        emit({to:['owner'],type:'merchant:online',merchantId:S.merchantId,merchantName:BIZ().name,bizLabel:BIZ().label,bizIcon:BIZ().icon});
       },500);
     },3000);
   },350);
@@ -460,13 +488,25 @@ function applyBizIdentity(){
   document.getElementById('shopIconEl').textContent=b.icon;
   document.getElementById('shopNameEl').textContent=b.name;
 }
-function toast(m){const t=document.getElementById('toast');if(!t)return;t.textContent=m;t.classList.add('show');
+function playNotifySound(){
+  try{
+    const ctx=new (window.AudioContext||window.webkitAudioContext)();
+    const o=ctx.createOscillator(),g=ctx.createGain();
+    o.connect(g);g.connect(ctx.destination);
+    o.type='sine';o.frequency.value=880;
+    g.gain.setValueAtTime(.0001,ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(.14,ctx.currentTime+.01);
+    g.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+.28);
+    o.start();o.stop(ctx.currentTime+.3);
+  }catch(e){}
+}
+function toast(m){playNotifySound();const t=document.getElementById('toast');if(!t)return;t.textContent=m;t.classList.add('show');
   clearTimeout(window._tT);window._tT=setTimeout(()=>t.classList.remove('show'),2600)}
 
 const STAGES=['placed','accepted','assigned','picked','delivering','delivered'];
 const SLABEL={placed:'جديد',accepted:'اتقبل',assigned:'اتعيّن مندوب',picked:'المندوب استلم',
   delivering:'في الطريق',delivered:'اتسلّم'};
-let S={tab:'new',orders:[],expenses:[],cashCounted:'',bizType:'grocery',password:'',customStoreName:'',phone:'',availableDriver:null,reviews:[],
+let S={tab:'new',orders:[],expenses:[],cashCounted:'',bizType:'grocery',password:'',customStoreName:'',phone:'',availableDriver:null,reviews:[],merchantId:'m1',shopPhoto:'',vodafoneCash:'',
   sub:{status:'trial',daysLeft:14,price:99},
   customerStats:{},
   products:[
@@ -511,6 +551,9 @@ onBus(d=>{
     render(); toast('💰 '+d.driverName+' عايز يسلّمك كاش المناوبة');
     return;
   }
+  if(d.type==='support:reply'&&d.to&&d.to.includes('merchant')){
+    toast('📩 رد الدعم الفني: '+d.reply); return;
+  }
   if(d.type==='feedback:submitted'&&d.to&&d.to.includes('merchant')){
     S.reviews.unshift({orderId:d.orderId,rating:d.merchantRating,complaint:d.complaint,customerName:d.customerName});
     toast(d.complaint?'⚠️ شكوى جديدة من '+d.customerName:'⭐ تقييم جديد: '+d.merchantRating+'/5');
@@ -527,9 +570,34 @@ onBus(d=>{
   if(d.type==='order:status'){
     const o=S.orders.find(x=>x.id===d.orderId); if(o){o.stage=d.status;o._flash=true}
   }
+  if(d.type==='merchant:approved'&&d.to&&d.to.includes('merchant')&&d.merchantId===S.merchantId){
+    document.getElementById('pendingApproval').style.display='none';
+    S.sub={status:'trial',daysLeft:14,price:99};
+    toast('🎉 صاحب المنصة وافق على متجرك!');
+    proceedToStoreOpen();
+    return;
+  }
+  if(d.type==='merchant:rejected'&&d.to&&d.to.includes('merchant')&&d.merchantId===S.merchantId){
+    document.getElementById('pendingApproval').innerHTML=`
+      <div style="width:84px;height:84px;border-radius:26px;background:#FDE8E6;display:grid;place-items:center;font-size:36px;margin-bottom:20px">✕</div>
+      <h2 style="font-size:20px">اعتذرت الإدارة عن طلبك</h2>
+      <p style="color:var(--txt2);font-size:13.5px;margin:10px 0 0;max-width:280px">${d.reason||'تواصل مع الدعم لمعرفة السبب'}</p>`;
+    return;
+  }
+  if(d.type==='vodafone:number_updated'&&d.to&&d.to.includes('merchant')){
+    S.vodafoneCash=d.number; return;
+  }
+  if(d.type==='trial:tick'&&d.to&&d.to.includes('merchant')){
+    if(S.sub.status==='trial'||S.sub.status==='active'){
+      S.sub.daysLeft=Math.max(0,S.sub.daysLeft-1);
+      if(S.sub.daysLeft===0) S.sub.status='expired';
+    }
+    render(); return;
+  }
   if(d.type==='subscription:confirmed'){
-    S.sub.status='active'; S.sub.daysLeft=30;
-    toast('تم تأكيد اشتراكك من الإدارة — شكرًا لثقتك 🎉');
+    S.sub={status:'active',daysLeft:30,price:99};
+    S.pendingPaymentReceipt=null;
+    toast('✅ تم تأكيد اشتراكك من الإدارة — شكرًا لثقتك 🎉');
   }
   render();
 });
@@ -619,6 +687,22 @@ function addPurchase(){
   S.purchases.unshift({name:p.n,qty,cost,total:qty*cost});
   syncCatalog(); render(); toast('اتسجل التوريد وزاد المخزون تلقائيًا');
 }
+function openSupportSheet(){
+  openSheet('تواصل مع الدعم الفني',`
+    <div class="fld"><label>نوع المشكلة</label><select id="supCat">
+      <option>مشكلة في طلب</option><option>مشكلة في الدفع</option><option>مشكلة تقنية</option><option>مشكلة في الاشتراك</option><option>تانى</option></select></div>
+    <div class="fld" style="margin-bottom:10px"><label>اكتب مشكلتك</label>
+      <textarea id="supMsg" rows="4" class="sup-fld"></textarea></div>
+    <button class="btn btn-p" style="width:100%" onclick="submitTicket()">إرسال للدعم الفني</button>`);
+}
+function submitTicket(){
+  const cat=document.getElementById('supCat').value;
+  const msg=document.getElementById('supMsg').value.trim();
+  if(!msg){toast('اكتب مشكلتك الأول');return}
+  const ticketId='T'+Math.floor(1000+Math.random()*9000);
+  emit({to:['owner'],type:'support:ticket',ticketId,role:'merchant',roleName:'تاجر',fromName:BIZ().name,category:cat,message:msg});
+  closeSheet(); toast('✓ اتبعت طلبك للدعم — هيرد عليك في أقرب وقت');
+}
 function openSettings(){
   openSheet('الإعدادات',`
     <div class="fld"><label>نوع نشاطك الحالي</label>
@@ -655,27 +739,74 @@ function openSheet(t,h){
 function closeSheet(){ document.getElementById('mSheetBg')?.remove(); document.getElementById('mSheet')?.remove(); }
 
 function requestRenew(){
-  S.sub.status='pending';
-  emit({to:['owner'],type:'subscription:renew_request',merchantId:'m1',merchantName:BIZ().name,amount:S.sub.price});
-  renderSubBanner();
-  toast('اتبعت طلب التجديد — هيتأكد من لوحة صاحب المنصة');
+  openSheet('تجديد الاشتراك',`
+    <div class="card mb" style="padding:16px;text-align:center;background:var(--ac-l)">
+      <div class="tiny muted">المطلوب تحويله</div>
+      <div class="kufi num" style="font-size:26px;color:var(--ac-d)">${S.sub.price} ج</div>
+    </div>
+    ${S.vodafoneCash?`
+    <div class="card mb" style="padding:16px">
+      <div class="tiny muted mb">حوّل المبلغ على رقم فودافون كاش</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <b class="kufi num" style="font-size:20px;letter-spacing:1px" dir="ltr">${S.vodafoneCash}</b>
+        <button class="btn2 btn-o2" style="margin-inline-start:auto" onclick="navigator.clipboard.writeText('${S.vodafoneCash}');toast('اترفع الرقم ✓')">نسخ</button>
+      </div>
+    </div>`:`<div class="card mb" style="padding:14px;background:#FDF3DF"><div class="tiny" style="color:#8A5E10">
+      رقم التحصيل لسه معملوش الإدارة — ابعت للدعم الفني وهيوصلولك بيه</div></div>`}
+    <div class="fld"><label>أرفق صورة إيصال التحويل</label>
+      <input type="file" accept="image/*" id="receiptFile" style="display:none" onchange="previewReceipt(this)">
+      <button class="btn btn-o" onclick="document.getElementById('receiptFile').click()" id="receiptBtn">📎 اختر صورة الإيصال</button>
+      <img id="receiptPreview" style="display:none;width:100%;border-radius:12px;margin-top:10px;max-height:200px;object-fit:cover">
+    </div>
+    <button class="btn btn-p mt" onclick="submitPayment()">إرسال للمراجعة</button>`);
+}
+let receiptData=null;
+function previewReceipt(input){
+  const file=input.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    receiptData=e.target.result;
+    const img=document.getElementById('receiptPreview'); img.src=receiptData; img.style.display='block';
+    document.getElementById('receiptBtn').textContent='✓ اتم اختيار الإيصال — دوس لتغييره';
+  };
+  reader.readAsDataURL(file);
+}
+function submitPayment(){
+  if(!receiptData){toast('أرفق صورة الإيصال الأول');return}
+  S.sub.status='payment_review';
+  emit({to:['owner'],type:'subscription:payment_submitted',merchantId:S.merchantId,merchantName:BIZ().name,
+    amount:S.sub.price,receipt:receiptData});
+  receiptData=null;
+  closeSheet(); render(); toast('اتبعت طلبك للمراجعة — هيوافق عليه صاحب المنصة قريب');
 }
 function renderSubBanner(){
   const s=S.sub; const el=$('#subBanner'); if(!el)return;
   const pct=Math.max(0,Math.min(100,(s.daysLeft/14)*100));
-  if(s.status==='trial') el.innerHTML=`<div class="subbanner trial" style="flex-direction:column;align-items:stretch;gap:8px">
+  if(s.status==='trial'&&s.daysLeft>3){
+    el.innerHTML=`<div class="subbanner trial" style="flex-direction:column;align-items:stretch;gap:8px">
       <div style="display:flex;align-items:center;gap:10px">
         <span style="font-size:18px">🎁</span><span style="flex:1"><b>تجربة مجانية</b> — باقي <span class="num">${s.daysLeft}</span> يوم</span>
         <button class="sb-btn" onclick="requestRenew()">اشترك — ${s.price} ج/شهر</button></div>
       <div style="height:5px;background:rgba(0,0,0,.08);border-radius:4px;overflow:hidden">
         <div style="height:100%;width:${pct}%;background:#3B6D11;border-radius:4px"></div></div></div>`;
-  else if(s.status==='grace') el.innerHTML=`<div class="subbanner grace">
-      <span>⏰</span><span style="flex:1"><b>اشتراكك خلص</b> — جدده عشان متفوتش طلبات</span>
-      <button class="sb-btn" onclick="requestRenew()">جدّد — ${s.price} ج</button></div>`;
-  else if(s.status==='pending') el.innerHTML=`<div class="subbanner pending">
-      <span>⏳</span><span>طلب التجديد بانتظار تأكيد صاحب المنصة</span></div>`;
-  else el.innerHTML=`<div class="subbanner" style="background:#E3F9F1;color:#00925F">
+  } else if(s.status==='trial'&&s.daysLeft>0){
+    if(!s._warned){ s._warned=true; emit({to:['owner'],type:'trial:warning',merchantId:S.merchantId,merchantName:BIZ().name,daysLeft:s.daysLeft}); }
+    el.innerHTML=`<div class="subbanner" style="background:#FDF3DF;color:#8A5E10;flex-direction:column;align-items:stretch;gap:8px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:18px">⏰</span><span style="flex:1"><b>تجربتك قربت تخلص</b> — باقي <span class="num">${s.daysLeft}</span> يوم بس!</span>
+        <button class="sb-btn" style="background:#E79A1E" onclick="requestRenew()">اشترك دلوقتي</button></div></div>`;
+  } else if(s.status==='payment_review'){
+    el.innerHTML=`<div class="subbanner" style="background:#EEF0FE;color:#3B4BA8">
+      <span>⏳</span><span>إيصال دفعك بانتظار مراجعة صاحب المنصة</span></div>`;
+  } else if(s.status==='active'){
+    el.innerHTML=`<div class="subbanner" style="background:#E3F9F1;color:#00925F">
       <span>✓</span><span>اشتراكك مفعّل — باقي <span class="num">${s.daysLeft}</span> يوم</span></div>`;
+  } else {
+    el.innerHTML=`<div class="subbanner" style="background:#E85D52;color:#fff;flex-direction:column;align-items:stretch;gap:9px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:20px">🔴</span><span style="flex:1"><b>خلص اشتراكك</b> — متجرك واقف عن استقبال طلبات جديدة</span></div>
+      <button class="sb-btn" style="background:#fff;color:#C23327;width:100%;justify-content:center" onclick="requestRenew()">اشترك دلوقتي — ${s.price} ج</button></div>`;
+  }
   renderSettleBanner();
 }
 function renderSettleBanner(){
@@ -720,6 +851,7 @@ function addExpense(){
 }
 
 function accept(id){
+  if(S.sub.status==='expired'){toast('🔴 اشتراكك خلص — جدده الأول عشان تقدر تقبل طلبات');return}
   const o=S.orders.find(x=>x.id===id); o.stage='accepted'; o._pickDriver=true;
   emit({to:['customer'],type:'order:accept',orderId:id});
   render(); toast('اتبعت موافقة للعميل فورًا');
@@ -862,10 +994,21 @@ function vAcct(){
 }
 function vQR(){
   return `<div class="pad" style="padding-top:14px">
-    <div class="card" style="padding:22px;text-align:center">
+    <div class="card" style="padding:0;overflow:hidden">
+      ${S.shopPhoto?`<img src="${S.shopPhoto}" style="width:100%;height:160px;object-fit:cover;display:block">`:
+        `<div style="width:100%;height:160px;background:var(--surf2);display:grid;place-items:center;color:var(--txt3)">
+          <div style="text-align:center"><div style="font-size:32px">📷</div><div class="tiny mt">مفيش صورة لمتجرك لسه</div></div></div>`}
+      <div style="padding:14px">
+        <div class="tiny muted mb">صورة متجرك — بتظهر للعميل وبتديله ثقة أكتر في متجرك</div>
+        <input type="file" accept="image/*" id="shopPhotoFile" style="display:none" onchange="uploadShopPhoto(this)">
+        <button class="btn2 btn-p2" style="width:100%" onclick="document.getElementById('shopPhotoFile').click()">
+          ${S.shopPhoto?'📷 تغيير صورة المتجر':'📷 ضيف صورة احترافية لمتجرك'}</button>
+      </div>
+    </div>
+    <div class="card mt" style="padding:22px;text-align:center">
       <div class="tiny muted mb">QR متجرك — اطبعه وحطه على باب المحل</div>
       <canvas id="qrCanvas" width="200" height="200" style="margin:auto;border-radius:12px"></canvas>
-      <div class="kufi mt" style="font-size:15px">ماركت أبو حمزة</div>
+      <div class="kufi mt" style="font-size:15px">${BIZ().name}</div>
       <div class="tiny muted">العميل يمسحه بكاميرا موبايله فيدخل متجرك على طول</div>
       <button class="btn2 btn-p2 mt" style="width:100%" onclick="downloadQR()">تحميل الكود</button>
     </div>
@@ -874,6 +1017,16 @@ function vQR(){
         اطبع الكود وحطه عند باب المحل. أي عميل يمسحه هيدخل متجرك مباشرة من غير ما يدوّر عليك في التطبيق.</div>
     </div>
     <div style="height:14px"></div></div>`;
+}
+function uploadShopPhoto(input){
+  const file=input.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    S.shopPhoto=e.target.result;
+    emit({to:['customer'],type:'shop:photo_updated',photo:S.shopPhoto});
+    render(); toast('اتحدّثت صورة متجرك — العميل شايفها فورًا 📷');
+  };
+  reader.readAsDataURL(file);
 }
 const V={list:vList,products:vProducts,acct:vAcct,qr:vQR,stats:vStats};
 const NAV=[['list','📥','الطلبات'],['products','🏷️','منتجاتي'],['acct','🧮','المحاسبة'],['qr','🔗','متجرك'],['stats','📊','إحصائيات']];
