@@ -1200,6 +1200,8 @@ function savePin(){
   if(n!==c){toast('الرمز الجديد والتأكيد مش متطابقين');return}
   S.pin=n; closeSheet(); toast('اتغيّر رمزك بنجاح ✓');
 }
+const V={home:vHome,shop:vShop,cart:vCart,checkout:vCheckout,track:vTrack,orders:vOrders,account:vAccount};
+const NAV=[['home','🏠','المتجر'],['orders','📦','طلباتي'],['account','👤','حسابي']];
 function render(){
   saveState();
   renderBell();
