@@ -147,6 +147,14 @@ p.lsub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13px;line-he
 
 .bellBadge{display:none;position:absolute;top:-3px;left:-3px;min-width:16px;height:16px;border-radius:8px;background:var(--danger);
   color:#fff;font-size:9.5px;font-weight:800;align-items:center;justify-content:center;padding:0 3px;font-family:'Cairo'}
+.brandbanner{display:flex;align-items:center;gap:11px;margin:14px 0 0;padding:13px 14px;border-radius:15px;
+  background:linear-gradient(120deg,#0F2229,#12343E 60%,#0F2229);color:#fff;position:relative;overflow:hidden;width:100%;text-align:right;border:0;cursor:pointer}
+.brandbanner::before{content:"";position:absolute;inset:0;background:linear-gradient(120deg,transparent,rgba(95,212,232,.2),transparent);
+  background-size:200% 100%;animation:sheen 4s linear infinite}
+.brandbanner .bb-ic{font-size:20px;position:relative;z-index:1}
+.brandbanner b{color:var(--ac);font-family:'Cairo';font-size:13px;position:relative;z-index:1}
+.brandbanner span{display:block;font-size:11px;color:#9BB0B6;margin-top:2px;position:relative;z-index:1}
+@keyframes sheen{to{background-position:-200% 0}}
 .inboxOverlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:300}
 .inboxPanel{position:fixed;inset-inline:0;bottom:0;max-width:412px;margin:0 auto;background:var(--surf);border-radius:22px 22px 0 0;
   z-index:301;max-height:78vh;display:flex;flex-direction:column;box-shadow:0 -20px 50px -20px rgba(0,0,0,.5);animation:inboxUp .3s cubic-bezier(.2,.8,.2,1)}
@@ -332,6 +340,32 @@ function renderInboxList(){
 }
 function markAllInboxRead(){ S.inbox.forEach(n=>n.read=true); saveInbox(); renderBell(); renderInboxList(); }
 function closeInbox(){ document.getElementById('inboxWrap')?.remove(); }
+function openInfoSheet(title,bodyHtml){
+  document.getElementById('infoWrap')?.remove();
+  const wrap=document.createElement('div'); wrap.id='infoWrap';
+  wrap.innerHTML=`<div class="inboxOverlay" onclick="document.getElementById('infoWrap').remove()"></div>
+    <div class="inboxPanel" style="padding:4px 18px 22px">
+      <div style="width:38px;height:4px;background:var(--line);border-radius:3px;margin:10px auto 14px"></div>
+      <div style="display:flex;align-items:center;margin-bottom:12px">
+        <b class="kufi" style="font-size:15.5px">${title}</b>
+        <button onclick="document.getElementById('infoWrap').remove()" style="margin-inline-start:auto;width:30px;height:30px;border-radius:10px;background:var(--surf2);display:grid;place-items:center;flex:0 0 auto">✕</button>
+      </div>
+      <div style="overflow-y:auto">${bodyHtml}</div>
+    </div>`;
+  document.body.appendChild(wrap);
+}
+function openVillageImpact(){
+  openInfoSheet('🌾 بسيطة والقرية المصرية',`
+    <p style="line-height:1.9;font-size:13.5px">
+      كل تاجر بينضم من قرية أو مركز بيحوّل محله لنظام رقمي كامل من غير ما يحتاج خبرة تقنية — طلبات، مخزون، تحصيل، وتوصيل، كله من تليفونه.
+    </p>
+    <p style="line-height:1.9;font-size:13.5px;margin-top:10px">
+      وكل مندوب بينضم بتتراجع هويته وبطاقته فعليًا قبل ما يشتغل (شايفهم في تبويب «الأمان»)، وكل توصيلة بتوثّق بصورة تسليم وتسجيل صوتي — عشان الثقة تبقى مبنية على دليل، مش على كلام.
+    </p>
+    <p style="line-height:1.9;font-size:13.5px;margin-top:10px">
+      الهدف من لوحتك دي إنك تبني وتراقب شبكة اقتصادية رقمية بتكبر قرية ورا قرية — من غير ما أي طرف فيها (تاجر، مندوب، أو عميل) يحتاج يفهم في التكنولوجيا عشان يستفيد منها. 🇪🇬
+    </p>`);
+}
 
 onBus(d=>{
   if(d.type==='customer:register'){
@@ -489,6 +523,11 @@ function vOverview(){
       <div class="tiny muted mt">من ${S.merchants.filter(m=>m.status==='active').length} تاجر مشترك فعليًا</div>
     </div>
     <div class="alert warn mt">⏰ <span>${trialCount} تاجر لسه في فترة التجربة المجانية — تابعهم قبل ما تخلص</span></div>
+    <button class="brandbanner" onclick="openVillageImpact()">
+      <div class="bb-ic">🌾</div>
+      <div><b>إنت بتبني اقتصاد قرية رقمي</b>
+        <span>كل تاجر ومندوب بينضم بيوسّع الشبكة دي — اعرف أكتر ‹</span></div>
+    </button>
     <div class="sec-t"><h3>آخر الأحداث</h3></div>
     <div class="card">
       ${S.events.length?S.events.slice(0,6).map(e=>`<div class="row"><span class="av">•</span>
