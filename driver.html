@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>بسيطة · المندوب</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -72,7 +72,7 @@ p.lsub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
 .btn-p{background:var(--ac);color:#fff;box-shadow:0 10px 26px -10px rgba(91,110,245,.55)}
 .btn-o{background:var(--surf);border:1.5px solid var(--line);color:var(--txt)}
 
-.astage{flex:1;display:none;flex-direction:column;padding:26px 24px;position:relative;overflow-y:auto}
+.astage{flex:1;display:none;flex-direction:column;padding:calc(26px + env(safe-area-inset-top)) 24px calc(20px + env(safe-area-inset-bottom));position:relative;overflow-y:auto}
 .astage.on{display:flex;animation:slideIn .4s cubic-bezier(.2,.8,.2,1)}
 @keyframes slideIn{from{opacity:0;transform:translateX(16px)}}
 .aback{width:36px;height:36px;border-radius:11px;background:var(--surf2);display:grid;place-items:center;
@@ -81,6 +81,47 @@ p.lsub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
 .aprog i{height:4px;flex:1;border-radius:3px;background:var(--line);font-style:normal}
 .aprog i.on{background:var(--ac)}
 .hero-ill{width:100%;max-width:220px;height:170px;margin:6px auto 20px}
+
+/* ═══════════ بانر قوة الشبكة — صفحة "انضم كمندوب" قبل الدخول ═══════════ */
+.vhero{position:relative;overflow:hidden;border-radius:26px;margin:4px 0 18px;padding:20px 19px 18px;
+  isolation:isolate;background:linear-gradient(158deg,#0E1030 0%,#171B4A 55%,#0E1030 100%);
+  box-shadow:0 28px 60px -26px rgba(91,110,245,.5),0 1px 0 rgba(255,255,255,.06) inset}
+.vhero::before,.vhero::after{content:"";position:absolute;border-radius:50%;z-index:0;filter:blur(2px)}
+.vhero::before{width:180px;height:180px;inset:-70px -50px auto auto;
+  background:radial-gradient(circle,rgba(154,168,255,.55),transparent 70%);animation:vFloat1 7s ease-in-out infinite}
+.vhero::after{width:150px;height:150px;inset:auto auto -60px -40px;
+  background:radial-gradient(circle,rgba(0,182,122,.32),transparent 70%);animation:vFloat2 8.5s ease-in-out infinite}
+@keyframes vFloat1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-12px,10px) scale(1.08)}}
+@keyframes vFloat2{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(10px,-10px) scale(1.1)}}
+.vhero-grid{position:absolute;inset:0;z-index:0;opacity:.5;
+  background-image:radial-gradient(rgba(154,168,255,.18) 1px,transparent 1.4px);
+  background-size:16px 16px;mask-image:radial-gradient(ellipse 100% 80% at 50% 20%,#000 40%,transparent 90%)}
+.vhero-shine{position:absolute;inset:0;z-index:1;pointer-events:none;mix-blend-mode:overlay;
+  background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,.5) 50%,transparent 60%);
+  background-size:260% 260%;background-position:160% 160%;animation:vShine 5.5s ease-in-out infinite}
+@keyframes vShine{0%,60%{background-position:160% 160%}100%{background-position:-40% -40%}}
+.vhero-in{position:relative;z-index:2}
+.vhero-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:13px}
+.vhero-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.1);
+  border:1px solid rgba(154,168,255,.4);color:#C3CBFF;font-size:10px;font-weight:700;
+  padding:5px 10px;border-radius:999px;white-space:nowrap}
+.vhero-live{display:flex;align-items:center;gap:5px;font-size:9.5px;color:#B6BBDD;font-weight:600;white-space:nowrap}
+.vhero-live i{width:6px;height:6px;border-radius:50%;background:#8C9BFF;display:block;box-shadow:0 0 0 0 rgba(140,155,255,.6);animation:vPulse 2s infinite}
+@keyframes vPulse{0%{box-shadow:0 0 0 0 rgba(140,155,255,.55)}70%{box-shadow:0 0 0 7px rgba(140,155,255,0)}100%{box-shadow:0 0 0 0 rgba(140,155,255,0)}}
+.vhero h2{font-family:'Cairo';font-weight:900;font-size:19px;line-height:1.42;color:#fff;letter-spacing:-.2px}
+.vhero h2 b{color:#9AA8FF}
+.vhero .vh-sub{font-size:12px;color:#B6BBDD;margin-top:8px;line-height:1.75}
+.vhero-stats{display:flex;gap:7px;margin-top:16px}
+.vhero-stat{flex:1;text-align:center;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);
+  border-radius:14px;padding:9px 3px 8px;backdrop-filter:blur(8px);opacity:0;transform:translateY(8px);
+  animation:vPop .5s cubic-bezier(.2,.8,.2,1) forwards}
+.vhero-stat:nth-child(1){animation-delay:.15s}.vhero-stat:nth-child(2){animation-delay:.3s}.vhero-stat:nth-child(3){animation-delay:.45s}
+@keyframes vPop{to{opacity:1;transform:none}}
+.vhero-stat b{display:block;font-family:'Cairo';font-weight:800;font-size:14px;color:#9AA8FF;font-variant-numeric:tabular-nums}
+.vhero-stat span{display:block;font-size:9px;color:#9198C2;margin-top:2px;line-height:1.4}
+.vhero-trust{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+.vhero-trust span{font-size:9.5px;color:#D3D6F2;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
+  padding:4px 9px;border-radius:999px}
 .wmark{width:72px;height:72px;margin:0 auto 22px}
 h1.atitle{font-size:23px;text-align:center;line-height:1.4}
 p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-height:1.7}
@@ -116,7 +157,7 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
 /* ═══ التطبيق الأساسي ═══ */
 #mainApp{position:absolute;inset:0;display:flex;flex-direction:column;opacity:0;transition:opacity .5s ease .1s}
 #mainApp.show{opacity:1}
-.top{padding:14px 16px 12px;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20;
+.top{padding:calc(14px + env(safe-area-inset-top)) 16px 12px;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20;
   background:rgba(246,247,252,.92);backdrop-filter:blur(14px)}
 .top-r{display:flex;align-items:center;gap:10px}
 .mark{width:30px;height:30px;flex:0 0 auto}
@@ -131,7 +172,7 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
   display:grid;place-items:center;font-family:'Cairo';font-size:15px;flex:0 0 auto}
 .me b{font-size:14px;display:block}
 .status-tg{margin-inline-start:auto;display:flex;background:var(--surf2);border-radius:11px;padding:3px;gap:2px}
-.float-support{position:absolute;bottom:calc(var(--nav) + 14px);inset-inline-start:14px;z-index:35;
+.float-support{position:absolute;bottom:calc(var(--nav) + env(safe-area-inset-bottom) + 14px);inset-inline-start:14px;z-index:35;
   height:44px;padding:0 16px 0 14px;border-radius:999px;background:var(--ac);color:#fff;font-size:13.5px;font-weight:700;border:0;
   display:flex;align-items:center;gap:7px;font-family:'Cairo',inherit;box-shadow:0 12px 26px -8px rgba(91,110,245,.55)}
 .float-support i{font-style:normal;font-size:19px}
@@ -142,7 +183,7 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
 .status-tg button[aria-pressed="true"]{background:var(--ok);color:#fff}
 .status-tg button.busy[aria-pressed="true"]{background:var(--warn);color:#211602}
 
-.body{flex:1;overflow-y:auto;padding-bottom:calc(var(--nav) + 12px)}
+.body{flex:1;overflow-y:auto;padding-bottom:calc(var(--nav) + env(safe-area-inset-bottom) + 12px)}
 .body::-webkit-scrollbar{width:0}
 .pad{padding:0 16px}
 .chips{display:flex;gap:7px;overflow-x:auto;padding:14px 16px 4px;scrollbar-width:none}
@@ -191,7 +232,7 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
 .btn-ok2{background:var(--ok);color:#fff}
 .btn-o2{background:var(--surf2);border:1px solid var(--line);color:var(--txt)}
 
-.nav{position:absolute;inset-inline:0;bottom:0;height:var(--nav);background:rgba(255,255,255,.97);
+.nav{position:absolute;inset-inline:0;bottom:0;height:calc(var(--nav) + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);background:rgba(255,255,255,.97);
   backdrop-filter:blur(14px);border-top:1px solid var(--line);display:flex;z-index:40}
 .nav button{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
   color:var(--txt3);font-size:10px;font-weight:600;position:relative}
@@ -254,16 +295,27 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
   <div id="loginFlow">
 
     <div class="astage on" id="dst-welcome">
-      <div class="spacer" style="flex:.3"></div>
-      <svg class="hero-ill" viewBox="0 0 220 170"><defs><radialGradient id="dg1"><stop offset="0%" stop-color="#7C8CF8" stop-opacity=".25"/><stop offset="100%" stop-color="#7C8CF8" stop-opacity="0"/></radialGradient></defs>
-        <circle cx="110" cy="85" r="82" fill="url(#dg1)"/>
-        <circle cx="110" cy="95" r="34" fill="#fff" stroke="#5B6EF5" stroke-width="2"/>
-        <rect x="94" y="85" width="32" height="20" rx="4" fill="#EAECFE"/>
-        <circle cx="88" cy="118" r="10" fill="#151833"/><circle cx="132" cy="118" r="10" fill="#151833"/>
-        <path d="M60 105 L94 95" stroke="#5B6EF5" stroke-width="3" stroke-linecap="round"/>
-        <circle cx="150" cy="60" r="6" fill="#00B67A"/></svg>
-      <h1 class="atitle">انضم كمندوب توصيل<br>واكسب من وقتك</h1>
-      <p class="asub">استقبل مهام قريبة منك وسلّم بجدولك الخاص</p>
+      <div class="spacer" style="flex:.12"></div>
+      <div class="vhero">
+        <span class="vhero-grid"></span><span class="vhero-shine"></span>
+        <div class="vhero-in">
+          <div class="vhero-top">
+            <span class="vhero-badge">🇪🇬 شبكة مناديب بسيطة</span>
+            <span class="vhero-live"><i></i> مهام قريبة منك دلوقتي</span>
+          </div>
+          <h2>انضم <b>كمندوب توصيل</b><br>واكسب من وقتك</h2>
+          <p class="vh-sub">استقبل مهام قريبة منك وسلّم بجدولك الخاص — وكل عملية دفع بتوصلك على طول</p>
+          <div class="vhero-stats">
+            <div class="vhero-stat"><b class="num">+٨٠٠</b><span>مندوب موثّق</span></div>
+            <div class="vhero-stat"><b class="num">فوري</b><span>دفع أرباحك</span></div>
+            <div class="vhero-stat"><b class="num">قريبة</b><span>مهام حواليك</span></div>
+          </div>
+          <div class="vhero-trust">
+            <span>✅ توثيق هوية</span><span>🗺️ توجيه دقيق</span><span>💵 أرباح واضحة</span>
+          </div>
+        </div>
+      </div>
+      <p class="asub" style="margin-top:0">استقبل مهام قريبة منك وسلّم بجدولك الخاص</p>
       <div class="spacer"></div>
       <button class="btn btn-p" onclick="dGoAuth('phone')">سجّل كمندوب جديد</button>
       <button class="btn btn-o mt" onclick="dGoAuth('login')">عندي حساب بالفعل</button>
@@ -1011,12 +1063,7 @@ function vTasks(){
       </div>
       <div style="height:6px;background:rgba(255,255,255,.14);border-radius:4px;overflow:hidden">
         <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#7C8CF8,#5FD4E8);border-radius:4px;transition:width .6s"></div></div>
-    </div>
-    <button class="brandbanner" onclick="openVillageImpact()">
-      <div class="bb-ic">🌾</div>
-      <div><b>شغل حقيقي جوه قريتك</b>
-        <span>توصيل موثّق يحمي حقك وحق العميل من أول لحظة · اعرف أكتر ‹</span></div>
-    </button></div>`;
+    </div></div>`;
   if(!S.tasks.length)return goalBanner+`<div class="empty" style="padding-top:0"><div class="e">🛵</div><h4>مفيش مهام دلوقتي</h4>
     <p class="tiny">لما التاجر يعيّنك، هتظهر هنا فورًا</p></div>`;
   return goalBanner+`<div class="pad" style="padding-top:0">
@@ -1098,6 +1145,8 @@ function vWallet(){
         <span class="bdg ${t.status==='paid'?'b-ok':'b-new'}" style="display:block;margin-top:3px">${t.status==='paid'?'اتصرفت':'معلّقة'}</span></span>
     </div>`).join('')}</div>`:`<div class="empty"><div class="e">🎁</div><h4>مفيش إكراميات لسه</h4>
       <p class="tiny">هتظهر هنا أول ما عميل يديك واحدة</p></div>`}
+    <button onclick="openVillageImpact()" style="width:100%;text-align:center;margin-top:6px">
+      <p class="tiny muted">🌾 قصة بسيطة — شغل حقيقي جوه قريتك</p></button>
     <div style="height:12px"></div></div>`;
 }
 const V={tasks:vTasks,history:vHistory,wallet:vWallet};
