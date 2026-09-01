@@ -227,6 +227,14 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
 .empty{text-align:center;padding:50px 22px;color:var(--txt3)}
 .empty .e{font-size:42px}
 .empty h4{font-size:15px;color:var(--txt);margin:10px 0 5px}
+.bellBadge{display:none;position:absolute;top:-3px;left:-3px;min-width:16px;height:16px;border-radius:8px;background:var(--danger);
+  color:#fff;font-size:9.5px;font-weight:800;align-items:center;justify-content:center;padding:0 3px;font-family:'Cairo'}
+.inboxOverlay{position:fixed;inset:0;background:rgba(10,12,30,.45);z-index:300}
+.inboxPanel{position:fixed;inset-inline:0;bottom:0;max-width:412px;margin:0 auto;background:var(--surf);border-radius:22px 22px 0 0;
+  z-index:301;max-height:78vh;display:flex;flex-direction:column;box-shadow:0 -20px 50px -20px rgba(0,0,0,.35);animation:inboxUp .3s cubic-bezier(.2,.8,.2,1)}
+@keyframes inboxUp{from{transform:translateY(30px);opacity:0}}
+.inboxItem{display:flex;gap:11px;align-items:flex-start;padding:13px 4px;border-bottom:1px solid var(--line)}
+.inboxItem:last-child{border-bottom:0}
 .toast{position:absolute;bottom:calc(var(--nav) + 16px);inset-inline:15px;background:#1A1710;color:#fff;
   padding:12px 15px;border-radius:13px;font-size:12.5px;z-index:60;
   transform:translateY(20px);opacity:0;transition:.3s;pointer-events:none;text-align:center}
@@ -358,6 +366,7 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
           <circle cx="25" cy="11" r="3" fill="#00B67A"/></svg>
         <div class="brand"><b>بسيطة</b><span>لوحة التاجر</span></div>
         <button class="live" style="border:0;background:rgba(0,0,0,.04);border-radius:9px;padding:5px 9px;margin-inline-start:auto" onclick="openSettings()">⚙️ الإعدادات</button>
+        <button style="border:0;background:rgba(0,0,0,.04);border-radius:9px;width:34px;height:34px;position:relative;display:grid;place-items:center;flex:0 0 auto" onclick="openInbox()" aria-label="الإشعارات">🔔<span id="bellBadge" class="bellBadge"></span></button>
       </div>
       <div class="shop"><span class="dot-open"></span> <span id="shopIconEl">🛒</span> <b id="shopNameEl">ماركت أبو حمزة</b> · مفتوح</div>
     </div>
@@ -511,6 +520,49 @@ function playNotifySound(){
 function toast(m){playNotifySound();const t=document.getElementById('toast');if(!t)return;t.textContent=m;t.classList.add('show');
   clearTimeout(window._tT);window._tT=setTimeout(()=>t.classList.remove('show'),2600)}
 
+/* ═══ نظام الإشعارات (بيل/إن‌بوكس) ═══ */
+const INBOX_KEY='basita_inbox_'+ROLE;
+function loadInbox(){ try{return JSON.parse(localStorage.getItem(INBOX_KEY)||'[]')}catch(e){return []} }
+S.inbox=loadInbox();
+function saveInbox(){ try{localStorage.setItem(INBOX_KEY,JSON.stringify(S.inbox.slice(0,80)))}catch(e){} }
+function notify(text){
+  S.inbox.unshift({id:Math.random().toString(36).slice(2),text,at:new Date().toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'}),read:false});
+  if(S.inbox.length>80)S.inbox.length=80;
+  saveInbox(); renderBell(); toast(text);
+}
+function renderBell(){
+  const n=S.inbox.filter(x=>!x.read).length; const b=document.getElementById('bellBadge'); if(!b)return;
+  b.style.display=n?'flex':'none'; b.textContent=n>9?'9+':n;
+}
+function openInbox(){
+  closeInbox();
+  const wrap=document.createElement('div'); wrap.id='inboxWrap';
+  wrap.innerHTML=`<div class="inboxOverlay" onclick="closeInbox()"></div>
+    <div class="inboxPanel">
+      <div style="width:38px;height:4px;background:var(--line);border-radius:3px;margin:10px auto 4px;flex:0 0 auto"></div>
+      <div style="display:flex;align-items:center;padding:8px 18px 12px;gap:10px;flex:0 0 auto">
+        <b class="kufi" style="font-size:16px">🔔 الإشعارات</b>
+        <button onclick="markAllInboxRead()" style="margin-inline-start:auto;font-size:12px;color:var(--ac-d);font-weight:700">تحديد الكل كمقروء</button>
+        <button onclick="closeInbox()" style="width:30px;height:30px;border-radius:10px;background:var(--surf2);display:grid;place-items:center;flex:0 0 auto">✕</button>
+      </div>
+      <div style="overflow-y:auto;padding:0 18px 18px" id="inboxList"></div>
+    </div>`;
+  document.body.appendChild(wrap);
+  renderInboxList();
+}
+function renderInboxList(){
+  const el=document.getElementById('inboxList'); if(!el)return;
+  if(!S.inbox.length){ el.innerHTML=`<div style="text-align:center;padding:44px 10px;color:var(--txt3)">
+    <div style="font-size:34px;margin-bottom:8px">📭</div>مفيش إشعارات لسه</div>`; return; }
+  el.innerHTML=S.inbox.map(n=>`<div class="inboxItem" style="${n.read?'opacity:.55':''}">
+    <span style="flex:1"><div style="font-size:13.5px;line-height:1.65">${n.text}</div>
+    <div class="tiny" style="color:var(--txt3);margin-top:3px">${n.at}</div></span>
+    ${n.read?'':'<span style="width:8px;height:8px;border-radius:50%;background:var(--ac);margin-top:6px;flex:0 0 auto"></span>'}
+  </div>`).join('');
+}
+function markAllInboxRead(){ S.inbox.forEach(n=>n.read=true); saveInbox(); renderBell(); renderInboxList(); }
+function closeInbox(){ document.getElementById('inboxWrap')?.remove(); }
+
 const STAGES=['placed','accepted','assigned','picked','delivering','delivered'];
 const SLABEL={placed:'جديد',accepted:'اتقبل',assigned:'اتعيّن مندوب',picked:'المندوب استلم',
   delivering:'في الطريق',delivered:'اتسلّم'};
@@ -556,15 +608,15 @@ onBus(d=>{
   if(d.type==='driver:online'&&d.to&&d.to.includes('merchant')){ S.availableDriver={name:d.driverName,vehicle:d.vehicle}; }
   if(d.type==='shift:settle_request'&&d.to&&d.to.includes('merchant')){
     S.pendingSettlement={driverName:d.driverName,amount:d.amount};
-    render(); toast('💰 '+d.driverName+' عايز يسلّمك كاش المناوبة');
+    render(); notify('💰 '+d.driverName+' عايز يسلّمك كاش المناوبة');
     return;
   }
   if(d.type==='support:reply'&&d.to&&d.to.includes('merchant')){
-    toast('📩 وصلك رد من الدعم الفني'); openSupportReplySheet(d.ticketId,d.reply); return;
+    notify('📩 وصلك رد من الدعم الفني'); openSupportReplySheet(d.ticketId,d.reply); return;
   }
   if(d.type==='feedback:submitted'&&d.to&&d.to.includes('merchant')){
     S.reviews.unshift({orderId:d.orderId,rating:d.merchantRating,complaint:d.complaint,customerName:d.customerName});
-    toast(d.complaint?'⚠️ شكوى جديدة من '+d.customerName:'⭐ تقييم جديد: '+d.merchantRating+'/5');
+    notify(d.complaint?'⚠️ شكوى جديدة من '+d.customerName:'⭐ تقييم جديد: '+d.merchantRating+'/5');
   }
   if(!d.to||!d.to.includes('merchant'))return;
   if(d.type==='order:new'){
@@ -574,7 +626,7 @@ onBus(d=>{
     const key=o.ph||o.name;
     S.customerStats[key]=(S.customerStats[key]||0)+1;
     o.loyal=S.customerStats[key]>=5;
-    toast('طلب جديد وصل من العميل ✓');
+    notify('طلب جديد وصل من العميل ✓');
   }
   if(d.type==='order:status'){
     const o=S.orders.find(x=>x.id===d.orderId); if(o){o.stage=d.status;o._flash=true}
@@ -582,7 +634,7 @@ onBus(d=>{
   if(d.type==='merchant:approved'&&d.to&&d.to.includes('merchant')&&d.merchantId===S.merchantId){
     document.getElementById('pendingApproval').style.display='none';
     S.sub={status:'trial',daysLeft:14,price:99};
-    toast('🎉 صاحب المنصة وافق على متجرك!');
+    notify('🎉 صاحب المنصة وافق على متجرك!');
     proceedToStoreOpen();
     return;
   }
@@ -606,7 +658,7 @@ onBus(d=>{
   if(d.type==='subscription:confirmed'){
     S.sub={status:'active',daysLeft:30,price:99};
     S.pendingPaymentReceipt=null;
-    toast('✅ تم تأكيد اشتراكك من الإدارة — شكرًا لثقتك 🎉');
+    notify('✅ تم تأكيد اشتراكك من الإدارة — شكرًا لثقتك 🎉');
   }
   render();
 });
@@ -1072,6 +1124,7 @@ function uploadShopPhoto(input){
 const V={list:vList,products:vProducts,acct:vAcct,qr:vQR,stats:vStats};
 const NAV=[['list','📥','الطلبات'],['products','🏷️','منتجاتي'],['acct','🧮','المحاسبة'],['qr','🔗','متجرك'],['stats','📊','إحصائيات']];
 function render(){
+  renderBell();
   const nw=S.orders.filter(o=>o.stage==='placed').length;
   $('#kpis').innerHTML=`
     <div class="kpi"><div class="l">طلبات جديدة</div><div class="v ${nw?'warn':''} num">${nw}</div></div>
