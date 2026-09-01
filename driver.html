@@ -337,6 +337,39 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
         <input id="dPass" type="password" placeholder="••••••••" style="text-align:center"></div>
       <div class="spacer"></div>
       <button class="btn btn-p" onclick="doLogin()">دخول</button>
+      <button style="margin-top:14px;background:none;border:0;color:var(--ac-d);font-family:'Cairo';font-weight:700;
+        font-size:12.5px;text-decoration:underline;cursor:pointer" onclick="dGoAuth('forgot')">نسيت كلمة المرور؟</button>
+    </div>
+
+    <div class="astage" id="dst-forgot">
+      <button class="aback" onclick="dGoAuth('login')">→</button>
+      <div class="confirmPhoneIc">🔑</div>
+      <h1 class="atitle">استرجاع كلمة المرور</h1>
+      <p class="asub">اكتب رقم موبايلك المسجّل كمندوب</p>
+      <div class="fld mt"><label>رقم الموبايل</label>
+        <input id="fpPhone" type="tel" dir="ltr" placeholder="01xxxxxxxxx" style="text-align:center;font-family:'Cairo'"></div>
+      <div class="spacer"></div>
+      <button class="btn btn-p" onclick="startForgotPass()">التالي</button>
+    </div>
+
+    <div class="astage" id="dst-forgot2">
+      <button class="aback" onclick="dGoAuth('forgot')">→</button>
+      <div class="confirmPhoneIc">📱</div>
+      <h1 class="atitle">ده رقمك صح؟</h1>
+      <div class="phoneBig num" id="fpPhoneShow" dir="ltr"></div>
+      <p class="asub">هنسمحلك تحط كلمة مرور جديدة بمجرد التأكيد</p>
+      <div class="spacer"></div>
+      <button class="btn btn-p" onclick="dGoAuth('forgot3')">✓ أيوه، الرقم صح</button>
+    </div>
+
+    <div class="astage" id="dst-forgot3">
+      <div class="confirmPhoneIc">🔒</div>
+      <h1 class="atitle">كلمة مرور جديدة</h1>
+      <p class="asub">اختار كلمة مرور جديدة لحسابك</p>
+      <div class="fld mt"><label>كلمة المرور الجديدة</label><input id="fpNewPass" type="password" placeholder="••••••••"></div>
+      <div class="fld"><label>تأكيد كلمة المرور</label><input id="fpNewPassConf" type="password" placeholder="••••••••"></div>
+      <div class="spacer"></div>
+      <button class="btn btn-p" onclick="saveForgotPass()">حفظ وتسجيل الدخول</button>
     </div>
 
     <div class="astage" id="dst-phone">
@@ -397,7 +430,29 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
         <button class="btn btn-o" style="width:100%" onclick="document.getElementById('dSelfieFile').click()" id="dSelfieBtn">🤳 ارفع صورتك الشخصية</button>
         <img id="dSelfiePreview" style="display:none;width:100%;border-radius:12px;margin-top:8px;max-height:160px;object-fit:cover"></div>
       <div class="spacer"></div>
-      <button class="btn btn-p" onclick="finishDriverSignup()">إنهاء التسجيل</button>
+      <button class="btn btn-p" onclick="dGoAuth('agreement')">التالي</button>
+    </div>
+
+    <div class="astage" id="dst-agreement">
+      <button class="aback" onclick="dGoAuth('verify')">→</button>
+      <svg class="wmark" viewBox="0 0 72 72"><circle cx="36" cy="36" r="36" fill="#EAECFE"/>
+        <path d="M24 26h24v28l-12-6-12 6V26Z" fill="none" stroke="#5B6EF5" stroke-width="2.6" stroke-linejoin="round"/></svg>
+      <h1 class="atitle">اتفاقية المندوب</h1>
+      <p class="asub">اقرأها كويس قبل ما توافق</p>
+      <div class="card mt" style="padding:16px;max-height:260px;overflow-y:auto;text-align:right;line-height:2;font-size:13px;color:var(--txt2)">
+        <b style="color:var(--txt);display:block;margin-bottom:8px">بصفتي مندوب توصيل على منصة بسيطة، أقرّ وأوافق على الآتي:</b>
+        ١. أنا المسؤول الوحيد عن أي تلفيات أو فقد يحصل للطلبات وأنا في عهدتي، من لحظة استلامها من التاجر لحد تسليمها للعميل.<br><br>
+        ٢. في حالة ضياع أو تلف أي طلب بسبب إهمالي، ألتزم بتعويض قيمته كاملة للتاجر و/أو العميل.<br><br>
+        ٣. ألتزم بالتعامل بأمانة مع كل الكاش اللي بيتحصّل من العملاء، وتسليمه للتاجر بالكامل وفي وقته.<br><br>
+        ٤. بياناتي (البطاقة الشخصية والصورة الشخصية) هتتحفظ عند إدارة المنصة للتحقق من الهوية وحماية أمان العملاء والمنصة.<br><br>
+        ٥. أي مخالفة لبنود الاتفاقية دي ممكن تؤدي لإيقاف حسابي نهائيًا من غير إنذار مسبق.
+      </div>
+      <div class="fld mt" style="display:flex;align-items:flex-start;gap:10px;background:var(--surf2);padding:13px;border-radius:12px">
+        <input type="checkbox" id="dAgreeCheck" style="width:20px;height:20px;margin-top:1px;flex:0 0 auto">
+        <label for="dAgreeCheck" style="font-size:12.5px;line-height:1.7;color:var(--txt)">قرأت الاتفاقية وموافق على كل بنودها، وأتحمّل المسؤولية الكاملة زي ما هو موضّح فوق</label>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn btn-p" onclick="finishDriverSignup()">أوافق وأنهي التسجيل</button>
     </div>
 
   </div>
@@ -453,6 +508,16 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
 
 <script>
 const ROLE='driver';
+/* ═══════════ الاتصال بقاعدة البيانات الحقيقية (Supabase) ═══════════ */
+const SUPABASE_URL='https://vymfhyleoekbhxuojudl.supabase.co';
+const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5bWZoeWxlb2VrYmh4dW9qdWRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgyNTUxMjgsImV4cCI6MjEwMzgzMTEyOH0.euxtZVpwZGa023UyFzbY2zgdj0fXjWETLqkZY_5fTCQ';
+const sb=(window.supabase&&window.supabase.createClient)?window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY):null;
+if(!sb) console.error('basita: تعذّر تحميل مكتبة Supabase — هيرجع النظام للمزامنة المحلية بس');
+async function hashPassword(pw){
+  const enc=new TextEncoder().encode(pw);
+  const buf=await crypto.subtle.digest('SHA-256',enc);
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
 const bc=('BroadcastChannel' in window)?new BroadcastChannel('basita_sync'):null;
 function emit(msg){
   msg.__basita=true; msg.from=ROLE; msg.ts=Date.now(); msg.id=msg.id||Math.random().toString(36).slice(2);
@@ -527,24 +592,64 @@ function previewDriverDoc(input,kind){
   };
   reader.readAsDataURL(file);
 }
-function finishDriverSignup(){
+async function finishDriverSignup(){
   if(!dDocs.idCard){toast('لازم ترفع صورة البطاقة الشخصية');return}
   if(!dDocs.selfie){toast('لازم ترفع صورتك الشخصية');return}
+  if(!document.getElementById('dAgreeCheck').checked){toast('لازم توافق على بنود الاتفاقية الأول');return}
   const name=document.getElementById('dName').value.trim();
   const vehicle=document.getElementById('dVehicle').value;
   const pass=document.getElementById('dNewPass').value;
   S.driverName=name; S.vehicle=vehicle; S.password=pass; S.phone=dSignupPhone;
-  S.driverId=S.driverId||('d_'+(dSignupPhone||Math.random().toString(36).slice(2)));
   S.idCardPhoto=dDocs.idCard; S.selfiePhoto=dDocs.selfie; S.verifyStatus='pending';
   applyDriverIdentity();
-  emit({to:['owner'],type:'driver:register',driverId:S.driverId,driverName:name,vehicle,phone:S.phone,
-    idCardPhoto:dDocs.idCard,selfiePhoto:dDocs.selfie});
+  document.getElementById('loginFlow').classList.remove('show');
+  if(sb){
+    try{
+      const idBlob=await (await fetch(dDocs.idCard)).blob();
+      const selfieBlob=await (await fetch(dDocs.selfie)).blob();
+      const stamp=Date.now();
+      const {error:e1}=await sb.storage.from('driver-ids').upload(stamp+'-id.jpg',idBlob,{upsert:true});
+      const {error:e2}=await sb.storage.from('driver-selfies').upload(stamp+'-selfie.jpg',selfieBlob,{upsert:true});
+      const idUrl=sb.storage.from('driver-ids').getPublicUrl(stamp+'-id.jpg').data.publicUrl;
+      const selfieUrl=sb.storage.from('driver-selfies').getPublicUrl(stamp+'-selfie.jpg').data.publicUrl;
+      const pass_hash=await hashPassword(pass);
+      const {data,error}=await sb.from('drivers').insert({
+        name,phone:dSignupPhone,password_hash:pass_hash,vehicle,status:'pending_review',
+        id_card_photo_url:idUrl,selfie_photo_url:selfieUrl,agreement_accepted:true,agreement_accepted_at:new Date().toISOString()
+      }).select().single();
+      if(error){ console.error('basita: فشل تسجيلك',error); toast('حصلت مشكلة — جرّب تاني'); return; }
+      S.driverId=data.id;
+      subscribeMyApproval();
+    }catch(err){ console.error('basita:',err); toast('حصلت مشكلة في رفع الصور — جرّب تاني'); return; }
+  }else{
+    S.driverId=S.driverId||('d_'+(dSignupPhone||Math.random().toString(36).slice(2)));
+    emit({to:['owner'],type:'driver:register',driverId:S.driverId,driverName:name,vehicle,phone:S.phone,
+      idCardPhoto:dDocs.idCard,selfiePhoto:dDocs.selfie});
+  }
   saveState();
   toast('اتبعتت بياناتك للمراجعة 🎉');
-  document.getElementById('loginFlow').classList.remove('show');
   setTimeout(()=>document.getElementById('pendingReview').classList.add('show'),350);
 }
-function checkDriverApproval(){
+function subscribeMyApproval(){
+  if(!sb||!S.driverId)return;
+  sb.channel('my-driver-approval-'+S.driverId)
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'drivers',filter:'id=eq.'+S.driverId},payload=>{
+      if(payload.new.status==='approved'){
+        S.verifyStatus='approved';
+        document.getElementById('pendingReview').classList.remove('show');
+        setTimeout(()=>document.getElementById('shiftStart').classList.add('show'),300);
+        toast('🎉 صاحب المنصة وافق على هويتك!');
+      }else if(payload.new.status==='rejected'){
+        S.verifyStatus='rejected'; toast('اعتذرت الإدارة عن طلبك — تواصل مع الدعم');
+      }
+    }).subscribe();
+}
+async function checkDriverApproval(){
+  if(sb&&S.driverId){
+    const {data}=await sb.from('drivers').select('status').eq('id',S.driverId).maybeSingle();
+    if(data&&data.status==='approved'){ S.verifyStatus='approved'; }
+    else if(data&&data.status==='rejected'){ S.verifyStatus='rejected'; }
+  }
   if(S.verifyStatus==='approved'){
     document.getElementById('pendingReview').classList.remove('show');
     setTimeout(()=>document.getElementById('shiftStart').classList.add('show'),300);
@@ -559,14 +664,46 @@ function applyDriverIdentity(){
   document.getElementById('topAv').textContent=initial;
   document.getElementById('topName').textContent=n;
 }
-function doLogin(){
+let fpDriverId=null;
+async function startForgotPass(){
+  const ph=document.getElementById('fpPhone').value.trim();
+  if(!/^01[0125]\d{8}$/.test(ph)){toast('اكتب رقم موبايل صحيح');return}
+  if(!sb){toast('محتاجين اتصال بقاعدة البيانات — جرّب تاني بعدين');return}
+  const {data,error}=await sb.from('drivers').select('id,phone').eq('phone',ph).maybeSingle();
+  if(error||!data){toast('مفيش مندوب مسجّل بالرقم ده');return}
+  fpDriverId=data.id;
+  document.getElementById('fpPhoneShow').textContent=ph;
+  dGoAuth('forgot2');
+}
+async function saveForgotPass(){
+  const n=document.getElementById('fpNewPass').value, c=document.getElementById('fpNewPassConf').value;
+  if(n.length<4){toast('كلمة المرور قصيرة أوي');return}
+  if(n!==c){toast('كلمة المرور والتأكيد مش متطابقين');return}
+  const hash=await hashPassword(n);
+  const {error}=await sb.from('drivers').update({password_hash:hash}).eq('id',fpDriverId);
+  if(error){ console.error('basita:',error); toast('حصلت مشكلة — جرّب تاني');return }
+  toast('اتغيّرت كلمة المرور بنجاح ✓ — سجّل دخولك بيها دلوقتي');
+  document.getElementById('dPhone').value=document.getElementById('fpPhoneShow').textContent;
+  dGoAuth('login');
+}
+async function doLogin(){
   const ph=document.getElementById('dPhone').value.trim();
   const pass=document.getElementById('dPass').value;
   if(!/^01[0125]\d{8}$/.test(ph)){toast('اكتب رقم موبايل صحيح');return}
   if(!pass){toast('اكتب كلمة المرور');return}
-  if(!S.password) S.password=pass;
-  S.driverId=S.driverId||('d_'+ph);
-  S.phone=S.phone||ph;
+  if(sb){
+    const {data,error}=await sb.from('drivers').select('*').eq('phone',ph).maybeSingle();
+    if(error){ console.error('basita:',error); toast('حصلت مشكلة — جرّب تاني'); return; }
+    if(!data){ toast('مفيش مندوب مسجّل بالرقم ده — سجّل حساب جديد الأول'); return; }
+    const pass_hash=await hashPassword(pass);
+    if(pass_hash!==data.password_hash){ toast('كلمة المرور غلط'); return; }
+    if(data.status!=='approved'){ toast('حسابك لسه بانتظار مراجعة الأمان'); return; }
+    S.driverId=data.id; S.driverName=data.name; S.vehicle=data.vehicle; S.phone=data.phone; S.password=pass;
+  }else{
+    if(!S.password) S.password=pass;
+    S.driverId=S.driverId||('d_'+ph);
+    S.phone=S.phone||ph;
+  }
   applyDriverIdentity();
   document.getElementById('loginFlow').classList.remove('show');
   setTimeout(()=>document.getElementById('shiftStart').classList.add('show'),350);
@@ -579,7 +716,8 @@ function startShift(){
       document.getElementById('shiftStart').classList.remove('show');
       document.getElementById('mainApp').classList.add('show');
       render();
-      emit({to:['merchant','owner'],type:'driver:online',driverId:S.driverId,driverName:S.driverName||'كريم عبد الله',vehicle:S.vehicle||'🛵'});
+      if(sb&&S.driverId){ sb.from('drivers').update({is_available:true}).eq('id',S.driverId).then(()=>{}); subscribeMyTasks(); subscribeMyTickets(); }
+      else emit({to:['merchant','owner'],type:'driver:online',driverId:S.driverId,driverName:S.driverName||'كريم عبد الله',vehicle:S.vehicle||'🛵'});
       if('Notification' in window && Notification.permission==='default') Notification.requestPermission();
       if(S.avail) startLocBroadcast();
       toast('بدأت مناوبتك — مستني أول مهمة');
@@ -701,7 +839,7 @@ onBus(d=>{
     render(); toast('🗑️ اتصفّرت بيانات المهام من لوحة المالك');
     return;
   }
-  if(d.type==='support:reply'&&d.to&&d.to.includes('driver')){
+  if(d.type==='support:reply'&&d.to&&d.to.includes('driver')&&!sb){
     notify('📩 وصلك رد من الدعم الفني'); openSupportReplySheet(d.ticketId,d.reply); return;
   }
   if(d.type==='driver:approved'&&d.to&&d.to.includes('driver')&&d.driverId===S.driverId){
@@ -730,18 +868,18 @@ onBus(d=>{
     return;
   }
   if(!d.to||!d.to.includes('driver'))return;
-  if(d.type==='tip:sent'&&d.to&&d.to.includes('driver')){
+  if(d.type==='tip:sent'&&d.to&&d.to.includes('driver')&&!sb){
     S.tips.unshift({orderId:d.orderId,amount:d.amount,customerName:d.customerName,status:'pending',
       at:new Date().toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'})});
     notify('🎁 إكرامية جديدة: '+d.amount+' ج من '+d.customerName);
     render(); return;
   }
-  if(d.type==='tip:payout'&&d.to&&d.to.includes('driver')){
+  if(d.type==='tip:payout'&&d.to&&d.to.includes('driver')&&!sb){
     S.tips.filter(t=>t.status==='pending').forEach(t=>t.status='paid');
     notify('💰 اتصرفت لك إكراميات بقيمة '+d.amount+' ج من صاحب المنصة');
     render(); return;
   }
-  if(d.type==='customer:message'&&d.to&&d.to.includes('driver')){
+  if(d.type==='customer:message'&&d.to&&d.to.includes('driver')&&!sb){
     const t=S.tasks.find(x=>x.id===d.orderId);
     if(t){ t.chatLog=t.chatLog||[]; t.chatLog.unshift({from:'customer',name:'العميل',msg:d.message,
       at:new Date().toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'})}); }
@@ -785,12 +923,28 @@ function openContactSheet(taskId){
   document.getElementById('app').appendChild(el);
 }
 function closeContactSheet(){ document.getElementById('dContactWrap')?.remove(); }
-function sendQuickMsg(msg){
-  emit({to:['customer'],type:'driver:message',orderId:contactTaskId,message:msg,driverName:S.driverName||'كريم عبد الله'});
+async function sendQuickMsg(msg){
+  if(sb){
+    await sb.from('driver_customer_messages').insert({order_id:contactTaskId,from_role:'driver',from_name:S.driverName||'كريم عبد الله',message:msg});
+  }else{
+    emit({to:['customer'],type:'driver:message',orderId:contactTaskId,message:msg,driverName:S.driverName||'كريم عبد الله'});
+  }
   const t=S.tasks.find(x=>x.id===contactTaskId);
   if(t){ t.chatLog=t.chatLog||[]; t.chatLog.unshift({from:'driver',name:'إنت',msg,
     at:new Date().toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'})}); }
   closeContactSheet(); toast('اتبعتت الرسالة للعميل ✓'); render();
+}
+function subscribeTaskChat(orderId){
+  if(!sb)return;
+  sb.channel('chat-'+orderId)
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'driver_customer_messages',filter:'order_id=eq.'+orderId},payload=>{
+      if(payload.new.from_role==='driver')return;
+      const t=S.tasks.find(x=>x.id===orderId);
+      if(t){ t.chatLog=t.chatLog||[]; t.chatLog.unshift({from:'customer',name:payload.new.from_name,msg:payload.new.message,
+        at:new Date(payload.new.created_at).toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'})}); }
+      notify('👤 رسالة من العميل: '+payload.new.message);
+      render();
+    }).subscribe();
 }
 function sendCustomMsg(){
   const v=document.getElementById('customMsg').value.trim();
@@ -854,17 +1008,28 @@ function closePhotoUI(){
   document.getElementById('photoUI').classList.remove('show');
   if(photoStream){ photoStream.getTracks().forEach(t=>t.stop()); photoStream=null; }
 }
-function confirmDeliveryPhoto(){
+async function confirmDeliveryPhoto(){
   if(!capturedPhoto){toast('لازم تلتقط الصورة الأول');return}
   const id=deliverOrderId; const t=S.tasks.find(x=>x.id===id);
   closePhotoUI();
   t.stage='delivered';
-  emit({to:['customer','merchant'],type:'order:status',orderId:id,status:'delivered',photo:capturedPhoto,
-    driverName:S.driverName||'كريم عبد الله',driverId:S.driverId,merchantId:t.merchantId,customerId:t.customerId,total:t.total});
+  if(sb){
+    try{
+      const blob=await (await fetch(capturedPhoto)).blob();
+      const path=id+'-'+Date.now()+'.jpg';
+      await sb.storage.from('delivery-photos').upload(path,blob,{upsert:true});
+      const photoUrl=sb.storage.from('delivery-photos').getPublicUrl(path).data.publicUrl;
+      await sb.from('orders').update({stage:'delivered',delivery_photo_url:photoUrl,closed_at:new Date().toISOString()}).eq('id',id);
+    }catch(err){ console.error('basita: فشل رفع صورة التسليم',err); }
+  }else{
+    emit({to:['customer','merchant'],type:'order:status',orderId:id,status:'delivered',photo:capturedPhoto,
+      driverName:S.driverName||'كريم عبد الله',driverId:S.driverId,merchantId:t.merchantId,customerId:t.customerId,total:t.total});
+  }
   S.shiftTotal+=(t.total||0);
   delete t.addr; delete t.ph; t.closedAt=new Date().toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'});
   S.history.unshift(t); S.tasks=S.tasks.filter(x=>x.id!==id); S.avail=true;
   emit({to:['owner'],type:'ticket:closed',orderId:id});
+  emit({to:['owner'],type:'driver:delivery_completed',driverId:S.driverId,driverName:S.driverName||'كريم عبد الله',amount:t.total||0});
   toast('✓ اتسلّم الطلب بالصورة — 🔒 والتذكرة اتقفلت تلقائيًا');
   render();
 }
@@ -909,13 +1074,29 @@ function openSupportSheet(){
   document.getElementById('app').appendChild(el);
 }
 function closeSupportSheet(){ document.getElementById('dSupWrap')?.remove(); }
-function submitTicket(){
+async function submitTicket(){
   const cat=document.getElementById('supCat').value;
   const msg=document.getElementById('supMsg').value.trim();
   if(!msg){toast('اكتب مشكلتك الأول');return}
-  const ticketId='T'+Math.floor(1000+Math.random()*9000);
-  emit({to:['owner'],type:'support:ticket',ticketId,role:'driver',roleName:'مندوب',fromName:S.driverName||'كريم عبد الله',category:cat,message:msg});
+  if(sb){
+    const {error}=await sb.from('support_tickets').insert({role:'driver',from_id:S.driverId,from_name:S.driverName||'كريم عبد الله',category:cat,message:msg});
+    if(error){ console.error('basita:',error); toast('حصلت مشكلة — جرّب تاني'); return; }
+  }else{
+    const ticketId='T'+Math.floor(1000+Math.random()*9000);
+    emit({to:['owner'],type:'support:ticket',ticketId,role:'driver',roleName:'مندوب',fromName:S.driverName||'كريم عبد الله',category:cat,message:msg});
+  }
   closeSupportSheet(); toast('✓ اتبعت طلبك للدعم — هيرد عليك في أقرب وقت');
+}
+function subscribeMyTickets(){
+  if(!sb||!S.driverId)return;
+  sb.channel('my-tickets-'+S.driverId)
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'support_tickets',filter:'from_id=eq.'+S.driverId},payload=>{
+      if(payload.new.status==='awaiting_confirmation'){
+        const replies=payload.new.replies||[];
+        notify('📩 وصلك رد من الدعم الفني');
+        openSupportReplySheet(payload.new.id,replies.length?replies[replies.length-1].text:'');
+      }
+    }).subscribe();
 }
 function openSupportReplySheet(ticketId,reply){
   const el=document.createElement('div'); el.id='dSupReplyWrap';
@@ -933,8 +1114,9 @@ function openSupportReplySheet(ticketId,reply){
   document.getElementById('app').appendChild(el);
 }
 function closeSupportReplySheet(){ document.getElementById('dSupReplyWrap')?.remove(); }
-function confirmSupportResolved(ticketId){
-  emit({to:['owner'],type:'support:confirm_resolved',ticketId,role:'driver'});
+async function confirmSupportResolved(ticketId){
+  if(sb){ await sb.from('support_tickets').update({status:'resolved',resolved_at:new Date().toISOString()}).eq('id',ticketId); }
+  else{ emit({to:['owner'],type:'support:confirm_resolved',ticketId,role:'driver'}); }
   closeSupportReplySheet(); toast('تمام، شكرًا لتأكيدك 🙏');
 }
 function denySupportResolved(ticketId){
@@ -950,9 +1132,16 @@ function denySupportResolved(ticketId){
   </div>`;
   document.getElementById('app').appendChild(el);
 }
-function sendSupportFollowup(ticketId){
+async function sendSupportFollowup(ticketId){
   const note=document.getElementById('supFollowup').value.trim();
-  emit({to:['owner'],type:'support:not_resolved',ticketId,role:'driver',note});
+  if(sb){
+    const {data}=await sb.from('support_tickets').select('replies').eq('id',ticketId).maybeSingle();
+    const replies=(data&&data.replies)||[];
+    if(note) replies.push({from:'driver',text:note,at:new Date().toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'})});
+    await sb.from('support_tickets').update({status:'reopened',replies}).eq('id',ticketId);
+  }else{
+    emit({to:['owner'],type:'support:not_resolved',ticketId,role:'driver',note});
+  }
   document.getElementById('dSupFollowupWrap')?.remove(); toast('اتبعتت ملاحظتك — التذكرة اتفتحت تاني');
 }
 function openDriverSettings(){
@@ -1115,8 +1304,9 @@ function startLocBroadcast(){
   const tick=()=>{
     if(!navigator.geolocation)return;
     navigator.geolocation.getCurrentPosition(pos=>{
-      emit({to:['merchant'],type:'driver:location_update',driverId:S.driverId,driverName:S.driverName||'كريم عبد الله',
-        vehicle:S.vehicle||'🛵',lat:+pos.coords.latitude.toFixed(5),lng:+pos.coords.longitude.toFixed(5)});
+      const lat=+pos.coords.latitude.toFixed(5), lng=+pos.coords.longitude.toFixed(5);
+      if(sb&&S.driverId) sb.from('drivers').update({current_lat:lat,current_lng:lng,location_updated_at:new Date().toISOString()}).eq('id',S.driverId).then(()=>{});
+      else emit({to:['merchant'],type:'driver:location_update',driverId:S.driverId,driverName:S.driverName||'كريم عبد الله',vehicle:S.vehicle||'🛵',lat,lng});
     },()=>{},{timeout:6000});
   };
   tick();
@@ -1125,7 +1315,46 @@ function startLocBroadcast(){
 function stopLocBroadcast(){ clearInterval(locBroadcastT); locBroadcastT=null; }
 function setAvail(v){
   S.avail=v; render();
-  if(v){ startLocBroadcast(); } else { stopLocBroadcast(); emit({to:['merchant'],type:'driver:offline',driverId:S.driverId}); }
+  if(sb&&S.driverId) sb.from('drivers').update({is_available:v}).eq('id',S.driverId).then(()=>{});
+  if(v){ startLocBroadcast(); } else { stopLocBroadcast(); if(!sb) emit({to:['merchant'],type:'driver:offline',driverId:S.driverId}); }
+}
+function mapTaskRow(o,items){
+  return {id:o.id,merchantId:o.merchant_id,name:o.customer_name,ph:o.customer_phone,addr:o.address,
+    geo:(o.delivery_lat!=null)?{lat:o.delivery_lat,lng:o.delivery_lng}:null,total:+o.total,stage:o.stage,
+    accepted:false,items:(items||[]).map(i=>({n:i.name,q:+i.qty,p:+i.unit_price,u:i.unit,sellBy:i.sell_by}))};
+}
+function subscribeMyTasks(){
+  if(!sb||!S.driverId)return;
+  loadMyTips();
+  sb.channel('driver-tasks-'+S.driverId)
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'orders',filter:'driver_id=eq.'+S.driverId},async payload=>{
+      if(payload.new.stage==='assigned'&&!S.tasks.some(t=>t.id===payload.new.id)){
+        const {data:items}=await sb.from('order_items').select('*').eq('order_id',payload.new.id);
+        const hasActive=S.tasks.some(x=>x.accepted);
+        S.tasks.push({...mapTaskRow(payload.new,items),batchHint:hasActive});
+        subscribeTaskChat(payload.new.id);
+        S.avail=false;
+        notify(hasActive?'🔗 طلب تاني من نفس المحل — ممكن تضيفه لنفس رحلتك':'مهمة جديدة وصلت من التاجر!');
+      }
+    })
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'tips',filter:'driver_id=eq.'+S.driverId},payload=>{
+      S.tips.unshift({orderId:payload.new.order_id,amount:+payload.new.amount,customerName:'عميل',status:'pending',
+        at:new Date(payload.new.created_at).toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'})});
+      notify('🎁 إكرامية جديدة: '+payload.new.amount+' ج');
+      render();
+    })
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'tips',filter:'driver_id=eq.'+S.driverId},payload=>{
+      const t=S.tips.find(x=>x.orderId===payload.new.order_id);
+      if(t&&payload.new.status==='paid'){ t.status='paid'; notify('💰 اتصرفت إكرامية بقيمة '+payload.new.amount+' ج'); render(); }
+    })
+    .subscribe();
+}
+async function loadMyTips(){
+  if(!sb||!S.driverId)return;
+  const {data}=await sb.from('tips').select('*').eq('driver_id',S.driverId).order('created_at',{ascending:false});
+  S.tips=(data||[]).map(t=>({orderId:t.order_id,amount:+t.amount,customerName:'عميل',status:t.status,
+    at:new Date(t.created_at).toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'})}));
+  render();
 }
 function render(){
   saveState();
