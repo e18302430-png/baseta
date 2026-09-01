@@ -482,6 +482,7 @@ function proceedToStoreOpen(){
         render();
         emit({to:['owner','customer'],type:'merchant:online',merchantId:S.merchantId,merchantName:BIZ().name,
           bizLabel:BIZ().label,bizIcon:BIZ().icon,bizTypeKey:S.bizType});
+        if('Notification' in window && Notification.permission==='default') Notification.requestPermission();
         syncCatalog();
         if(S.shopPhoto) emit({to:['customer'],type:'shop:photo_updated',merchantId:S.merchantId,photo:S.shopPhoto});
       },500);
@@ -519,7 +520,14 @@ function playNotifySound(){
     o.start();o.stop(ctx.currentTime+.3);
   }catch(e){}
 }
-function toast(m){playNotifySound();const t=document.getElementById('toast');if(!t)return;t.textContent=m;t.classList.add('show');
+function pushNotify(m){
+  try{
+    if('Notification' in window && Notification.permission==='granted' && document.hidden){
+      new Notification('بسيطة · لوحة التاجر',{body:m,icon:''});
+    }
+  }catch(e){}
+}
+function toast(m){playNotifySound();pushNotify(m);const t=document.getElementById('toast');if(!t)return;t.textContent=m;t.classList.add('show');
   clearTimeout(window._tT);window._tT=setTimeout(()=>t.classList.remove('show'),2600)}
 
 /* ═══ حالة التطبيق + حفظ دائم للبيانات الحساسة (إيصالات الدفع، صور المتجر، أرقام) ═══ */
@@ -846,6 +854,18 @@ function openSheet(t,h){
   bg.onclick=closeSheet;
 }
 function closeSheet(){ document.getElementById('mSheetBg')?.remove(); document.getElementById('mSheet')?.remove(); }
+function openVillageImpact(){
+  openSheet('🌾 بسيطة والقرية المصرية',`
+    <p style="line-height:1.9;font-size:13.5px">
+      آلاف المحلات في القرى والمراكز بتشتغل من غير أي نظام رقمي — دفتر وقلم، وحساب بالذاكرة، وطلبات بتتنسى أو تتلخبط.
+      <b>بسيطة</b> بتقلب المحل الصغير ده لنظام إدارة كامل: طلبات، مخزون، تحصيل، وتوصيل — كله في تليفونك.
+    </p>
+    <p style="line-height:1.9;font-size:13.5px;margin-top:10px">
+      وكل محل بينضم، بيفتح الباب لمناديب وعملاء القرية كلها يشتغلوا على نفس المنصة، فتتكوّن شبكة اقتصادية رقمية صغيرة — من غير ما حد يحتاج يعرف يكتب على كمبيوتر أو يفهم في التكنولوجيا.
+    </p>
+    <p style="line-height:1.9;font-size:13.5px;margin-top:10px">
+      الهدف: كل قرية في مصر يبقى فيها اقتصاد رقمي بيشتغل زي المدينة بالظبط، وإنت — كتاجر — أول خطوة فيه. 🇪🇬</p>`);
+}
 
 function requestRenew(){
   openSheet('تجديد الاشتراك',`
@@ -1020,11 +1040,11 @@ function vList(){
               S.orders.filter(o=>o.stage==='delivered').length;
       return `<button class="chip" aria-pressed="${S.tab===k}" onclick="S.tab='${k}';render()">${n}${c?` <span class="num">(${c})</span>`:''}</button>`}).join('')}
   </div><div class="pad" style="padding-top:12px">
-    <div class="brandbanner">
-      <div class="bb-ic">🚀</div>
-      <div><b>متجرك متصل بشبكة بسيطة</b>
-        <span>نظام إدارة متطور بيكبر معاك — من المنيل لمصر كلها</span></div>
-    </div>
+    <button class="brandbanner" style="width:100%;text-align:right;border:0;cursor:pointer" onclick="openVillageImpact()">
+      <div class="bb-ic">🌾</div>
+      <div><b>متجرك أول محل رقمي في القرية</b>
+        <span>من دفتر الحسابات الورقي لنظام بيدير بيزنسك لوحده · اعرف أكتر ‹</span></div>
+    </button>
     ${list.length?list.map(o=>oCard(o)).join(''):`<div class="empty"><div class="e">📭</div><h4>مفيش طلبات هنا</h4>
       <p class="tiny">شغّل تطبيق العميل واعمل طلب — هيوصل هنا فورًا</p></div>`}
     <div style="height:12px"></div></div>`;
