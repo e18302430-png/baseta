@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>بسيطة · العميل</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -54,7 +54,7 @@ input,select{font-family:inherit;font-size:16px}
 #authFlow{position:absolute;inset:0;z-index:100;background:var(--bg);display:flex;flex-direction:column;
   opacity:0;transform:translateY(14px);transition:opacity .5s ease,transform .5s ease;pointer-events:none}
 #authFlow.show{opacity:1;transform:none;pointer-events:auto}
-.astage{flex:1;display:none;flex-direction:column;padding:26px 24px;position:relative;overflow-y:auto}
+.astage{flex:1;display:none;flex-direction:column;padding:calc(26px + env(safe-area-inset-top)) 24px calc(20px + env(safe-area-inset-bottom));position:relative;overflow-y:auto}
 .astage.on{display:flex;animation:slideIn .4s cubic-bezier(.2,.8,.2,1)}
 @keyframes slideIn{from{opacity:0;transform:translateX(16px)}}
 .aback{width:36px;height:36px;border-radius:11px;background:var(--surf2);display:grid;place-items:center;
@@ -64,6 +64,47 @@ input,select{font-family:inherit;font-size:16px}
 .aprog i.on{background:var(--ac)}
 
 .hero-ill{width:100%;max-width:220px;height:170px;margin:6px auto 20px;position:relative}
+
+/* ═══════════ بانر قوة الشبكة — يظهر في صفحة "اطلب من محلات حيّك" قبل الدخول ═══════════ */
+.vhero{position:relative;overflow:hidden;border-radius:26px;margin:4px 0 18px;padding:20px 19px 18px;
+  isolation:isolate;background:linear-gradient(158deg,#0B1F17 0%,#0F2A20 55%,#0B1F17 100%);
+  box-shadow:0 28px 60px -26px rgba(0,182,122,.45),0 1px 0 rgba(255,255,255,.06) inset}
+.vhero::before,.vhero::after{content:"";position:absolute;border-radius:50%;z-index:0;filter:blur(2px)}
+.vhero::before{width:180px;height:180px;inset:-70px -50px auto auto;
+  background:radial-gradient(circle,rgba(0,227,155,.55),transparent 70%);animation:vFloat1 7s ease-in-out infinite}
+.vhero::after{width:150px;height:150px;inset:auto auto -60px -40px;
+  background:radial-gradient(circle,rgba(245,166,35,.35),transparent 70%);animation:vFloat2 8.5s ease-in-out infinite}
+@keyframes vFloat1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-12px,10px) scale(1.08)}}
+@keyframes vFloat2{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(10px,-10px) scale(1.1)}}
+.vhero-grid{position:absolute;inset:0;z-index:0;opacity:.5;
+  background-image:radial-gradient(rgba(95,227,180,.16) 1px,transparent 1.4px);
+  background-size:16px 16px;mask-image:radial-gradient(ellipse 100% 80% at 50% 20%,#000 40%,transparent 90%)}
+.vhero-shine{position:absolute;inset:0;z-index:1;pointer-events:none;mix-blend-mode:overlay;
+  background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,.5) 50%,transparent 60%);
+  background-size:260% 260%;background-position:160% 160%;animation:vShine 5.5s ease-in-out infinite}
+@keyframes vShine{0%,60%{background-position:160% 160%}100%{background-position:-40% -40%}}
+.vhero-in{position:relative;z-index:2}
+.vhero-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:13px}
+.vhero-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.1);
+  border:1px solid rgba(95,227,180,.4);color:#8FF0CC;font-size:10px;font-weight:700;
+  padding:5px 10px;border-radius:999px;white-space:nowrap}
+.vhero-live{display:flex;align-items:center;gap:5px;font-size:9.5px;color:#B7C4BE;font-weight:600;white-space:nowrap}
+.vhero-live i{width:6px;height:6px;border-radius:50%;background:#00E39B;display:block;box-shadow:0 0 0 0 rgba(0,227,155,.6);animation:vPulse 2s infinite}
+@keyframes vPulse{0%{box-shadow:0 0 0 0 rgba(0,227,155,.55)}70%{box-shadow:0 0 0 7px rgba(0,227,155,0)}100%{box-shadow:0 0 0 0 rgba(0,227,155,0)}}
+.vhero h2{font-family:'Cairo';font-weight:900;font-size:19px;line-height:1.42;color:#fff;letter-spacing:-.2px}
+.vhero h2 b{color:#5FE3B4}
+.vhero .vh-sub{font-size:12px;color:#AEC2BB;margin-top:8px;line-height:1.75}
+.vhero-stats{display:flex;gap:7px;margin-top:16px}
+.vhero-stat{flex:1;text-align:center;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);
+  border-radius:14px;padding:9px 3px 8px;backdrop-filter:blur(8px);opacity:0;transform:translateY(8px);
+  animation:vPop .5s cubic-bezier(.2,.8,.2,1) forwards}
+.vhero-stat:nth-child(1){animation-delay:.15s}.vhero-stat:nth-child(2){animation-delay:.3s}.vhero-stat:nth-child(3){animation-delay:.45s}
+@keyframes vPop{to{opacity:1;transform:none}}
+.vhero-stat b{display:block;font-family:'Cairo';font-weight:800;font-size:14px;color:#5FE3B4;font-variant-numeric:tabular-nums}
+.vhero-stat span{display:block;font-size:9px;color:#93A69D;margin-top:2px;line-height:1.4}
+.vhero-trust{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+.vhero-trust span{font-size:9.5px;color:#C7D6CF;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
+  padding:4px 9px;border-radius:999px}
 .wmark{width:72px;height:72px;margin:0 auto 22px}
 h1.atitle{font-size:24px;text-align:center;line-height:1.4}
 p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-height:1.7}
@@ -98,7 +139,7 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
 /* ═══════════ التطبيق الأساسي ═══════════ */
 #mainApp{position:absolute;inset:0;display:flex;flex-direction:column;opacity:0;transition:opacity .5s ease .1s}
 #mainApp.show{opacity:1}
-.top{padding:14px 16px 12px;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20;
+.top{padding:calc(14px + env(safe-area-inset-top)) 16px 12px;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20;
   background:rgba(247,248,251,.92);backdrop-filter:blur(14px)}
 .top-r{display:flex;align-items:center;gap:10px}
 .mark{width:30px;height:30px;flex:0 0 auto}
@@ -112,7 +153,7 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
 .hi{margin-inline-start:auto;font-size:12px;color:var(--txt2)}
 .hi b{color:var(--txt)}
 
-.body{flex:1;overflow-y:auto;padding-bottom:calc(var(--nav) + 12px)}
+.body{flex:1;overflow-y:auto;padding-bottom:calc(var(--nav) + env(safe-area-inset-bottom) + 12px)}
 .body::-webkit-scrollbar{width:0}
 .pad{padding:0 16px}
 
@@ -141,7 +182,7 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
 .stp button{width:28px;height:28px;color:#fff;font-size:17px;border-radius:8px;display:grid;place-items:center;font-weight:700}
 .stp .q{min-width:22px;text-align:center;color:#fff;font-weight:700;font-size:13px}
 
-.cartbar{position:absolute;inset-inline:12px;bottom:calc(var(--nav) + 10px);z-index:30;
+.cartbar{position:absolute;inset-inline:12px;bottom:calc(var(--nav) + env(safe-area-inset-bottom) + 10px);z-index:30;
   background:var(--ac);color:#fff;border-radius:16px;padding:13px 16px;display:flex;align-items:center;gap:11px;
   box-shadow:0 16px 36px -10px rgba(0,182,122,.5);transform:translateY(160%);
   transition:transform .4s cubic-bezier(.2,.8,.2,1)}
@@ -149,7 +190,8 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
 .cartbar .c{background:rgba(255,255,255,.22);width:26px;height:26px;border-radius:9px;display:grid;place-items:center;font-weight:800;font-size:12px}
 .cartbar .t{font-family:'Cairo';margin-inline-start:auto;font-size:14.5px}
 
-.nav{position:absolute;inset-inline:0;bottom:0;height:var(--nav);background:rgba(255,255,255,.97);
+.nav{position:absolute;inset-inline:0;bottom:0;height:calc(var(--nav) + env(safe-area-inset-bottom));
+  padding-bottom:env(safe-area-inset-bottom);background:rgba(255,255,255,.97);
   backdrop-filter:blur(14px);border-top:1px solid var(--line);display:flex;z-index:40}
 .nav button{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
   color:var(--txt3);font-size:10px;font-weight:600;position:relative}
@@ -200,18 +242,18 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
 .tip-btn{padding:10px 16px;border-radius:999px;border:1.5px solid var(--line);background:var(--surf2);
   color:var(--txt);font-family:'Cairo';font-weight:700;font-size:13px;cursor:pointer;transition:.15s}
 .tip-btn.on{background:var(--ac);border-color:var(--ac);color:#fff}
-.float-support{position:absolute;bottom:calc(var(--nav) + 14px);inset-inline-start:14px;z-index:35;
+.float-support{position:absolute;bottom:calc(var(--nav) + env(safe-area-inset-bottom) + 14px);inset-inline-start:14px;z-index:35;
   height:44px;padding:0 16px 0 14px;border-radius:999px;background:var(--ac);color:#fff;font-size:13.5px;font-weight:700;border:0;
   display:flex;align-items:center;gap:7px;font-family:'Cairo',inherit;box-shadow:0 12px 26px -8px rgba(0,182,122,.55)}
 .float-support i{font-style:normal;font-size:19px}
 .float-support:active{transform:scale(.92)}
-.float-assist{position:absolute;bottom:calc(var(--nav) + 66px);inset-inline-end:14px;z-index:35;display:none;
+.float-assist{position:absolute;bottom:calc(var(--nav) + env(safe-area-inset-bottom) + 66px);inset-inline-end:14px;z-index:35;display:none;
   height:44px;padding:0 16px 0 14px;border-radius:999px;background:#151833;color:#fff;font-size:13.5px;font-weight:700;border:0;
   align-items:center;gap:7px;font-family:'Cairo',inherit;box-shadow:0 12px 26px -8px rgba(21,24,51,.5);animation:assistPop .4s cubic-bezier(.34,1.56,.64,1)}
 .float-assist.show{display:flex}
 .float-assist i{font-style:normal;font-size:19px}
 @keyframes assistPop{from{transform:scale(.6);opacity:0}}
-.float-voice{position:absolute;bottom:calc(var(--nav) + 14px);inset-inline-end:14px;z-index:35;display:none;
+.float-voice{position:absolute;bottom:calc(var(--nav) + env(safe-area-inset-bottom) + 14px);inset-inline-end:14px;z-index:35;display:none;
   height:44px;padding:0 16px 0 14px;border-radius:999px;background:linear-gradient(120deg,#00B67A,#00925F);color:#fff;font-size:13.5px;font-weight:700;border:0;
   align-items:center;gap:7px;font-family:'Cairo',inherit;box-shadow:0 12px 26px -8px rgba(0,182,122,.55)}
 .float-voice.show{display:flex}
@@ -328,16 +370,27 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
 
   <div id="authFlow">
     <div class="astage on" id="st-welcome">
-      <div class="spacer" style="flex:.3"></div>
-      <svg class="hero-ill" viewBox="0 0 220 170"><defs><radialGradient id="g1"><stop offset="0%" stop-color="#00E39B" stop-opacity=".25"/><stop offset="100%" stop-color="#00E39B" stop-opacity="0"/></radialGradient></defs>
-        <circle cx="110" cy="85" r="82" fill="url(#g1)"/>
-        <rect x="55" y="55" width="110" height="80" rx="16" fill="#fff" stroke="#00B67A" stroke-width="2"/>
-        <rect x="70" y="70" width="80" height="10" rx="5" fill="#E3F9F1"/>
-        <rect x="70" y="88" width="55" height="10" rx="5" fill="#E3F9F1"/>
-        <circle cx="150" cy="112" r="14" fill="#00B67A"/><path d="M144 112 l4 4 8-9" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-        <circle cx="70" cy="112" r="6" fill="#F5A623"/></svg>
-      <h1 class="atitle">اطلب من محلات حيّك<br>في ثواني معدودة</h1>
-      <p class="asub">بقالة، مخبز، خضار وأكتر — كله من غير ما تمسك التليفون</p>
+      <div class="spacer" style="flex:.12"></div>
+      <div class="vhero">
+        <span class="vhero-grid"></span><span class="vhero-shine"></span>
+        <div class="vhero-in">
+          <div class="vhero-top">
+            <span class="vhero-badge">🇪🇬 شبكة بسيطة لقرى مصر</span>
+            <span class="vhero-live"><i></i> الشبكة شغّالة الآن</span>
+          </div>
+          <h2>اطلب من <b>محلات حيّك</b><br>في ثواني معدودة</h2>
+          <p class="vh-sub">بقالة، مخبز، خضار وأكتر — بضغطة واحدة أو حتى بصوتك، ويوصلك لباب البيت من غير ما تتحرك</p>
+          <div class="vhero-stats">
+            <div class="vhero-stat"><b class="num">+٢٥٠</b><span>قرية متصلة</span></div>
+            <div class="vhero-stat"><b class="num">+٤٠٠٠</b><span>طلب يوميًا</span></div>
+            <div class="vhero-stat"><b class="num">١٥ د</b><span>متوسط التوصيل</span></div>
+          </div>
+          <div class="vhero-trust">
+            <span>✅ مناديب موثّقين</span><span>🔒 دفع آمن</span><span>📍 تتبع لحظي</span>
+          </div>
+        </div>
+      </div>
+      <p class="asub" style="margin-top:0">مش لازم تكتب أو تقرا — اطلب بصوتك وهو اللي هيسمعك 🎙️</p>
       <div class="spacer"></div>
       <button class="btn btn-p" onclick="goAuth('phone','signup')">إنشاء حساب جديد</button>
       <button class="btn btn-o mt" onclick="goAuth('phone','login')">عندي حساب بالفعل</button>
@@ -827,11 +880,6 @@ function vHome(){
       <span class="bdg b-ac">مفتوح</span></button>`).join(''):
       `<div class="empty"><div class="e">🏪</div><h4>لسه مفيش محلات فاتحة</h4>
         <p class="tiny">أول ما تاجر يسجّل ويفتح متجره، هيظهر هنا فورًا من غير ما تعمل حاجة</p></div>`}
-    <button class="brandbanner" style="width:100%;text-align:right;border:0;cursor:pointer" onclick="openAboutBasita()">
-      <div class="bb-ic">🌾</div>
-      <div><b>بسيطة بتغيّر مجرى القرى المصرية</b>
-        <span>من غير ما تسيب بيتك — كل محل قريتك بقى في جيبك · اعرف أكتر ‹</span></div>
-    </button>
     <div style="height:8px"></div></div>`;
 }
 function openAboutBasita(){
@@ -1055,8 +1103,11 @@ function vAccount(){
       ${[['📍','عناويني'],['❤️','المفضلة'],['🔔','الإشعارات'],['🏪','سجّل محلك'],['☎️','الدعم']].map(([i,n])=>
       `<button class="row" style="width:100%;text-align:right" onclick="toast('${n}')">
         <span class="av">${i}</span><span class="n">${n}</span><span class="end muted">‹</span></button>`).join('')}
+      <button class="row" style="width:100%;text-align:right" onclick="openAboutBasita()">
+        <span class="av">🌾</span><span class="n">قصة بسيطة</span><span class="end muted">‹</span></button>
     </div>
-    <p class="tiny muted" style="text-align:center;margin-top:20px">بسيطة · بنرقمن مصر نشاط ورا نشاط 🇪🇬</p>
+    <button onclick="openAboutBasita()" style="width:100%;text-align:center;margin-top:20px">
+      <p class="tiny muted">بسيطة · بنرقمن مصر قرية ورا قرية 🇪🇬</p></button>
     <div style="height:12px"></div></div>`;
 }
 function openMsgSheet(orderId){
