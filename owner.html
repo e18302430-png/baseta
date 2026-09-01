@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>بسيطة · لوحة المالك</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -51,7 +51,7 @@ input{font-family:inherit;font-size:16px}
 @keyframes fadeUp{to{opacity:1;transform:none}}
 
 #loginFlow{position:absolute;inset:0;z-index:100;background:var(--bg);display:flex;flex-direction:column;
-  padding:32px 26px;opacity:0;transform:translateY(14px);transition:opacity .5s ease,transform .5s ease;pointer-events:none}
+  padding:calc(32px + env(safe-area-inset-top)) 26px calc(26px + env(safe-area-inset-bottom));opacity:0;transform:translateY(14px);transition:opacity .5s ease,transform .5s ease;pointer-events:none}
 #loginFlow.show{opacity:1;transform:none;pointer-events:auto}
 .spacer{flex:1}
 .lmark{width:76px;height:76px;margin:0 auto 20px}
@@ -71,7 +71,7 @@ p.lsub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13px;line-he
 
 #mainApp{position:absolute;inset:0;display:flex;flex-direction:column;opacity:0;transition:opacity .5s ease .1s}
 #mainApp.show{opacity:1}
-.top{padding:14px 16px 12px;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20;
+.top{padding:calc(14px + env(safe-area-inset-top)) 16px 12px;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20;
   background:rgba(8,9,13,.92);backdrop-filter:blur(14px)}
 .top-r{display:flex;align-items:center;gap:10px}
 .mark{width:30px;height:30px;flex:0 0 auto}
@@ -83,7 +83,7 @@ p.lsub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13px;line-he
 .role-tag{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--txt2);margin-top:10px}
 .role-tag b{color:var(--txt)}
 
-.body{flex:1;overflow-y:auto;padding-bottom:calc(var(--nav) + 12px)}
+.body{flex:1;overflow-y:auto;padding-bottom:calc(var(--nav) + env(safe-area-inset-bottom) + 12px)}
 .body::-webkit-scrollbar{width:0}
 .pad{padding:0 16px}
 
@@ -131,7 +131,7 @@ p.lsub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13px;line-he
 .sw.on{background:var(--ok)}
 .sw.on i{transform:translateX(-18px)}
 
-.nav{position:absolute;inset-inline:0;bottom:0;height:var(--nav);background:rgba(16,18,24,.97);
+.nav{position:absolute;inset-inline:0;bottom:0;height:calc(var(--nav) + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);background:rgba(16,18,24,.97);
   backdrop-filter:blur(14px);border-top:1px solid var(--line);display:flex;z-index:40;overflow-x:auto;scrollbar-width:none}
 .nav::-webkit-scrollbar{display:none}
 .nav button{flex:0 0 auto;min-width:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
@@ -147,6 +147,47 @@ p.lsub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13px;line-he
 
 .bellBadge{display:none;position:absolute;top:-3px;left:-3px;min-width:16px;height:16px;border-radius:8px;background:var(--danger);
   color:#fff;font-size:9.5px;font-weight:800;align-items:center;justify-content:center;padding:0 3px;font-family:'Cairo'}
+/* ═══════════ بانر قوة الشبكة — شاشة دخول المالك (غرفة القيادة) ═══════════ */
+.vhero{position:relative;overflow:hidden;border-radius:26px;margin:4px 0 18px;padding:20px 19px 18px;
+  isolation:isolate;background:linear-gradient(158deg,#0A1418 0%,#0F2229 55%,#0A1418 100%);
+  border:1px solid rgba(95,212,232,.18);
+  box-shadow:0 28px 60px -26px rgba(95,212,232,.4),0 1px 0 rgba(255,255,255,.05) inset}
+.vhero::before,.vhero::after{content:"";position:absolute;border-radius:50%;z-index:0;filter:blur(2px)}
+.vhero::before{width:180px;height:180px;inset:-70px -50px auto auto;
+  background:radial-gradient(circle,rgba(95,212,232,.5),transparent 70%);animation:vFloat1 7s ease-in-out infinite}
+.vhero::after{width:150px;height:150px;inset:auto auto -60px -40px;
+  background:radial-gradient(circle,rgba(23,199,135,.3),transparent 70%);animation:vFloat2 8.5s ease-in-out infinite}
+@keyframes vFloat1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-12px,10px) scale(1.08)}}
+@keyframes vFloat2{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(10px,-10px) scale(1.1)}}
+.vhero-grid{position:absolute;inset:0;z-index:0;opacity:.55;
+  background-image:radial-gradient(rgba(95,212,232,.18) 1px,transparent 1.4px);
+  background-size:16px 16px;mask-image:radial-gradient(ellipse 100% 80% at 50% 20%,#000 40%,transparent 90%)}
+.vhero-shine{position:absolute;inset:0;z-index:1;pointer-events:none;mix-blend-mode:overlay;
+  background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,.4) 50%,transparent 60%);
+  background-size:260% 260%;background-position:160% 160%;animation:vShine 5.5s ease-in-out infinite}
+@keyframes vShine{0%,60%{background-position:160% 160%}100%{background-position:-40% -40%}}
+.vhero-in{position:relative;z-index:2}
+.vhero-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:13px}
+.vhero-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.08);
+  border:1px solid rgba(95,212,232,.4);color:#9FE7F2;font-size:10px;font-weight:700;
+  padding:5px 10px;border-radius:999px;white-space:nowrap}
+.vhero-live{display:flex;align-items:center;gap:5px;font-size:9.5px;color:#8FA0A6;font-weight:600;white-space:nowrap}
+.vhero-live i{width:6px;height:6px;border-radius:50%;background:#17C787;display:block;box-shadow:0 0 0 0 rgba(23,199,135,.6);animation:vPulse 2s infinite}
+@keyframes vPulse{0%{box-shadow:0 0 0 0 rgba(23,199,135,.55)}70%{box-shadow:0 0 0 7px rgba(23,199,135,0)}100%{box-shadow:0 0 0 0 rgba(23,199,135,0)}}
+.vhero h2{font-family:'Cairo';font-weight:900;font-size:19px;line-height:1.42;color:#fff;letter-spacing:-.2px}
+.vhero h2 b{color:#5FD4E8}
+.vhero .vh-sub{font-size:12px;color:#93A6AC;margin-top:8px;line-height:1.75}
+.vhero-stats{display:flex;gap:7px;margin-top:16px}
+.vhero-stat{flex:1;text-align:center;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
+  border-radius:14px;padding:9px 3px 8px;backdrop-filter:blur(8px);opacity:0;transform:translateY(8px);
+  animation:vPop .5s cubic-bezier(.2,.8,.2,1) forwards}
+.vhero-stat:nth-child(1){animation-delay:.15s}.vhero-stat:nth-child(2){animation-delay:.3s}.vhero-stat:nth-child(3){animation-delay:.45s}
+@keyframes vPop{to{opacity:1;transform:none}}
+.vhero-stat b{display:block;font-family:'Cairo';font-weight:800;font-size:14px;color:#5FD4E8;font-variant-numeric:tabular-nums}
+.vhero-stat span{display:block;font-size:9px;color:#748386;margin-top:2px;line-height:1.4}
+.vhero-trust{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+.vhero-trust span{font-size:9.5px;color:#B9C8CB;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
+  padding:4px 9px;border-radius:999px}
 .brandbanner{display:flex;align-items:center;gap:11px;margin:14px 0 0;padding:13px 14px;border-radius:15px;
   background:linear-gradient(120deg,#0F2229,#12343E 60%,#0F2229);color:#fff;position:relative;overflow:hidden;width:100%;text-align:right;border:0;cursor:pointer}
 .brandbanner::before{content:"";position:absolute;inset:0;background:linear-gradient(120deg,transparent,rgba(95,212,232,.2),transparent);
@@ -177,7 +218,26 @@ p.lsub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13px;line-he
     <b>بسيطة</b><span>لوحة المالك</span><div class="bar"><i></i></div></div></div>
 
   <div id="loginFlow">
-    <div class="spacer" style="flex:.4"></div>
+    <div class="spacer" style="flex:.15"></div>
+    <div class="vhero">
+      <span class="vhero-grid"></span><span class="vhero-shine"></span>
+      <div class="vhero-in">
+        <div class="vhero-top">
+          <span class="vhero-badge">🇪🇬 غرفة قيادة شبكة بسيطة</span>
+          <span class="vhero-live"><i></i> الشبكة كلها متصلة الآن</span>
+        </div>
+        <h2>تحكّم في <b>شبكة قرى مصر</b><br>كلها من مكان واحد</h2>
+        <p class="vh-sub">تجّار ومناديب وعملاء — كل نشاط، كل جنيه، كل طلب، لحظة بلحظة تحت إدارتك</p>
+        <div class="vhero-stats">
+          <div class="vhero-stat"><b class="num">+٢٥٠</b><span>قرية متصلة</span></div>
+          <div class="vhero-stat"><b class="num">+١٢٠٠</b><span>تاجر ومندوب</span></div>
+          <div class="vhero-stat"><b class="num">لحظي</b><span>تتبع كامل</span></div>
+        </div>
+        <div class="vhero-trust">
+          <span>🔒 وصول خاص بالمالك</span><span>📊 بيانات حية</span>
+        </div>
+      </div>
+    </div>
     <svg class="lmark" viewBox="0 0 76 76"><circle cx="38" cy="38" r="38" fill="#12242A"/>
       <path d="M38 24 L46 44 L30 44 Z" fill="none" stroke="#5FD4E8" stroke-width="2.6" stroke-linejoin="round"/>
       <circle cx="38" cy="52" r="3" fill="#5FD4E8"/></svg>
@@ -501,6 +561,8 @@ function openOwnerSettings(){
     <div class="fld"><label>الرمز الجديد</label><input id="opNew" type="password" maxlength="4" inputmode="numeric" placeholder="••••"></div>
     <div class="fld"><label>تأكيد الرمز</label><input id="opConf" type="password" maxlength="4" inputmode="numeric" placeholder="••••"></div>
     <button class="btn2 btn-p2" style="width:100%" onclick="saveOwnerPin()">حفظ</button>
+    <button onclick="openVillageImpact()" style="width:100%;text-align:center;margin-top:14px">
+      <p class="tiny muted">🌾 قصة بسيطة والقرية المصرية</p></button>
   </div>`;
   document.getElementById('app').appendChild(el);
 }
@@ -523,11 +585,6 @@ function vOverview(){
       <div class="tiny muted mt">من ${S.merchants.filter(m=>m.status==='active').length} تاجر مشترك فعليًا</div>
     </div>
     <div class="alert warn mt">⏰ <span>${trialCount} تاجر لسه في فترة التجربة المجانية — تابعهم قبل ما تخلص</span></div>
-    <button class="brandbanner" onclick="openVillageImpact()">
-      <div class="bb-ic">🌾</div>
-      <div><b>إنت بتبني اقتصاد قرية رقمي</b>
-        <span>كل تاجر ومندوب بينضم بيوسّع الشبكة دي — اعرف أكتر ‹</span></div>
-    </button>
     <div class="sec-t"><h3>آخر الأحداث</h3></div>
     <div class="card">
       ${S.events.length?S.events.slice(0,6).map(e=>`<div class="row"><span class="av">•</span>
