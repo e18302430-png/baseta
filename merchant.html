@@ -396,6 +396,7 @@ function _dedupe(fn){
     _seenMsgIds.add(d.id);
     if(_seenMsgIds.size>300){ _seenMsgIds.delete(_seenMsgIds.values().next().value); }
     fn(d);
+    try{saveState();}catch(e){}
   };
 }
 function onBus(fn){
@@ -455,6 +456,7 @@ function finishMerchantSignup(){
   setTimeout(()=>{ document.getElementById('pendingApproval').style.display='flex'; },350);
   emit({to:['owner'],type:'merchant:signup_request',merchantId:S.merchantId,merchantName:name,
     bizLabel:BIZ().label,bizIcon:BIZ().icon,phone:mSignupPhone});
+  saveState();
 }
 function doLogin(){
   const ph=document.getElementById('mPhone').value.trim();
@@ -520,10 +522,41 @@ function playNotifySound(){
 function toast(m){playNotifySound();const t=document.getElementById('toast');if(!t)return;t.textContent=m;t.classList.add('show');
   clearTimeout(window._tT);window._tT=setTimeout(()=>t.classList.remove('show'),2600)}
 
+/* ═══ حالة التطبيق + حفظ دائم للبيانات الحساسة (إيصالات الدفع، صور المتجر، أرقام) ═══ */
+const STAGES=['placed','accepted','assigned','picked','delivering','delivered'];
+const SLABEL={placed:'جديد',accepted:'اتقبل',assigned:'اتعيّن مندوب',picked:'المندوب استلم',
+  delivering:'في الطريق',delivered:'اتسلّم'};
+let S={tab:'new',orders:[],expenses:[],cashCounted:'',bizType:'grocery',password:'',customStoreName:'',phone:'',availableDriver:null,reviews:[],merchantId:'m1',shopPhoto:'',vodafoneCash:'',bizBio:'',
+  sub:{status:'trial',daysLeft:14,price:99},
+  customerStats:{},
+  products:[
+    {id:1,n:'سكر أبيض',br:'السلطان',u:'كجم',p:38,i:'🍬',s:120},
+    {id:2,n:'أرز مصري',br:'الضحى',u:'كجم',p:32,i:'🍚',s:85},
+    {id:3,n:'زيت عباد الشمس',br:'عافية',u:'٩٠٠ مل',p:78,i:'🫒',s:40},
+    {id:4,n:'لبن كامل الدسم',br:'جهينة',u:'١ لتر',p:42,i:'🥛',s:18},
+    {id:5,n:'شاي ناعم',br:'ليبتون',u:'٢٥٠ جم',p:52,i:'🍵',s:44},
+    {id:6,n:'مياه معدنية',br:'حياة',u:'١.٥ لتر',p:8,i:'💧',s:200},
+    {id:7,n:'بيض بلدي',br:'',u:'طبق ٣٠',p:135,i:'🥚',s:9},
+    {id:8,n:'جبنة بيضاء',br:'دومتي',u:'٥٠٠ جم',p:58,i:'🧀',s:12},
+  ],
+  purchases:[],
+  s7:[1420,1180,1640,1290,1870,1520,1735],
+  days:['السبت','الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','اليوم']};
+const STATE_KEY='basita_state_'+ROLE;
+function loadState(){ try{return JSON.parse(localStorage.getItem(STATE_KEY)||'null')}catch(e){return null} }
+function saveState(){ try{localStorage.setItem(STATE_KEY,JSON.stringify({
+  orders:S.orders,expenses:S.expenses,phone:S.phone,customStoreName:S.customStoreName,merchantId:S.merchantId,
+  shopPhoto:S.shopPhoto,vodafoneCash:S.vodafoneCash,bizBio:S.bizBio,sub:S.sub,products:S.products,
+  purchases:S.purchases,password:S.password,bizType:S.bizType,reviews:S.reviews,customerStats:S.customerStats
+}));}catch(e){ console.warn('basita: تعذّر الحفظ المحلي',e); } }
+{ const _saved=loadState(); if(_saved) Object.assign(S,_saved); }
+const $=s=>document.querySelector(s);
+const M=n=>Math.round(n).toLocaleString('en');
+
 /* ═══ نظام الإشعارات (بيل/إن‌بوكس) ═══ */
 const INBOX_KEY='basita_inbox_'+ROLE;
 function loadInbox(){ try{return JSON.parse(localStorage.getItem(INBOX_KEY)||'[]')}catch(e){return []} }
-S.inbox=loadInbox();
+S.inbox=S.inbox||loadInbox();
 function saveInbox(){ try{localStorage.setItem(INBOX_KEY,JSON.stringify(S.inbox.slice(0,80)))}catch(e){} }
 function notify(text){
   S.inbox.unshift({id:Math.random().toString(36).slice(2),text,at:new Date().toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'}),read:false});
@@ -563,27 +596,6 @@ function renderInboxList(){
 function markAllInboxRead(){ S.inbox.forEach(n=>n.read=true); saveInbox(); renderBell(); renderInboxList(); }
 function closeInbox(){ document.getElementById('inboxWrap')?.remove(); }
 
-const STAGES=['placed','accepted','assigned','picked','delivering','delivered'];
-const SLABEL={placed:'جديد',accepted:'اتقبل',assigned:'اتعيّن مندوب',picked:'المندوب استلم',
-  delivering:'في الطريق',delivered:'اتسلّم'};
-let S={tab:'new',orders:[],expenses:[],cashCounted:'',bizType:'grocery',password:'',customStoreName:'',phone:'',availableDriver:null,reviews:[],merchantId:'m1',shopPhoto:'',vodafoneCash:'',bizBio:'',
-  sub:{status:'trial',daysLeft:14,price:99},
-  customerStats:{},
-  products:[
-    {id:1,n:'سكر أبيض',br:'السلطان',u:'كجم',p:38,i:'🍬',s:120},
-    {id:2,n:'أرز مصري',br:'الضحى',u:'كجم',p:32,i:'🍚',s:85},
-    {id:3,n:'زيت عباد الشمس',br:'عافية',u:'٩٠٠ مل',p:78,i:'🫒',s:40},
-    {id:4,n:'لبن كامل الدسم',br:'جهينة',u:'١ لتر',p:42,i:'🥛',s:18},
-    {id:5,n:'شاي ناعم',br:'ليبتون',u:'٢٥٠ جم',p:52,i:'🍵',s:44},
-    {id:6,n:'مياه معدنية',br:'حياة',u:'١.٥ لتر',p:8,i:'💧',s:200},
-    {id:7,n:'بيض بلدي',br:'',u:'طبق ٣٠',p:135,i:'🥚',s:9},
-    {id:8,n:'جبنة بيضاء',br:'دومتي',u:'٥٠٠ جم',p:58,i:'🧀',s:12},
-  ],
-  purchases:[],
-  s7:[1420,1180,1640,1290,1870,1520,1735],
-  days:['السبت','الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','اليوم']};
-const $=s=>document.querySelector(s);
-const M=n=>Math.round(n).toLocaleString('en');
 function syncCatalog(){ emit({to:['customer'],type:'catalog:sync',merchantId:S.merchantId,merchantName:BIZ().name,products:S.products}); }
 
 const SLA_LIMIT=45000; // 45 ثانية (مصغّرة للعرض التجريبي بدل دقايق حقيقية)
@@ -800,7 +812,11 @@ function openSettings(){
     <div class="fld"><label>كلمة المرور الحالية</label><input id="mpOld" type="password" placeholder="••••••••"></div>
     <div class="fld"><label>كلمة المرور الجديدة</label><input id="mpNew" type="password" placeholder="••••••••"></div>
     <div class="fld"><label>تأكيد كلمة المرور</label><input id="mpConf" type="password" placeholder="••••••••"></div>
-    <button class="btn btn-p" style="width:100%" onclick="saveMerchantPassword()">حفظ كلمة المرور</button>`);
+    <button class="btn btn-p" style="width:100%" onclick="saveMerchantPassword()">حفظ كلمة المرور</button>
+    <div class="sec-t" style="margin-top:18px"><h3>عن بسيطة</h3></div>
+    <div class="card" style="padding:14px;line-height:1.9;font-size:12.5px;color:#4A5064">
+      انضمامك لـ<b>بسيطة</b> بيحطك في قلب منظومة توصيل رقمية متكاملة: كتالوجك بيوصل لعملاء المنطقة فورًا، طلباتك بتتوزع تلقائيًا على مناديب موثّقين اتراجعت هويتهم، ومحاسبتك (مبيعات، مصاريف، توريدات) بتتحسب لوحدها من غير ورق وأخطاء. إحنا مش بنبيعلك مجرد تطبيق — إحنا بنبني معاك تحوّل حقيقي لإدارة نشاطك، بشفافية وأمان في كل خطوة. 🏪🇪🇬
+    </div>`);
 }
 function saveBizBio(){
   const v=document.getElementById('bizBioInput').value.trim();
@@ -1124,6 +1140,7 @@ function uploadShopPhoto(input){
 const V={list:vList,products:vProducts,acct:vAcct,qr:vQR,stats:vStats};
 const NAV=[['list','📥','الطلبات'],['products','🏷️','منتجاتي'],['acct','🧮','المحاسبة'],['qr','🔗','متجرك'],['stats','📊','إحصائيات']];
 function render(){
+  saveState();
   renderBell();
   const nw=S.orders.filter(o=>o.stage==='placed').length;
   $('#kpis').innerHTML=`
