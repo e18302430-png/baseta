@@ -205,12 +205,41 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
   display:flex;align-items:center;gap:7px;font-family:'Cairo',inherit;box-shadow:0 12px 26px -8px rgba(0,182,122,.55)}
 .float-support i{font-style:normal;font-size:19px}
 .float-support:active{transform:scale(.92)}
-.float-assist{position:absolute;bottom:calc(var(--nav) + 14px);inset-inline-end:14px;z-index:35;display:none;
+.float-assist{position:absolute;bottom:calc(var(--nav) + 66px);inset-inline-end:14px;z-index:35;display:none;
   height:44px;padding:0 16px 0 14px;border-radius:999px;background:#151833;color:#fff;font-size:13.5px;font-weight:700;border:0;
   align-items:center;gap:7px;font-family:'Cairo',inherit;box-shadow:0 12px 26px -8px rgba(21,24,51,.5);animation:assistPop .4s cubic-bezier(.34,1.56,.64,1)}
 .float-assist.show{display:flex}
 .float-assist i{font-style:normal;font-size:19px}
 @keyframes assistPop{from{transform:scale(.6);opacity:0}}
+.float-voice{position:absolute;bottom:calc(var(--nav) + 14px);inset-inline-end:14px;z-index:35;display:none;
+  height:44px;padding:0 16px 0 14px;border-radius:999px;background:linear-gradient(120deg,#00B67A,#00925F);color:#fff;font-size:13.5px;font-weight:700;border:0;
+  align-items:center;gap:7px;font-family:'Cairo',inherit;box-shadow:0 12px 26px -8px rgba(0,182,122,.55)}
+.float-voice.show{display:flex}
+.float-voice i{font-style:normal;font-size:19px}
+.float-voice .vdot{width:7px;height:7px;border-radius:50%;background:#fff;animation:pu 1.6s infinite}
+@keyframes pu{0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,.6)}50%{box-shadow:0 0 0 5px rgba(255,255,255,0)}}
+
+.voiceOverlay{position:absolute;inset:0;z-index:400;background:radial-gradient(circle at 50% 22%,#0F241F,#081512 75%);
+  display:none;flex-direction:column;align-items:center;padding:30px 22px}
+.voiceOverlay.show{display:flex}
+.voiceClose{position:absolute;top:18px;left:18px;width:38px;height:38px;border-radius:12px;background:rgba(255,255,255,.1);
+  color:#fff;font-size:17px;display:grid;place-items:center;z-index:2}
+.voiceStage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;text-align:center}
+.voiceMic{width:112px;height:112px;border-radius:50%;background:radial-gradient(circle,#00B67A,#00754E);
+  display:grid;place-items:center;font-size:44px;position:relative;margin-bottom:26px;transition:.25s}
+.voiceMic::before,.voiceMic::after{content:"";position:absolute;inset:0;border-radius:50%;border:2px solid rgba(0,182,122,.5)}
+.voiceMic.listening::before{animation:micRing 1.6s ease-out infinite}
+.voiceMic.listening::after{animation:micRing 1.6s ease-out .5s infinite}
+.voiceMic.speaking{background:radial-gradient(circle,#5FD4E8,#2FA9C0)}
+.voiceMic.speaking::before{border-color:rgba(95,212,232,.5);animation:micRing 1.2s ease-out infinite}
+@keyframes micRing{0%{transform:scale(1);opacity:.9}100%{transform:scale(1.7);opacity:0}}
+.voiceCaption{color:#fff;font-family:'Cairo';font-weight:700;font-size:17px;line-height:1.7;max-width:320px}
+.voiceTranscript{color:#8FE0BE;font-size:13.5px;margin-top:14px;min-height:20px;max-width:300px;line-height:1.7}
+.voiceFallback{width:100%;padding-bottom:6px;display:flex;flex-direction:column;gap:10px}
+.voiceTypeRow{display:none;width:100%;gap:8px;margin-top:6px}
+.voiceTypeRow input{flex:1;padding:13px;border-radius:12px;border:0;font-family:inherit;font-size:14px;text-align:center}
+.voiceTypeRow button{padding:0 16px;border-radius:12px;background:#00B67A;color:#fff;font-family:'Cairo';font-weight:700;border:0}
+.voiceHintBtn{background:none;border:0;color:#8FE0BE;font-size:12.5px;text-decoration:underline;padding:6px}
 .fta-tip{display:flex;gap:10px;align-items:flex-start;background:var(--ac-l);border-radius:14px;padding:12px 14px;margin-bottom:14px;position:relative}
 .fta-tip b{font-size:13px;line-height:1.7;display:block}
 .fta-tip .x{position:absolute;top:8px;left:8px;width:22px;height:22px;border-radius:8px;background:rgba(0,0,0,.06);display:grid;place-items:center;font-size:11px}
@@ -375,6 +404,22 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
       <span class="t num" id="cartTotal">0 ج</span></div>
     <button class="float-support" onclick="openSupportSheet()" aria-label="الدعم الفني"><i>🆘</i><span>الدعم الفني</span></button>
     <button class="float-assist" id="ftaFab" onclick="openFtaSheet()" aria-label="مساعد الطلب الأول"><i>🤝</i><span>محتاج مساعدة؟</span></button>
+    <button class="float-voice" id="voiceFab" onclick="openVoiceAssistant()" aria-label="اطلب بصوتك"><i>🎙️</i><span id="voiceFabLabel">اطلب بصوتك</span><span class="vdot"></span></button>
+    <div class="voiceOverlay" id="voiceOverlay">
+      <button class="voiceClose" onclick="vaCloseUI()">✕</button>
+      <div class="voiceStage">
+        <div class="voiceMic" id="voiceMicRing"><span id="voiceMicIcon">🎙️</span></div>
+        <div class="voiceCaption" id="voiceCaption">جاري التحضير…</div>
+        <div class="voiceTranscript" id="voiceTranscript"></div>
+      </div>
+      <div class="voiceFallback">
+        <button class="voiceHintBtn" id="voiceTypeToggle" onclick="vaShowTypeRow()">مش قادر تتكلم؟ اكتب بدل ما تتكلم</button>
+        <div class="voiceTypeRow" id="voiceTypeRow">
+          <input id="voiceTypeInput" placeholder="اكتب هنا..." onkeydown="if(event.key==='Enter')vaSubmitTyped()">
+          <button onclick="vaSubmitTyped()">إرسال</button>
+        </div>
+      </div>
+    </div>
     <div class="nav" id="nav"></div>
     <div class="shbg" id="shbg" onclick="closeSheet()"></div>
     <div class="sheet" id="sheet"><div class="grab"></div>
@@ -474,7 +519,9 @@ function finishSignup(){
 }
 function mountApp(){
   document.getElementById('authFlow').classList.remove('show');
-  setTimeout(()=>{document.getElementById('mainApp').classList.add('show');render()},300);
+  setTimeout(()=>{document.getElementById('mainApp').classList.add('show');render();
+    if('Notification' in window && Notification.permission==='default') Notification.requestPermission();
+  },300);
 }
 
 let PRODS=[]; // بيتملى ديناميكيًا من كتالوج المحل المختار
@@ -517,7 +564,14 @@ function playNotifySound(){
     o.start();o.stop(ctx.currentTime+.3);
   }catch(e){}
 }
-let tT;function toast(m){playNotifySound();const t=$('#toast');t.textContent=m;t.classList.add('show');
+function pushNotify(m){
+  try{
+    if('Notification' in window && Notification.permission==='granted' && document.hidden){
+      new Notification('بسيطة',{body:m,icon:''});
+    }
+  }catch(e){}
+}
+let tT;function toast(m){playNotifySound();pushNotify(m);const t=$('#toast');t.textContent=m;t.classList.add('show');
   clearTimeout(tT);tT=setTimeout(()=>t.classList.remove('show'),2400)}
 
 /* ═══ نظام الإشعارات (بيل/إن‌بوكس) ═══ */
@@ -583,7 +637,8 @@ function openFtaSheet(){
     <p style="color:var(--txt2);font-size:13.5px;line-height:1.8;margin:0 0 16px">
       دي أول مرة ليك هنا، فهمساعدك خطوة بخطوة عشان تعمل أول طلب في أقل من دقيقة.</p>
     <div class="fld" style="display:flex;flex-direction:column;gap:10px">
-      <button class="btn btn-p" onclick="ftaGo('browse')">🏪 يلا نبدأ — اختار محل</button>
+      <button class="btn" style="background:linear-gradient(120deg,#00B67A,#00925F);color:#fff" onclick="closeSheet();openVoiceAssistant()">🎙️ الأسهل: اطلب بصوتك (من غير كتابة خالص)</button>
+      <button class="btn btn-o" onclick="ftaGo('browse')">🏪 أو دوّر بنفسك — اختار محل</button>
     </div>
     <div class="sec-t" style="margin-top:18px"><h3>أسئلة شائعة</h3></div>
     <div>
@@ -773,25 +828,28 @@ function vHome(){
       `<div class="empty"><div class="e">🏪</div><h4>لسه مفيش محلات فاتحة</h4>
         <p class="tiny">أول ما تاجر يسجّل ويفتح متجره، هيظهر هنا فورًا من غير ما تعمل حاجة</p></div>`}
     <button class="brandbanner" style="width:100%;text-align:right;border:0;cursor:pointer" onclick="openAboutBasita()">
-      <div class="bb-ic">🇪🇬</div>
-      <div><b>بسيطة</b> — بنرقمن مصر، نشاط ورا نشاط
-        <span>محلك مش هيفضل يشتغل بالتخمين بعد النهاردة · اعرف أكتر عن المنصة ‹</span></div>
+      <div class="bb-ic">🌾</div>
+      <div><b>بسيطة بتغيّر مجرى القرى المصرية</b>
+        <span>من غير ما تسيب بيتك — كل محل قريتك بقى في جيبك · اعرف أكتر ‹</span></div>
     </button>
     <div style="height:8px"></div></div>`;
 }
 function openAboutBasita(){
-  openSheet('عن بسيطة',`
+  openSheet('🌾 بسيطة بتغيّر مجرى القرى المصرية',`
     <p style="line-height:1.9;font-size:13.5px">
-      <b>بسيطة</b> مش مجرد تطبيق توصيل — هي منظومة رقمية متكاملة بنبنيها عشان نوصل كل بيت وكل محل في مصر ببعض، خطوة ورا خطوة، ومدينة ورا مدينة.
+      <b>بسيطة</b> مش مجرد تطبيق توصيل — هي منظومة رقمية متكاملة بنبنيها عشان نوصل كل بيت وكل محل في مصر ببعض، قرية ورا قرية، ومركز ورا مركز.
     </p>
     <p style="line-height:1.9;font-size:13.5px;margin-top:10px">
-      من لحظة ما تحط طلبك، بيتحرك في شبكة متكاملة: <b>تاجر</b> بيجهزلك طلبك بدقة، <b>مندوب توصيل موثّق</b> (بياناته وهويته اتراجعت وتم التحقق منها فعليًا) بياخده ليك بأسرع وقت، و<b>نظام تتبع لحظي</b> بيوريك مكان طلبك أول بأول من غير ما تتصل بحد.
+      في القرى، المشوار للمحل ممكن ياخد وقت، وكتير من الناس — خصوصًا كبار السن والستات في البيت — كانوا محتاجين حد يوصّلهم احتياجاتهم. دلوقتي بضغطة واحدة (أو حتى بصوتك من غير ما تكتب حرف)، طلبك بيوصلك لباب البيت.
+    </p>
+    <p style="line-height:1.9;font-size:13.5px;margin-top:10px">
+      من لحظة ما تحط طلبك، بيتحرك في شبكة متكاملة: <b>تاجر القرية</b> بيجهزلك طلبك بدقة، <b>مندوب توصيل موثّق</b> (بياناته وهويته اتراجعت وتم التحقق منها فعليًا) بياخده ليك بأسرع وقت، و<b>نظام تتبع لحظي</b> بيوريك مكان طلبك أول بأول من غير ما تتصل بحد.
     </p>
     <p style="line-height:1.9;font-size:13.5px;margin-top:10px">
       إحنا مش بنشتغل بالتخمين: كل رقم بتشوفه، كل حالة طلب، كل رسالة بينك وبين المندوب — كلها بتتسجل وبتتحفظ بأمان، عشان تجربتك تبقى واضحة وموثوقة من الأول للآخر.
     </p>
     <p style="line-height:1.9;font-size:13.5px;margin-top:10px">
-      الهدف بسيط زي الاسم: نخلي أي نشاط تجاري في مصر يشتغل بذكاء وبثقة، ونديك إنت كعميل تجربة توصيل محترفة تستاهلها. 🇪🇬
+      الهدف بسيط زي الاسم: كل قرية في مصر يبقى فيها اقتصاد رقمي بيشتغل بذكاء وثقة، ومحلاتها ومناديبها وأهلها متصلين ببعض من غير ما حد يحتاج يعرف يقرا أو يكتب على شاشة. 🇪🇬
     </p>`);
 }
 function openShop(id){
@@ -1073,12 +1131,237 @@ function savePin(){
   if(n!==c){toast('الرمز الجديد والتأكيد مش متطابقين');return}
   S.pin=n; closeSheet(); toast('اتغيّر رمزك بنجاح ✓');
 }
+/* ══════════════════════════ المساعد الصوتي — اطلب بصوتك ══════════════════════════
+   نظام أوامر صوتية كامل يسمح للعميل إنه يعمل طلب كامل من غير ما يكتب حرف واحد:
+   من اختيار المحل، للأصناف، لعنوان التوصيل، لتأكيد الطلب — كل ده بالصوت، وبيرجعله بالصوت.
+   مصمم خصيصًا للناس اللي مش متعودة على التكنولوجيا أو بتلاقي صعوبة في القراءة والكتابة. */
+let VS={rec:null,listening:false,mode:'order',retries:0,currentHandler:null};
+function vaSupported(){ return !!(window.SpeechRecognition||window.webkitSpeechRecognition); }
+function vaTtsSupported(){ return 'speechSynthesis' in window; }
+function vaNormalize(s){
+  return (s||'').toString().trim()
+    .replace(/[أإآا]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/ـ/g,'')
+    .replace(/[ًٌٍَُِّْ]/g,'').replace(/[؟?.,!]/g,'').replace(/\s+/g,' ').toLowerCase();
+}
+const VA_NUM_WORDS={'صفر':0,'واحد':1,'واحده':1,'اتنين':2,'اثنين':2,'تلاته':3,'ثلاثه':3,'اربعه':4,
+  'خمسه':5,'سته':6,'سبعه':7,'تمنيه':8,'ثمانيه':8,'تسعه':9,'عشره':10};
+function vaExtractQtyBefore(words,idx){
+  for(let k=Math.max(0,idx-3);k<idx;k++){
+    const w=words[k];
+    if(/^\d+$/.test(w)) return parseInt(w,10);
+    if(VA_NUM_WORDS[w]!==undefined) return VA_NUM_WORDS[w];
+  }
+  return 1;
+}
+function vaSetMicState(state){
+  const el=document.getElementById('voiceMicRing'); if(!el)return;
+  el.className='voiceMic '+state;
+  document.getElementById('voiceMicIcon').textContent= state==='listening'?'🎤':state==='speaking'?'🔊':'🎙️';
+}
+function vaSetCaption(t){ const el=document.getElementById('voiceCaption'); if(el) el.textContent=t; }
+function vaSetTranscript(t){ const el=document.getElementById('voiceTranscript'); if(el) el.textContent=t?('سمعتك بتقول: «'+t+'»'):''; }
+function vaShowTypeRow(){
+  document.getElementById('voiceTypeRow').style.display='flex';
+  document.getElementById('voiceTypeToggle').style.display='none';
+  setTimeout(()=>document.getElementById('voiceTypeInput')?.focus(),100);
+}
+function vaSubmitTyped(){
+  const inp=document.getElementById('voiceTypeInput'); const v=inp.value.trim(); if(!v)return;
+  inp.value=''; document.getElementById('voiceTypeRow').style.display='none';
+  document.getElementById('voiceTypeToggle').style.display='block';
+  vaSetTranscript(v);
+  if(VS.currentHandler) VS.currentHandler(v);
+}
+function vaSpeak(text,cb){
+  vaSetCaption(text); vaSetTranscript('');
+  if(!vaTtsSupported()){ setTimeout(()=>{ if(cb)cb(); },350); return; }
+  try{
+    window.speechSynthesis.cancel();
+    vaSetMicState('speaking');
+    const u=new SpeechSynthesisUtterance(text);
+    u.lang='ar-SA'; u.rate=0.98; u.pitch=1;
+    const voices=window.speechSynthesis.getVoices();
+    const arV=voices.find(v=>v.lang&&v.lang.toLowerCase().startsWith('ar'));
+    if(arV) u.voice=arV;
+    let done=false;
+    const finish=()=>{ if(done)return; done=true; vaSetMicState('idle'); if(cb)cb(); };
+    u.onend=finish; u.onerror=finish;
+    window.speechSynthesis.speak(u);
+    setTimeout(finish, Math.max(2200,text.length*90));
+  }catch(e){ vaSetMicState('idle'); if(cb)cb(); }
+}
+function vaListenOnce(onFinal){
+  VS.currentHandler=onFinal;
+  if(!vaSupported()){
+    vaSetCaption('الميكروفون مش شغال هنا — اكتب اللي عايزه بدل ما تتكلم 👇');
+    vaShowTypeRow(); return;
+  }
+  try{
+    const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+    const r=new SR();
+    r.lang='ar-EG'; r.continuous=false; r.interimResults=true; r.maxAlternatives=1;
+    VS.rec=r; VS.listening=true; vaSetMicState('listening');
+    let finalText='';
+    r.onresult=(e)=>{
+      let interim='';
+      for(let i=e.resultIndex;i<e.results.length;i++){
+        const t=e.results[i][0].transcript;
+        if(e.results[i].isFinal) finalText+=t; else interim+=t;
+      }
+      vaSetTranscript((finalText+interim).trim());
+    };
+    r.onerror=(e)=>{
+      VS.listening=false; vaSetMicState('idle');
+      if(e.error==='not-allowed'||e.error==='service-not-allowed'){
+        vaSpeak('محتاجين إذن الميكروفون عشان نقدر نسمعك، فعّله من إعدادات المتصفح، أو اكتب بدل ما تتكلم',()=>vaShowTypeRow());
+      }else{
+        vaHandleNoSpeech(onFinal);
+      }
+    };
+    r.onend=()=>{
+      VS.listening=false; vaSetMicState('idle');
+      if(finalText.trim()) onFinal(finalText.trim());
+      else vaHandleNoSpeech(onFinal);
+    };
+    r.start();
+  }catch(e){ vaSetCaption('حصلت مشكلة في الميكروفون — اكتب اللي عايزه بدل ما تتكلم 👇'); vaShowTypeRow(); }
+}
+function vaHandleNoSpeech(onFinal){
+  VS.retries++;
+  if(VS.retries<=2){
+    vaSpeak('معلش ماسمعتش حاجة، جرب تاني وقول بصوت واضح',()=>vaListenOnce(onFinal));
+  }else{
+    VS.retries=0;
+    vaSetCaption('يمكن الميكروفون مش واضح — اكتب اللي عايزه بدل ما تتكلم 👇');
+    vaShowTypeRow();
+  }
+}
+function openVoiceAssistant(){
+  if(S.view==='track'){ vaAskStatus(); return; }
+  VS.retries=0; VS.mode='order';
+  document.getElementById('voiceOverlay').classList.add('show');
+  document.getElementById('voiceTypeRow').style.display='none';
+  document.getElementById('voiceTypeToggle').style.display='block';
+  vaSetTranscript('');
+  if(S.activeShop&&SHOPS[S.activeShop]){
+    vaSpeak('أهلاً بيك 👋 إنت في '+SHOPS[S.activeShop].name+'. قولي إيه اللي عايزه، مثلاً: عايز كيلو رز واتنين مياه',()=>vaListenOnce(vaHandleItemsAnswer));
+  }else{
+    vaSpeak('أهلاً بيك 👋 هساعدك تطلب بصوتك خطوة بخطوة. قولي عايز تطلب من فين، أو قول أقرب محل',()=>vaListenOnce(vaHandleShopAnswer));
+  }
+}
+function vaCloseUI(){
+  document.getElementById('voiceOverlay').classList.remove('show');
+  try{ window.speechSynthesis&&window.speechSynthesis.cancel(); }catch(e){}
+  if(VS.rec){ try{VS.rec.abort();}catch(e){} }
+  VS.listening=false; VS.retries=0;
+}
+function vaHandleShopAnswer(text){
+  const norm=vaNormalize(text);
+  const shops=Object.values(SHOPS);
+  if(!shops.length){ vaSpeak('للأسف لسه مفيش محلات فاتحة دلوقتي، جرب تاني بعد شوية',()=>vaCloseUI()); return; }
+  if(/اقرب|اي محل|ايه ما تختار|انت اختار|مش عارف|اي حاجه/.test(norm)){
+    const s=shops[0]; S.activeShop=s.id; PRODS=s.products; render();
+    vaSpeak('تمام، فتحتلك '+s.name+'. قولي إيه اللي عايزه، مثلاً: عايز كيلو رز واتنين مياه',()=>vaListenOnce(vaHandleItemsAnswer));
+    return;
+  }
+  const match=shops.find(s=>{ const n=vaNormalize(s.name); return norm.includes(n)||n.includes(norm)||norm.includes(n.split(' ')[0]); });
+  if(match){
+    S.activeShop=match.id; PRODS=match.products; render();
+    vaSpeak('تمام، فتحتلك '+match.name+'. قولي إيه اللي عايزه، مثلاً: عايز كيلو رز واتنين مياه',()=>vaListenOnce(vaHandleItemsAnswer));
+  }else{
+    VS.retries++;
+    if(VS.retries>2){ VS.retries=0; vaSetCaption('اختار محل من الشاشة بدل الصوت 👇'); vaShowTypeRow(); return; }
+    vaSpeak('معلش مش لاقي المحل ده، عندنا: '+shops.map(s=>s.name).join('، ')+'. قولي أي واحد فيهم، أو قول أقرب محل',()=>vaListenOnce(vaHandleShopAnswer));
+  }
+}
+function vaHandleItemsAnswer(text){
+  const norm=vaNormalize(text);
+  if(/خلص|كفايه|كده تمام|بس كده|مفيش حاجه تانيه/.test(norm)){ vaStep_house(); return; }
+  const words=norm.split(' ');
+  const matched=[];
+  (PRODS||[]).forEach(p=>{
+    const pname=vaNormalize(p.n); const first=pname.split(' ')[0];
+    const idx=words.findIndex(w=>w===first||w.includes(first)||first.includes(w));
+    if(idx>-1) matched.push({p,qty:vaExtractQtyBefore(words,idx)});
+  });
+  if(!matched.length){
+    VS.retries++;
+    if(VS.retries>2){ VS.retries=0; vaSetCaption('اختار الأصناف من الشاشة بدل الصوت 👇'); vaShowTypeRow(); return; }
+    vaSpeak('معلش مش فاهم، قول اسم الصنف واضح، زي: عايز رز، أو عايز مياه',()=>vaListenOnce(vaHandleItemsAnswer));
+    return;
+  }
+  VS.retries=0;
+  matched.forEach(({p,qty})=>{ S.cartShop=S.activeShop; S.cart[p.id]=(S.cart[p.id]||0)+Math.max(1,qty); });
+  render();
+  const summary=matched.map(({p,qty})=>Math.max(1,qty)+' '+p.n).join('، ');
+  vaSpeak('تمام ضفتلك: '+summary+'. عايز تضيف حاجة تانية؟ قول أيوه، أو قول خلصت',()=>vaListenOnce(vaHandleMoreItems));
+}
+function vaHandleMoreItems(text){
+  const norm=vaNormalize(text);
+  if(/ايوه|أيوه|اه|نعم|كمان|زود/.test(norm)){
+    vaSpeak('قولي كمان إيه',()=>vaListenOnce(vaHandleItemsAnswer)); return;
+  }
+  if(/خلص|كفايه|لا|لأ|كده تمام|بس كده/.test(norm)){ vaStep_house(); return; }
+  vaHandleItemsAnswer(text);
+}
+function vaStep_house(){
+  if(!cCount()){ vaSpeak('السلة لسه فاضية، قولي إيه اللي عايزه',()=>vaListenOnce(vaHandleItemsAnswer)); return; }
+  vaSpeak('تمام، دلوقتي قولي رقم بيتك أو أقرب علامة تميز بيتك',()=>vaListenOnce(vaHandleHouseAnswer));
+}
+function vaHandleHouseAnswer(text){
+  S.co.house=text.trim();
+  if(!S.co.geo){
+    vaSpeak('هحدد موقعك دلوقتي عشان المندوب يلاقيك بسهولة، وافق على إذن الموقع لو المتصفح سألك',()=>vaRequestGeoForVoice());
+  }else vaStep_confirm();
+}
+function vaRequestGeoForVoice(){
+  if(!navigator.geolocation){ vaSpeak('المتصفح مش بيدعم تحديد الموقع، هنكمل عادي بس ممكن المندوب ياخد وقت أكتر يلاقيك',()=>vaStep_confirm()); return; }
+  navigator.geolocation.getCurrentPosition(
+    pos=>{ S.co.geo={lat:+pos.coords.latitude.toFixed(5),lng:+pos.coords.longitude.toFixed(5)}; vaSpeak('تمام، اتحدد موقعك بنجاح',()=>vaStep_confirm()); },
+    ()=>{ vaSetCaption('محتاجين إذن الموقع عشان نكمل — فعّله من زر تفعيل الموقع في شاشة الدفع'); vaShowTypeRow(); },
+    {timeout:8000}
+  );
+}
+function vaStep_confirm(){
+  const tot=cSub()+5;
+  const summary=cItems().map(({p,q})=>q+' '+p.n).join('، ');
+  vaSpeak('طلبك: '+summary+'. الإجمالي '+M(tot)+' جنيه، هيوصل لـ '+S.co.house+'. تؤكد الطلب؟ قول أيوه أو لأ',()=>vaListenOnce(vaHandleConfirmAnswer));
+}
+function vaHandleConfirmAnswer(text){
+  const norm=vaNormalize(text);
+  if(/ايوه|أيوه|اه|تمام|اكد|موافق|ابعت/.test(norm)){ vaFinalizePlaceOrder(); return; }
+  if(/لا|لأ|الغ|وقف|كنسل/.test(norm)){ vaSpeak('تمام، لغيت الطلب. تقدر تفتح المساعد الصوتي تاني في أي وقت',()=>vaCloseUI()); return; }
+  vaSpeak('معلش مش فاهم، قول أيوه لو موافق على الطلب، أو لأ لو عايز تلغي',()=>vaListenOnce(vaHandleConfirmAnswer));
+}
+function vaFinalizePlaceOrder(){
+  if(!SHOPS[S.activeShop]){ vaSpeak('في مشكلة في المحل، جرب تاني',()=>vaCloseUI()); return; }
+  placeOrder();
+  vaSpeak('تم تسجيل طلبك بنجاح، وهبعتلك خبر أول ما فيه تحديث. تقدر تفتح المساعد الصوتي تاني عشان تسأل عن حالة طلبك',()=>vaCloseUI());
+}
+function vaAskStatus(){
+  document.getElementById('voiceOverlay').classList.add('show');
+  document.getElementById('voiceTypeRow').style.display='none';
+  document.getElementById('voiceTypeToggle').style.display='block';
+  const o=S.orders.find(x=>x.id===S.oid)||S.orders[0];
+  if(!o){ vaSpeak('لسه معملتش أي طلب. تحب تطلب بصوتك دلوقتي؟ اقفل الشاشة دي وارجع للرئيسية',()=>{}); return; }
+  const label=SLABEL[o.stage]||'';
+  const extra=o.driver?(' والمندوب '+o.driver+' معاه.'):'';
+  vaSpeak('طلبك رقم '+o.id+'، حالته دلوقتي: '+label+'.'+extra,()=>{});
+}
+function renderVoiceFab(){
+  const b=document.getElementById('voiceFab'); if(!b)return;
+  const visible=['home','shop','cart','checkout','track'].includes(S.view);
+  b.classList.toggle('show',visible);
+  document.getElementById('voiceFabLabel').textContent = S.view==='track'?'اسأل عن طلبك بصوتك':'اطلب بصوتك';
+}
+
 const V={home:vHome,shop:vShop,cart:vCart,checkout:vCheckout,track:vTrack,orders:vOrders,account:vAccount};
 const NAV=[['home','🏠','المتجر'],['orders','📦','طلباتي'],['account','👤','حسابي']];
 function render(){
   saveState();
   renderBell();
   renderFtaFab();
+  renderVoiceFab();
   $('#screen').innerHTML=(V[S.view]||vHome)();
   $('#nav').innerHTML=NAV.map(([v,i,n])=>{
     const bn=(v==='orders'&&S.orders.some(o=>o.stage!=='delivered'))?`<span class="bn">•</span>`:'';
