@@ -336,6 +336,39 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
         <input id="mPass" type="password" placeholder="••••••••" style="text-align:center"></div>
       <div class="spacer"></div>
       <button class="btn btn-p" onclick="doLogin()">دخول المتجر</button>
+      <button style="margin-top:14px;background:none;border:0;color:var(--ac-d);font-family:'Cairo';font-weight:700;
+        font-size:12.5px;text-decoration:underline;cursor:pointer" onclick="openForgotPass()">نسيت كلمة المرور؟</button>
+    </div>
+
+    <div class="astage" id="mst-forgot">
+      <button class="aback" onclick="mGoAuth('login')">→</button>
+      <div class="confirmPhoneIc">🔑</div>
+      <h1 class="atitle">استرجاع كلمة المرور</h1>
+      <p class="asub">اكتب رقم موبايل متجرك المسجّل</p>
+      <div class="fld mt"><label>رقم الموبايل</label>
+        <input id="fpPhone" type="tel" dir="ltr" placeholder="01xxxxxxxxx" style="text-align:center;font-family:'Cairo'"></div>
+      <div class="spacer"></div>
+      <button class="btn btn-p" onclick="startForgotPass()">التالي</button>
+    </div>
+
+    <div class="astage" id="mst-forgot2">
+      <button class="aback" onclick="mGoAuth('forgot')">→</button>
+      <div class="confirmPhoneIc">📱</div>
+      <h1 class="atitle">ده رقمك صح؟</h1>
+      <div class="phoneBig num" id="fpPhoneShow" dir="ltr"></div>
+      <p class="asub">هنسمحلك تحط كلمة مرور جديدة بمجرد التأكيد</p>
+      <div class="spacer"></div>
+      <button class="btn btn-p" onclick="mGoAuth('forgot3')">✓ أيوه، الرقم صح</button>
+    </div>
+
+    <div class="astage" id="mst-forgot3">
+      <div class="confirmPhoneIc">🔒</div>
+      <h1 class="atitle">كلمة مرور جديدة</h1>
+      <p class="asub">اختار كلمة مرور جديدة لمتجرك</p>
+      <div class="fld mt"><label>كلمة المرور الجديدة</label><input id="fpNewPass" type="password" placeholder="••••••••"></div>
+      <div class="fld"><label>تأكيد كلمة المرور</label><input id="fpNewPassConf" type="password" placeholder="••••••••"></div>
+      <div class="spacer"></div>
+      <button class="btn btn-p" onclick="saveForgotPass()">حفظ وتسجيل الدخول</button>
     </div>
 
     <div class="astage" id="mst-phone">
@@ -381,7 +414,28 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
       <div class="fld"><label>كلمة المرور</label><input id="mNewPass" type="password" placeholder="••••••••"></div>
       <div class="fld"><label>تأكيد كلمة المرور</label><input id="mNewPassConf" type="password" placeholder="••••••••"></div>
       <div class="spacer"></div>
-      <button class="btn btn-p" onclick="finishMerchantSignup()">أرسل طلب التسجيل</button>
+      <button class="btn btn-p" onclick="mGoAuth('agreement')">التالي</button>
+    </div>
+
+    <div class="astage" id="mst-agreement">
+      <button class="aback" onclick="mGoAuth('details')">→</button>
+      <svg class="wmark" viewBox="0 0 72 72"><circle cx="36" cy="36" r="36" fill="#FDF1DD"/>
+        <path d="M24 26h24v28l-12-6-12 6V26Z" fill="none" stroke="#E79A1E" stroke-width="2.6" stroke-linejoin="round"/></svg>
+      <h1 class="atitle">تعهّد التاجر</h1>
+      <p class="asub">اقرأه كويس قبل ما توافق</p>
+      <div class="card mt" style="padding:16px;max-height:240px;overflow-y:auto;text-align:right;line-height:2;font-size:13px;color:var(--txt2)">
+        <b style="color:var(--txt);display:block;margin-bottom:8px">بصفتي تاجر منضم لمنصة بسيطة، أقرّ وأوافق على الآتي:</b>
+        ١. التجربة المجانية ١٤ يوم من تاريخ موافقة الإدارة على متجري.<br><br>
+        ٢. بعد انتهاء التجربة المجانية، أتعهّد بدفع ٩٩ جنيه اشتراك شهري عشان متجري يفضل شغال ويستقبل طلبات.<br><br>
+        ٣. لو الاشتراك اتأخر من غير تجديد، متجري ممكن يتقفل مؤقتًا عن استقبال طلبات جديدة لحد ما أجدد.<br><br>
+        ٤. المعلومات والصور اللي بضيفها (بيانات المتجر، الأصناف، الصور) هتكون ظاهرة للعملاء في التطبيق.
+      </div>
+      <div class="fld mt" style="display:flex;align-items:flex-start;gap:10px;background:var(--surf2);padding:13px;border-radius:12px">
+        <input type="checkbox" id="mAgreeCheck" style="width:20px;height:20px;margin-top:1px;flex:0 0 auto">
+        <label for="mAgreeCheck" style="font-size:12.5px;line-height:1.7;color:var(--txt)">قرأت التعهّد وموافق عليه، وهدفع الاشتراك بعد التجربة المجانية زي ما هو موضّح فوق</label>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn btn-p" onclick="finishMerchantSignup()">أوافق وأرسل طلب التسجيل</button>
     </div>
 
   </div>
@@ -423,7 +477,9 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
         <button class="live" style="border:0;background:rgba(0,0,0,.04);border-radius:9px;padding:5px 9px;margin-inline-start:auto" onclick="openSettings()">⚙️ الإعدادات</button>
         <button style="border:0;background:rgba(0,0,0,.04);border-radius:9px;width:34px;height:34px;position:relative;display:grid;place-items:center;flex:0 0 auto" onclick="openInbox()" aria-label="الإشعارات">🔔<span id="bellBadge" class="bellBadge"></span></button>
       </div>
-      <div class="shop"><span class="dot-open"></span> <span id="shopIconEl">🛒</span> <b id="shopNameEl">ماركت أبو حمزة</b> · مفتوح</div>
+      <div class="shop" onclick="toggleShopOpen()" style="cursor:pointer">
+        <span class="dot-open" id="shopDot"></span> <span id="shopIconEl">🛒</span> <b id="shopNameEl">ماركت أبو حمزة</b>
+        <span id="shopOpenLabel"> · مفتوح</span></div>
     </div>
     <div id="subBanner"></div>
     <div id="settleBanner"></div>
@@ -437,6 +493,21 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
 
 <script>
 const ROLE='merchant';
+/* ═══════════ الاتصال بقاعدة البيانات الحقيقية (Supabase) ═══════════ */
+const SUPABASE_URL='https://vymfhyleoekbhxuojudl.supabase.co';
+const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5bWZoeWxlb2VrYmh4dW9qdWRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgyNTUxMjgsImV4cCI6MjEwMzgzMTEyOH0.euxtZVpwZGa023UyFzbY2zgdj0fXjWETLqkZY_5fTCQ';
+const sb=(window.supabase&&window.supabase.createClient)?window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY):null;
+if(!sb) console.error('basita: تعذّر تحميل مكتبة Supabase — هيرجع النظام للمزامنة المحلية بس');
+async function hashPassword(pw){
+  const enc=new TextEncoder().encode(pw);
+  const buf=await crypto.subtle.digest('SHA-256',enc);
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+function haversineKm(a,b){
+  const R=6371,dLat=(b.lat-a.lat)*Math.PI/180,dLng=(b.lng-a.lng)*Math.PI/180;
+  const x=Math.sin(dLat/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+}
 const bc=('BroadcastChannel' in window)?new BroadcastChannel('basita_sync'):null;
 function emit(msg){
   msg.__basita=true; msg.from=ROLE; msg.ts=Date.now(); msg.id=msg.id||Math.random().toString(36).slice(2);
@@ -498,23 +569,97 @@ function finishMerchantSignup(){
   if(!name){toast('اكتب اسم متجرك');return}
   if(pass.length<4){toast('كلمة المرور قصيرة أوي');return}
   if(pass!==conf){toast('كلمة المرور والتأكيد مش متطابقين');return}
+  if(!document.getElementById('mAgreeCheck').checked){toast('لازم توافق على التعهّد الأول');return}
   S.bizType=type; S.customStoreName=name; S.password=pass; S.phone=mSignupPhone;
-  S.merchantId='m'+Date.now();
   applyBizIdentity();
   document.getElementById('paStoreName').textContent=name;
   document.getElementById('paStoreType').textContent=BIZ().label;
   document.getElementById('loginFlow').classList.remove('show');
-  setTimeout(()=>{ document.getElementById('pendingApproval').style.display='flex'; },350);
-  emit({to:['owner'],type:'merchant:signup_request',merchantId:S.merchantId,merchantName:name,
-    bizLabel:BIZ().label,bizIcon:BIZ().icon,phone:mSignupPhone});
-  saveState();
+  (async()=>{
+    if(sb){
+      const pass_hash=await hashPassword(pass);
+      const {data,error}=await sb.from('merchants').insert({
+        name,biz_type:type,phone:mSignupPhone,password_hash:pass_hash,status:'awaiting_approval',
+        agreement_accepted:true,agreement_accepted_at:new Date().toISOString()
+      }).select().single();
+      if(error){ console.error('basita: فشل إنشاء متجرك',error); toast('حصلت مشكلة — جرّب تاني'); setTimeout(()=>document.getElementById('loginFlow').classList.add('show'),100); return; }
+      S.merchantId=data.id;
+      subscribeMyApproval();
+    }else{
+      S.merchantId='m'+Date.now();
+    }
+    setTimeout(()=>{ document.getElementById('pendingApproval').style.display='flex'; },350);
+    saveState();
+  })();
 }
-function doLogin(){
+function subscribeMyApproval(){
+  if(!sb||!S.merchantId)return;
+  sb.channel('my-approval-'+S.merchantId)
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'merchants',filter:'id=eq.'+S.merchantId},payload=>{
+      if(payload.new.status==='trial'||payload.new.status==='active'){
+        document.getElementById('pendingApproval').style.display='none';
+        S.sub.status=payload.new.status; S.sub.daysLeft=computeDaysLeft(payload.new);
+        toast('🎉 صاحب المنصة وافق على متجرك!');
+        proceedToStoreOpen();
+      }else if(payload.new.status==='rejected'){
+        document.getElementById('pendingApproval').innerHTML=`
+          <div style="width:84px;height:84px;border-radius:26px;background:#FDE8E6;display:grid;place-items:center;font-size:36px;margin-bottom:20px">✕</div>
+          <h2 style="font-size:20px">اعتذرت الإدارة عن طلبك</h2>
+          <p style="color:var(--txt2);font-size:13.5px;margin:10px 0 0;max-width:280px">تواصل مع الدعم الفني لمعرفة السبب</p>`;
+      }
+    }).subscribe();
+}
+function computeDaysLeft(row){
+  const cycleStart=row.status==='active'?row.subscription_renews_at:row.trial_started_at;
+  if(!cycleStart)return 14;
+  const totalDays=row.status==='active'?30:14;
+  const elapsed=Math.floor((Date.now()-new Date(cycleStart).getTime())/86400000);
+  return Math.max(0,totalDays-elapsed);
+}
+let fpMerchantId=null;
+function openForgotPass(){ mGoAuth('forgot'); }
+async function startForgotPass(){
+  const ph=document.getElementById('fpPhone').value.trim();
+  if(!/^01[0125]\d{8}$/.test(ph)){toast('اكتب رقم موبايل صحيح');return}
+  if(!sb){toast('محتاجين اتصال بقاعدة البيانات — جرّب تاني بعدين');return}
+  const {data,error}=await sb.from('merchants').select('id,phone').eq('phone',ph).maybeSingle();
+  if(error||!data){toast('مفيش متجر مسجّل بالرقم ده');return}
+  fpMerchantId=data.id;
+  document.getElementById('fpPhoneShow').textContent=ph;
+  mGoAuth('forgot2');
+}
+async function saveForgotPass(){
+  const n=document.getElementById('fpNewPass').value, c=document.getElementById('fpNewPassConf').value;
+  if(n.length<4){toast('كلمة المرور قصيرة أوي');return}
+  if(n!==c){toast('كلمة المرور والتأكيد مش متطابقين');return}
+  const hash=await hashPassword(n);
+  const {error}=await sb.from('merchants').update({password_hash:hash}).eq('id',fpMerchantId);
+  if(error){ console.error('basita:',error); toast('حصلت مشكلة — جرّب تاني');return }
+  toast('اتغيّرت كلمة المرور بنجاح ✓ — سجّل دخولك بيها دلوقتي');
+  document.getElementById('mPhone').value=document.getElementById('fpPhoneShow').textContent;
+  mGoAuth('login');
+}
+async function doLogin(){
   const ph=document.getElementById('mPhone').value.trim();
   const pass=document.getElementById('mPass').value;
   if(!/^01[0125]\d{8}$/.test(ph)){toast('اكتب رقم موبايل صحيح');return}
   if(!pass){toast('اكتب كلمة المرور');return}
-  if(!S.password) S.password=pass;
+  if(sb){
+    const {data,error}=await sb.from('merchants').select('*').eq('phone',ph).maybeSingle();
+    if(error){ console.error('basita: خطأ دخول',error); toast('حصلت مشكلة — جرّب تاني'); return; }
+    if(!data){ toast('مفيش متجر مسجّل بالرقم ده — سجّل متجر جديد الأول'); return; }
+    const pass_hash=await hashPassword(pass);
+    if(pass_hash!==data.password_hash){ toast('كلمة المرور غلط'); return; }
+    S.merchantId=data.id; S.customStoreName=data.name; S.bizType=data.biz_type; S.phone=data.phone;
+    S.password=pass;
+    S.sub.status=(data.status==='trial'||data.status==='active')?data.status:'trial';
+    S.sub.daysLeft=computeDaysLeft(data);
+    if(data.shop_photo_url) S.shopPhoto=data.shop_photo_url;
+    if(data.shop_lat!=null) S.shopGeo={lat:data.shop_lat,lng:data.shop_lng};
+    S.isOpen=data.is_open!==false;
+  } else {
+    if(!S.password) S.password=pass;
+  }
   applyBizIdentity();
   proceedToStoreOpen();
 }
@@ -534,8 +679,9 @@ function proceedToStoreOpen(){
         emit({to:['owner','customer'],type:'merchant:online',merchantId:S.merchantId,merchantName:BIZ().name,
           bizLabel:BIZ().label,bizIcon:BIZ().icon,bizTypeKey:S.bizType});
         if('Notification' in window && Notification.permission==='default') Notification.requestPermission();
-        syncCatalog();
-        if(S.shopPhoto) emit({to:['customer'],type:'shop:photo_updated',merchantId:S.merchantId,photo:S.shopPhoto});
+        if(sb&&S.merchantId){ loadMyProducts(); subscribeMyOrders(); subscribeMyReviews(); subscribeMyTickets(); }
+        else syncCatalog();
+        if(S.shopPhoto&&!sb) emit({to:['customer'],type:'shop:photo_updated',merchantId:S.merchantId,photo:S.shopPhoto});
         captureShopGeo();
       },500);
     },3000);
@@ -559,6 +705,19 @@ function applyBizIdentity(){
   document.getElementById('storeOpenName').textContent=b.name;
   document.getElementById('shopIconEl').textContent=b.icon;
   document.getElementById('shopNameEl').textContent=b.name;
+  renderShopOpenState();
+}
+function renderShopOpenState(){
+  const lbl=document.getElementById('shopOpenLabel'), dot=document.getElementById('shopDot');
+  if(!lbl)return;
+  lbl.textContent=' · '+(S.isOpen?'مفتوح':'مقفول دلوقتي');
+  if(dot) dot.style.background=S.isOpen?'var(--ok)':'var(--danger)';
+}
+async function toggleShopOpen(){
+  S.isOpen=!S.isOpen;
+  renderShopOpenState();
+  if(sb&&S.merchantId) await sb.from('merchants').update({is_open:S.isOpen}).eq('id',S.merchantId);
+  toast(S.isOpen?'متجرك بقى ظاهر ومفتوح للعملاء':'متجرك اتقفل مؤقتًا — العملاء مش هيقدروا يطلبوا لحد ما تفتحه تاني');
 }
 function playNotifySound(){
   try{
@@ -586,7 +745,7 @@ function toast(m){playNotifySound();pushNotify(m);const t=document.getElementByI
 const STAGES=['placed','accepted','assigned','picked','delivering','delivered'];
 const SLABEL={placed:'جديد',accepted:'اتقبل',assigned:'اتعيّن مندوب',picked:'المندوب استلم',
   delivering:'في الطريق',delivered:'اتسلّم'};
-let S={tab:'new',orders:[],expenses:[],cashCounted:'',bizType:'grocery',password:'',customStoreName:'',phone:'',availableDrivers:{},shopGeo:null,reviews:[],merchantId:'m1',shopPhoto:'',vodafoneCash:'',bizBio:'',
+let S={tab:'new',orders:[],expenses:[],cashCounted:'',bizType:'grocery',password:'',customStoreName:'',phone:'',availableDrivers:{},shopGeo:null,reviews:[],merchantId:'m1',shopPhoto:'',vodafoneCash:'',bizBio:'',isOpen:true,
   sub:{status:'trial',daysLeft:14,price:99},
   customerStats:{},
   products:[
@@ -614,6 +773,81 @@ const $=s=>document.querySelector(s);
 const M=n=>Math.round(n).toLocaleString('en');
 const weightLabel=kg=>kg<1?Math.round(kg*1000)+' جم':(kg%1===0?kg:kg.toFixed(2))+' كجم';
 const qtyLabel=i=>i.sellBy==='weight'?weightLabel(i.q):i.q+'×';
+
+/* ═══ منتجات ومبيعات حقيقية من قاعدة البيانات ═══ */
+function mapProductRow(p){ return {id:p.id,n:p.name,br:p.brand||'',u:p.unit,p:+p.price,i:p.icon||BIZ().icon,s:+p.stock,
+  sellBy:p.sell_by,batch:p.batch_number,expiry:p.expiry_date,wholesale:p.wholesale_price?+p.wholesale_price:undefined}; }
+async function loadMyProducts(){
+  if(!sb||!S.merchantId)return;
+  const {data,error}=await sb.from('products').select('*').eq('merchant_id',S.merchantId);
+  if(error){ console.error('basita: فشل تحميل منتجاتك',error); return; }
+  if(!data||!data.length){
+    const seed=S.products.map(p=>({merchant_id:S.merchantId,name:p.n,brand:p.br,icon:p.i,price:p.p,unit:p.u,sell_by:'unit',stock:p.s}));
+    const {data:inserted}=await sb.from('products').insert(seed).select();
+    S.products=(inserted||[]).map(mapProductRow);
+  }else{
+    S.products=data.map(mapProductRow);
+  }
+  render();
+}
+function mapOrderRow(o,items){
+  return {id:o.id,merchantId:o.merchant_id,name:o.customer_name,ph:o.customer_phone,addr:o.address,
+    geo:(o.delivery_lat!=null)?{lat:o.delivery_lat,lng:o.delivery_lng}:null,fee:+o.delivery_fee,total:+o.total,
+    stage:o.stage,driver:o.driver_name||null,placedTs:new Date(o.placed_at).getTime(),
+    items:(items||[]).map(i=>({n:i.name,q:+i.qty,p:+i.unit_price,u:i.unit,sellBy:i.sell_by}))};
+}
+async function loadMyOrders(){
+  if(!sb||!S.merchantId)return;
+  const {data:orders}=await sb.from('orders').select('*').eq('merchant_id',S.merchantId).order('placed_at',{ascending:false});
+  const ids=(orders||[]).map(o=>o.id);
+  let items=[];
+  if(ids.length){ const r=await sb.from('order_items').select('*').in('order_id',ids); items=r.data||[]; }
+  S.orders=(orders||[]).map(o=>mapOrderRow(o,items.filter(i=>i.order_id===o.id)));
+  render();
+}
+function subscribeMyOrders(){
+  if(!sb||!S.merchantId)return;
+  loadMyOrders();
+  sb.channel('merchant-orders-'+S.merchantId)
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'orders',filter:'merchant_id=eq.'+S.merchantId},async payload=>{
+      const {data:items}=await sb.from('order_items').select('*').eq('order_id',payload.new.id);
+      const o=mapOrderRow(payload.new,items);
+      const key=o.ph||o.name; S.customerStats[key]=(S.customerStats[key]||0)+1; o.loyal=S.customerStats[key]>=5;
+      S.orders.unshift(o); notify('طلب جديد وصل من العميل ✓');
+    })
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'orders',filter:'merchant_id=eq.'+S.merchantId},payload=>{
+      const o=S.orders.find(x=>x.id===payload.new.id);
+      if(o){ o.stage=payload.new.stage; o.driver=payload.new.driver_name||o.driver; o._flash=true; render(); }
+    })
+    .subscribe();
+  sb.channel('avail-drivers')
+    .on('postgres_changes',{event:'*',schema:'public',table:'drivers'},()=>refreshAvailableDrivers())
+    .subscribe();
+  refreshAvailableDrivers();
+}
+async function loadMyReviews(){
+  if(!sb||!S.merchantId)return;
+  const {data}=await sb.from('reviews').select('*, customers(name)').eq('merchant_id',S.merchantId);
+  S.reviews=(data||[]).map(r=>({orderId:r.order_id,rating:r.merchant_rating,complaint:r.complaint,
+    customerName:(r.customers&&r.customers.name)||'عميل'}));
+  render();
+}
+function subscribeMyReviews(){
+  if(!sb||!S.merchantId)return;
+  loadMyReviews();
+  sb.channel('merchant-reviews-'+S.merchantId)
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'reviews',filter:'merchant_id=eq.'+S.merchantId},payload=>{
+      loadMyReviews();
+      notify(payload.new.complaint?'⚠️ شكوى جديدة وصلت':'⭐ تقييم جديد: '+payload.new.merchant_rating+'/5');
+    }).subscribe();
+}
+async function refreshAvailableDrivers(){
+  if(!sb)return;
+  const {data}=await sb.from('drivers').select('*').eq('status','approved').eq('is_available',true);
+  S.availableDrivers={};
+  (data||[]).forEach(d=>{ S.availableDrivers[d.id]={id:d.id,name:d.name,vehicle:d.vehicle,lat:d.current_lat,lng:d.current_lng}; });
+  tryAssignWaitingOrders();
+}
 
 /* ═══ نظام الإشعارات (بيل/إن‌بوكس) ═══ */
 const INBOX_KEY='basita_inbox_'+ROLE;
@@ -695,15 +929,15 @@ onBus(d=>{
     render(); notify('💰 '+d.driverName+' عايز يسلّمك كاش المناوبة');
     return;
   }
-  if(d.type==='support:reply'&&d.to&&d.to.includes('merchant')){
+  if(d.type==='support:reply'&&d.to&&d.to.includes('merchant')&&!sb){
     notify('📩 وصلك رد من الدعم الفني'); openSupportReplySheet(d.ticketId,d.reply); return;
   }
-  if(d.type==='feedback:submitted'&&d.to&&d.to.includes('merchant')){
+  if(d.type==='feedback:submitted'&&d.to&&d.to.includes('merchant')&&!sb){
     S.reviews.unshift({orderId:d.orderId,rating:d.merchantRating,complaint:d.complaint,customerName:d.customerName});
     notify(d.complaint?'⚠️ شكوى جديدة من '+d.customerName:'⭐ تقييم جديد: '+d.merchantRating+'/5');
   }
   if(!d.to||!d.to.includes('merchant'))return;
-  if(d.type==='order:new'){
+  if(d.type==='order:new'&&!sb){
     if(d.order.merchantId&&d.order.merchantId!==S.merchantId) { render(); return; }
     const o={...d.order,stage:'placed',placedTs:Date.now()};
     S.orders.unshift(o);
@@ -765,8 +999,8 @@ function openProductForm(id){
     <div class="fld"><label>تاريخ الصلاحية</label><input id="pfExpiry" type="date" value="${p&&p.expiry||''}"></div>`:''}
     ${isGrocery?`
     <div class="fld"><label>سعر الجملة (اختياري)</label><input id="pfWholesale" type="number" value="${p&&p.wholesale||''}" placeholder="اسيبه فاضي لو مفيش"></div>`:''}
-    <button class="btn btn-p" style="width:100%" onclick="saveProduct(${id||'null'})">${p?'حفظ التعديل':'ضيف المنتج'}</button>
-    ${p?`<button class="btn" style="width:100%;background:#FDE8E6;color:#C23327;margin-top:8px" onclick="deleteProduct(${id})">حذف المنتج</button>`:''}
+    <button class="btn btn-p" style="width:100%" onclick="saveProduct('${id||''}')">${p?'حفظ التعديل':'ضيف المنتج'}</button>
+    ${p?`<button class="btn" style="width:100%;background:#FDE8E6;color:#C23327;margin-top:8px" onclick="deleteProduct('${id}')">حذف المنتج</button>`:''}
   `);
   setTimeout(toggleSellByUI,0);
 }
@@ -776,7 +1010,7 @@ function toggleSellByUI(){
   document.getElementById('pfUnitWrap').style.display=isW?'none':'block';
   document.getElementById('pfPriceLabel').textContent=isW?'سعر الكيلو الواحد (جنيه)':'السعر (جنيه)';
 }
-function saveProduct(id){
+async function saveProduct(id){
   const n=document.getElementById('pfName').value.trim();
   const price=+document.getElementById('pfPrice').value;
   const sellBy=document.getElementById('pfSellBy').value;
@@ -788,17 +1022,34 @@ function saveProduct(id){
     const expiry=document.getElementById('pfExpiry').value;
     if(!batch||!expiry){toast('رقم التشغيلة وتاريخ الصلاحية إجباريين للأدوية');return}
   }
-  const data={n,p:price,u:unit,s:stock,sellBy,
-    batch:S.bizType==='pharmacy'?document.getElementById('pfBatch').value.trim():undefined,
-    expiry:S.bizType==='pharmacy'?document.getElementById('pfExpiry').value:undefined,
-    wholesale:S.bizType==='grocery'?(+document.getElementById('pfWholesale').value||undefined):undefined};
-  if(id){ Object.assign(S.products.find(x=>x.id===id),data); }
-  else{ S.products.push({id:Date.now()%100000,i:BIZ().icon,br:'',...data}); }
-  syncCatalog(); closeSheet(); render(); toast(id?'اتحدّث المنتج — العميل شايف التغيير فورًا':'اتضاف المنتج وظهر للعملاء فورًا');
+  const row={
+    name:n,price,unit,stock,sell_by:sellBy,
+    batch_number:S.bizType==='pharmacy'?document.getElementById('pfBatch').value.trim():null,
+    expiry_date:S.bizType==='pharmacy'?(document.getElementById('pfExpiry').value||null):null,
+    wholesale_price:S.bizType==='grocery'?(+document.getElementById('pfWholesale').value||null):null};
+  if(sb&&S.merchantId){
+    if(id){
+      const {error}=await sb.from('products').update(row).eq('id',id);
+      if(error){ console.error('basita:',error); toast('حصلت مشكلة في التعديل');return }
+      Object.assign(S.products.find(x=>x.id===id),{n,p:price,u:unit,s:stock,sellBy,batch:row.batch_number,expiry:row.expiry_date,wholesale:row.wholesale_price});
+    }else{
+      const {data,error}=await sb.from('products').insert({...row,merchant_id:S.merchantId,icon:BIZ().icon,brand:''}).select().single();
+      if(error){ console.error('basita:',error); toast('حصلت مشكلة في الإضافة');return }
+      S.products.push(mapProductRow(data));
+    }
+  }else{
+    if(id){ Object.assign(S.products.find(x=>x.id===id),{n,p:price,u:unit,s:stock,sellBy}); }
+    else{ S.products.push({id:Date.now()%100000,i:BIZ().icon,br:'',n,p:price,u:unit,s:stock,sellBy}); }
+  }
+  closeSheet(); render(); toast(id?'اتحدّث المنتج — العميل شايف التغيير فورًا':'اتضاف المنتج وظهر للعملاء فورًا');
 }
-function deleteProduct(id){
+async function deleteProduct(id){
+  if(sb&&S.merchantId){
+    const {error}=await sb.from('products').delete().eq('id',id);
+    if(error){ console.error('basita:',error); toast('حصلت مشكلة في الحذف');return }
+  }
   S.products=S.products.filter(x=>x.id!==id);
-  syncCatalog(); closeSheet(); render(); toast('اتحذف المنتج');
+  closeSheet(); render(); toast('اتحذف المنتج');
 }
 function vProducts(){
   return `<div class="pad" style="padding-top:14px">
@@ -809,7 +1060,7 @@ function vProducts(){
         <span class="s">${p.u} · مخزون <span class="num">${p.s}</span>
         ${p.expiry?` · صلاحية <span class="num">${p.expiry}</span>`:''}
         ${p.s<10?'<span class="bdg b-new" style="margin-inline-start:6px">قليل</span>':''}</span></span>
-      <button class="btn2 btn-o2" style="flex:0 0 auto" onclick="openProductForm(${p.id})">
+      <button class="btn2 btn-o2" style="flex:0 0 auto" onclick="openProductForm('${p.id}')">
         <span class="num">${M(p.p)}</span> ج ✎</button></div>`).join('')}</div>
     <div style="height:12px"></div></div>`;
 }
@@ -852,13 +1103,29 @@ function openSupportSheet(){
       <textarea id="supMsg" rows="4" class="sup-fld"></textarea></div>
     <button class="btn btn-p" style="width:100%" onclick="submitTicket()">إرسال للدعم الفني</button>`);
 }
-function submitTicket(){
+async function submitTicket(){
   const cat=document.getElementById('supCat').value;
   const msg=document.getElementById('supMsg').value.trim();
   if(!msg){toast('اكتب مشكلتك الأول');return}
-  const ticketId='T'+Math.floor(1000+Math.random()*9000);
-  emit({to:['owner'],type:'support:ticket',ticketId,role:'merchant',roleName:'تاجر',fromName:BIZ().name,category:cat,message:msg});
+  if(sb){
+    const {error}=await sb.from('support_tickets').insert({role:'merchant',from_id:S.merchantId,from_name:BIZ().name,category:cat,message:msg});
+    if(error){ console.error('basita:',error); toast('حصلت مشكلة — جرّب تاني'); return; }
+  }else{
+    const ticketId='T'+Math.floor(1000+Math.random()*9000);
+    emit({to:['owner'],type:'support:ticket',ticketId,role:'merchant',roleName:'تاجر',fromName:BIZ().name,category:cat,message:msg});
+  }
   closeSheet(); toast('✓ اتبعت طلبك للدعم — هيرد عليك في أقرب وقت');
+}
+function subscribeMyTickets(){
+  if(!sb||!S.merchantId)return;
+  sb.channel('my-tickets-'+S.merchantId)
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'support_tickets',filter:'from_id=eq.'+S.merchantId},payload=>{
+      if(payload.new.status==='awaiting_confirmation'){
+        const replies=payload.new.replies||[];
+        notify('📩 وصلك رد من الدعم الفني');
+        openSupportReplySheet(payload.new.id,replies.length?replies[replies.length-1].text:'');
+      }
+    }).subscribe();
 }
 function openSupportReplySheet(ticketId,reply){
   openSheet('رد الدعم الفني',`
@@ -868,8 +1135,9 @@ function openSupportReplySheet(ticketId,reply){
     <button class="btn btn-p" style="width:100%" onclick="confirmSupportResolved('${ticketId}')">✅ آه، اتحلّت</button>
     <button class="btn btn-o mt" style="width:100%" onclick="denySupportResolved('${ticketId}')">❌ لسه مش اتحلّت</button>`);
 }
-function confirmSupportResolved(ticketId){
-  emit({to:['owner'],type:'support:confirm_resolved',ticketId,role:'merchant'});
+async function confirmSupportResolved(ticketId){
+  if(sb){ await sb.from('support_tickets').update({status:'resolved',resolved_at:new Date().toISOString()}).eq('id',ticketId); }
+  else{ emit({to:['owner'],type:'support:confirm_resolved',ticketId,role:'merchant'}); }
   closeSheet(); toast('تمام، شكرًا لتأكيدك 🙏');
 }
 function denySupportResolved(ticketId){
@@ -878,9 +1146,16 @@ function denySupportResolved(ticketId){
       <textarea id="supFollowup" rows="3" class="sup-fld"></textarea></div>
     <button class="btn btn-p" style="width:100%" onclick="sendSupportFollowup('${ticketId}')">إرسال للدعم تاني</button>`);
 }
-function sendSupportFollowup(ticketId){
+async function sendSupportFollowup(ticketId){
   const note=document.getElementById('supFollowup').value.trim();
-  emit({to:['owner'],type:'support:not_resolved',ticketId,role:'merchant',note});
+  if(sb){
+    const {data}=await sb.from('support_tickets').select('replies').eq('id',ticketId).maybeSingle();
+    const replies=(data&&data.replies)||[];
+    if(note) replies.push({from:'merchant',text:note,at:new Date().toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'})});
+    await sb.from('support_tickets').update({status:'reopened',replies}).eq('id',ticketId);
+  }else{
+    emit({to:['owner'],type:'support:not_resolved',ticketId,role:'merchant',note});
+  }
   closeSheet(); toast('اتبعتت ملاحظتك — التذكرة اتفتحت تاني');
 }
 function openSettings(){
@@ -943,7 +1218,11 @@ function openVillageImpact(){
       الهدف: كل قرية في مصر يبقى فيها اقتصاد رقمي بيشتغل زي المدينة بالظبط، وإنت — كتاجر — أول خطوة فيه. 🇪🇬</p>`);
 }
 
-function requestRenew(){
+async function requestRenew(){
+  if(sb){
+    const {data}=await sb.from('platform_settings').select('vodafone_cash_number').eq('id',1).maybeSingle();
+    if(data&&data.vodafone_cash_number) S.vodafoneCash=data.vodafone_cash_number;
+  }
   openSheet('تجديد الاشتراك',`
     <div class="card mb" style="padding:16px;text-align:center;background:var(--ac-l)">
       <div class="tiny muted">المطلوب تحويله</div>
@@ -1043,7 +1322,8 @@ function confirmPickup(orderId){
   if(!valid){toast('الكود غلط أو انتهت صلاحيته — اطلب من المندوب الكود الحالي');return}
   const o=S.orders.find(x=>x.id===orderId); if(!o)return;
   o.stage='picked';
-  emit({to:['customer','driver'],type:'order:status',orderId,status:'picked'});
+  if(sb) sb.from('orders').update({stage:'picked'}).eq('id',orderId).then(()=>{});
+  else emit({to:['customer','driver'],type:'order:status',orderId,status:'picked'});
   render(); toast('✓ اتأكد استلام '+(o.driver||'المندوب')+' للطلب');
 }
 function addExpense(){
@@ -1058,15 +1338,13 @@ function addExpense(){
 function captureShopGeo(){
   if(!navigator.geolocation)return;
   navigator.geolocation.getCurrentPosition(
-    pos=>{ S.shopGeo={lat:+pos.coords.latitude.toFixed(5),lng:+pos.coords.longitude.toFixed(5)}; },
+    pos=>{
+      S.shopGeo={lat:+pos.coords.latitude.toFixed(5),lng:+pos.coords.longitude.toFixed(5)};
+      if(sb&&S.merchantId) sb.from('merchants').update({shop_lat:S.shopGeo.lat,shop_lng:S.shopGeo.lng}).eq('id',S.merchantId).then(()=>{});
+    },
     ()=>{ toast('محتاجين موقع متجرك عشان نرتّب إسناد المناديب بدقة — فعّله من إعدادات المتصفح'); },
     {timeout:8000}
   );
-}
-function haversineKm(a,b){
-  const R=6371,dLat=(b.lat-a.lat)*Math.PI/180,dLng=(b.lng-a.lng)*Math.PI/180;
-  const x=Math.sin(dLat/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLng/2)**2;
-  return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
 }
 function nearestAvailableDriver(){
   const drivers=Object.values(S.availableDrivers).filter(d=>!S.orders.some(o=>o.driver===d.name&&['assigned','picked','delivering'].includes(o.stage)));
@@ -1082,17 +1360,23 @@ function tryAssignWaitingOrders(){
 function autoAssignDriver(id){
   const o=S.orders.find(x=>x.id===id); if(!o)return;
   const nearest=nearestAvailableDriver();
-  if(!nearest){ o._waitingDriver=true; render(); return; }
+  if(!nearest){
+    o._waitingDriver=true; render();
+    emit({to:['owner'],type:'order:no_driver_available',orderId:id,merchantName:BIZ().name});
+    return;
+  }
   o._waitingDriver=false; o.stage='assigned'; o.driver=nearest.name;
   const dist=(S.shopGeo&&nearest.lat!=null)?haversineKm(S.shopGeo,nearest).toFixed(1):null;
-  emit({to:['customer','driver'],type:'order:assign',orderId:id,driverName:nearest.name,targetDriverId:nearest.id,order:o});
+  if(sb) sb.from('orders').update({stage:'assigned',driver_id:nearest.id,driver_name:nearest.name}).eq('id',id).then(()=>{});
+  else emit({to:['customer','driver'],type:'order:assign',orderId:id,driverName:nearest.name,targetDriverId:nearest.id,order:o});
   render();
   toast('🤖 اتعيّن '+nearest.name+' تلقائيًا — أقرب مندوب متاح'+(dist?' ('+dist+' كم)':''));
 }
 function accept(id){
   if(S.sub.status==='expired'){toast('🔴 اشتراكك خلص — جدده الأول عشان تقدر تقبل طلبات');return}
   const o=S.orders.find(x=>x.id===id); o.stage='accepted';
-  emit({to:['customer'],type:'order:accept',orderId:id});
+  if(sb) sb.from('orders').update({stage:'accepted'}).eq('id',id).then(()=>{});
+  else emit({to:['customer'],type:'order:accept',orderId:id});
   render(); toast('اتبعت موافقة للعميل — جاري تعيين أقرب مندوب تلقائيًا 🤖');
   autoAssignDriver(id);
 }
@@ -1136,7 +1420,8 @@ function oCard(o){
     </div></div>`;
 }
 function rejectO(id){
-  emit({to:['customer'],type:'order:status',orderId:id,status:'rejected'});
+  if(sb) sb.from('orders').update({stage:'rejected'}).eq('id',id).then(()=>{});
+  else emit({to:['customer'],type:'order:status',orderId:id,status:'rejected'});
   S.orders=S.orders.filter(x=>x.id!==id); render(); toast('اتبعت اعتذار للعميل');}
 
 function vList(){
@@ -1252,15 +1537,25 @@ function vQR(){
       <p class="tiny muted">🌾 قصة بسيطة — إزاي بنرقمن قرى مصر</p></button>
     <div style="height:14px"></div></div>`;
 }
-function uploadShopPhoto(input){
+async function uploadShopPhoto(input){
   const file=input.files[0]; if(!file)return;
-  const reader=new FileReader();
-  reader.onload=e=>{
-    S.shopPhoto=e.target.result;
-    emit({to:['customer'],type:'shop:photo_updated',merchantId:S.merchantId,photo:S.shopPhoto});
+  if(sb&&S.merchantId){
+    const path=S.merchantId+'/'+Date.now()+'-'+file.name.replace(/[^a-zA-Z0-9.]/g,'_');
+    const {error}=await sb.storage.from('shop-photos').upload(path,file,{upsert:true});
+    if(error){ console.error('basita: فشل رفع صورة المتجر',error); toast('حصلت مشكلة في رفع الصورة — جرّب تاني');return }
+    const {data:pub}=sb.storage.from('shop-photos').getPublicUrl(path);
+    S.shopPhoto=pub.publicUrl;
+    await sb.from('merchants').update({shop_photo_url:S.shopPhoto}).eq('id',S.merchantId);
     render(); toast('اتحدّثت صورة متجرك — العميل شايفها فورًا 📷');
-  };
-  reader.readAsDataURL(file);
+  }else{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      S.shopPhoto=e.target.result;
+      emit({to:['customer'],type:'shop:photo_updated',merchantId:S.merchantId,photo:S.shopPhoto});
+      render(); toast('اتحدّثت صورة متجرك — العميل شايفها فورًا 📷');
+    };
+    reader.readAsDataURL(file);
+  }
 }
 function vInvoices(){
   const delivered=S.orders.filter(o=>o.stage==='delivered');
