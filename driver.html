@@ -207,6 +207,14 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
   color:#fff;font-size:9.5px;font-weight:800;align-items:center;justify-content:center;padding:0 3px;font-family:'Cairo'}
 .recdot{width:9px;height:9px;border-radius:50%;background:var(--danger);flex:0 0 auto;animation:recPulse 1.1s ease-in-out infinite}
 @keyframes recPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.75)}}
+.brandbanner{display:flex;align-items:center;gap:11px;margin-bottom:12px;padding:13px 14px;border-radius:15px;
+  background:linear-gradient(120deg,#12162E,#1D2350 60%,#12162E);color:#fff;position:relative;overflow:hidden;width:100%;text-align:right;border:0;cursor:pointer}
+.brandbanner::before{content:"";position:absolute;inset:0;background:linear-gradient(120deg,transparent,rgba(91,110,245,.22),transparent);
+  background-size:200% 100%;animation:sheen 4s linear infinite}
+.brandbanner .bb-ic{font-size:20px;position:relative;z-index:1}
+.brandbanner b{color:#9AA8FF;font-family:'Cairo';font-size:13px;position:relative;z-index:1}
+.brandbanner span{display:block;font-size:11px;color:#B7BFD9;margin-top:2px;position:relative;z-index:1}
+@keyframes sheen{to{background-position:-200% 0}}
 .inboxOverlay{position:fixed;inset:0;background:rgba(10,12,30,.45);z-index:300}
 .inboxPanel{position:fixed;inset-inline:0;bottom:0;max-width:412px;margin:0 auto;background:var(--surf);border-radius:22px 22px 0 0;
   z-index:301;max-height:78vh;display:flex;flex-direction:column;box-shadow:0 -20px 50px -20px rgba(0,0,0,.35);animation:inboxUp .3s cubic-bezier(.2,.8,.2,1)}
@@ -520,6 +528,7 @@ function startShift(){
       document.getElementById('mainApp').classList.add('show');
       render();
       emit({to:['merchant','owner'],type:'driver:online',driverName:S.driverName||'كريم عبد الله',vehicle:S.vehicle||'🛵'});
+      if('Notification' in window && Notification.permission==='default') Notification.requestPermission();
       toast('بدأت مناوبتك — مستني أول مهمة');
     },400);
   },600);
@@ -536,7 +545,14 @@ function playNotifySound(){
     o.start();o.stop(ctx.currentTime+.3);
   }catch(e){}
 }
-function toast(m){playNotifySound();const t=document.getElementById('toast');if(!t)return;t.textContent=m;t.classList.add('show');
+function pushNotify(m){
+  try{
+    if('Notification' in window && Notification.permission==='granted' && document.hidden){
+      new Notification('بسيطة · تطبيق المندوب',{body:m,icon:''});
+    }
+  }catch(e){}
+}
+function toast(m){playNotifySound();pushNotify(m);const t=document.getElementById('toast');if(!t)return;t.textContent=m;t.classList.add('show');
   clearTimeout(window._tT);window._tT=setTimeout(()=>t.classList.remove('show'),2600)}
 
 /* ═══ حالة التطبيق + حفظ دائم للبيانات الحساسة (وثائق التسجيل، الصور، أرقام الشحنات، المحادثات) ═══ */
@@ -590,6 +606,32 @@ function renderInboxList(){
 }
 function markAllInboxRead(){ S.inbox.forEach(n=>n.read=true); saveInbox(); renderBell(); renderInboxList(); }
 function closeInbox(){ document.getElementById('inboxWrap')?.remove(); }
+function openInfoSheet(title,bodyHtml){
+  document.getElementById('infoWrap')?.remove();
+  const wrap=document.createElement('div'); wrap.id='infoWrap';
+  wrap.innerHTML=`<div class="inboxOverlay" onclick="document.getElementById('infoWrap').remove()"></div>
+    <div class="inboxPanel" style="padding:4px 18px 22px">
+      <div style="width:38px;height:4px;background:var(--line);border-radius:3px;margin:10px auto 14px"></div>
+      <div style="display:flex;align-items:center;margin-bottom:12px">
+        <b class="kufi" style="font-size:15.5px">${title}</b>
+        <button onclick="document.getElementById('infoWrap').remove()" style="margin-inline-start:auto;width:30px;height:30px;border-radius:10px;background:var(--surf2);display:grid;place-items:center;flex:0 0 auto">✕</button>
+      </div>
+      <div style="overflow-y:auto">${bodyHtml}</div>
+    </div>`;
+  document.body.appendChild(wrap);
+}
+function openVillageImpact(){
+  openInfoSheet('🌾 بسيطة والقرية المصرية',`
+    <p style="line-height:1.9;font-size:13.5px">
+      في كتير من قرى مصر، فرصة الشغل بالساعات اللي تناسبك كانت شبه مستحيلة. <b>بسيطة</b> بتفتح شغل توصيل حقيقي جوه القرية نفسها — من غير ما تحتاج تسافر أو تشتغل تحت حد.
+    </p>
+    <p style="line-height:1.9;font-size:13.5px;margin-top:10px">
+      كل توصيلة بتوثّق بالكامل: صورة تسليم إجبارية، وتسجيل صوتي تلقائي من لحظة قبولك للطلب لحد التسليم — يحمي حقك وحق العميل مع بعض، من غير ما تحتاج تثبت حاجة بنفسك.
+    </p>
+    <p style="line-height:1.9;font-size:13.5px;margin-top:10px">
+      كل مندوب بيسجّل، بياناته وهويته بتتراجع وتتوثّق فعليًا قبل ما يشتغل — عشان الثقة تبقى متبادلة بين كل الأطراف. الهدف: شبكة توصيل موثوقة في كل قرية ومركز في مصر. 🇪🇬
+    </p>`);
+}
 
 const STEPS=['assigned','picked','delivering','delivered'];
 const SHOP_GEO={lat:31.0958,lng:31.3789}; // إحداثيات تقريبية — المنيل، طلخا، الدقهلية
@@ -969,7 +1011,12 @@ function vTasks(){
       </div>
       <div style="height:6px;background:rgba(255,255,255,.14);border-radius:4px;overflow:hidden">
         <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#7C8CF8,#5FD4E8);border-radius:4px;transition:width .6s"></div></div>
-    </div></div>`;
+    </div>
+    <button class="brandbanner" onclick="openVillageImpact()">
+      <div class="bb-ic">🌾</div>
+      <div><b>شغل حقيقي جوه قريتك</b>
+        <span>توصيل موثّق يحمي حقك وحق العميل من أول لحظة · اعرف أكتر ‹</span></div>
+    </button></div>`;
   if(!S.tasks.length)return goalBanner+`<div class="empty" style="padding-top:0"><div class="e">🛵</div><h4>مفيش مهام دلوقتي</h4>
     <p class="tiny">لما التاجر يعيّنك، هتظهر هنا فورًا</p></div>`;
   return goalBanner+`<div class="pad" style="padding-top:0">
