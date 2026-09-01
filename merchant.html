@@ -4,6 +4,7 @@
 <title>بسيطة · التاجر</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <style>
 :root{
@@ -411,6 +412,7 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
         <option value="cafe">☕ كافيه</option>
         <option value="bakery">🥖 مخبز</option>
         <option value="other">🏪 نشاط تاني</option></select></div>
+      <div class="fld"><label>قرية متجرك</label><select id="mStoreVillage"></select></div>
       <div class="fld"><label>كلمة المرور</label><input id="mNewPass" type="password" placeholder="••••••••"></div>
       <div class="fld"><label>تأكيد كلمة المرور</label><input id="mNewPassConf" type="password" placeholder="••••••••"></div>
       <div class="spacer"></div>
@@ -497,6 +499,41 @@ const ROLE='merchant';
 const SUPABASE_URL='https://vymfhyleoekbhxuojudl.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5bWZoeWxlb2VrYmh4dW9qdWRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgyNTUxMjgsImV4cCI6MjEwMzgzMTEyOH0.euxtZVpwZGa023UyFzbY2zgdj0fXjWETLqkZY_5fTCQ';
 const sb=(window.supabase&&window.supabase.createClient)?window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY):null;
+
+/* ═══════════ نظام القرى والتسعير الجغرافي (بسيطة) ═══════════ */
+let VILLAGES=[
+  {id:'seed-markaz',name:'مركز طلخا',is_markaz:true,distance_km:0,active:true},
+  {id:'seed-manil',name:'المنيل',is_markaz:false,distance_km:3,active:true}
+];
+const PLATFORM_COMMISSION=2; // ١.٥٠ج + ٥٠ قرش بتتخصم من المندوب على كل طلب بيوصّله (عمولة المنصة)
+async function loadVillages(){
+  if(!sb) return VILLAGES;
+  const {data,error}=await sb.from('villages').select('*').eq('active',true).order('distance_km',{ascending:true});
+  if(!error&&data&&data.length) VILLAGES=data;
+  else if(error) console.error('basita: تعذّر تحميل قائمة القرى',error);
+  return VILLAGES;
+}
+function villageById(id){ return VILLAGES.find(v=>v.id===id)||VILLAGES.find(v=>v.is_markaz)||VILLAGES[0]||null; }
+function villageDistanceKm(aId,bId){
+  if(!aId||!bId||aId===bId) return 0;
+  const a=villageById(aId), b=villageById(bId);
+  if(!a||!b) return 6;
+  if(a.is_markaz) return +b.distance_km||0;
+  if(b.is_markaz) return +a.distance_km||0;
+  return +(((+a.distance_km||0)+(+b.distance_km||0)).toFixed(1));
+}
+// تسعير واقعي: ثابت جوه نفس القرية، ثابت أعلى شوية جوه مركز طلخا نفسه، وتدرّج مع المسافة بين القرى
+function calcDeliveryFee(originId,destId){
+  const km=villageDistanceKm(originId,destId);
+  const o=villageById(originId), d=villageById(destId);
+  if(km<=0) return (o&&o.is_markaz)?10:5;
+  const base=((o&&o.is_markaz)||(d&&d.is_markaz))?7:5;
+  return Math.max(8,Math.round(base+km*2.5));
+}
+function villageOptionsHtml(selectedId){
+  return VILLAGES.map(v=>`<option value="${v.id}" ${v.id===selectedId?'selected':''}>${v.is_markaz?'🏛️':'🌾'} ${v.name}</option>`).join('');
+}
+loadVillages();
 if(!sb) console.error('basita: تعذّر تحميل مكتبة Supabase — هيرجع النظام للمزامنة المحلية بس');
 async function hashPassword(pw){
   const enc=new TextEncoder().encode(pw);
@@ -539,6 +576,10 @@ setTimeout(()=>document.getElementById('loginFlow').classList.add('show'),1350);
 function mGoAuth(stage){
   document.querySelectorAll('#loginFlow .astage').forEach(s=>s.classList.remove('on'));
   document.getElementById('mst-'+stage).classList.add('on');
+  if(stage==='details'){
+    const sel=document.getElementById('mStoreVillage');
+    if(sel) sel.innerHTML=villageOptionsHtml(S.villageId);
+  }
 }
 document.addEventListener('input',e=>{
   if(e.target.parentElement&&e.target.parentElement.id==='mOtpRow'){
@@ -571,6 +612,7 @@ function finishMerchantSignup(){
   if(pass!==conf){toast('كلمة المرور والتأكيد مش متطابقين');return}
   if(!document.getElementById('mAgreeCheck').checked){toast('لازم توافق على التعهّد الأول');return}
   S.bizType=type; S.customStoreName=name; S.password=pass; S.phone=mSignupPhone;
+  S.villageId=document.getElementById('mStoreVillage').value||S.villageId;
   applyBizIdentity();
   document.getElementById('paStoreName').textContent=name;
   document.getElementById('paStoreType').textContent=BIZ().label;
@@ -580,7 +622,7 @@ function finishMerchantSignup(){
       const pass_hash=await hashPassword(pass);
       const {data,error}=await sb.from('merchants').insert({
         name,biz_type:type,phone:mSignupPhone,password_hash:pass_hash,status:'awaiting_approval',
-        agreement_accepted:true,agreement_accepted_at:new Date().toISOString()
+        agreement_accepted:true,agreement_accepted_at:new Date().toISOString(),village_id:S.villageId
       }).select().single();
       if(error){ console.error('basita: فشل إنشاء متجرك',error); toast('حصلت مشكلة — جرّب تاني'); setTimeout(()=>document.getElementById('loginFlow').classList.add('show'),100); return; }
       S.merchantId=data.id;
@@ -651,6 +693,7 @@ async function doLogin(){
     const pass_hash=await hashPassword(pass);
     if(pass_hash!==data.password_hash){ toast('كلمة المرور غلط'); return; }
     S.merchantId=data.id; S.customStoreName=data.name; S.bizType=data.biz_type; S.phone=data.phone;
+    S.villageId=data.village_id||S.villageId;
     S.password=pass;
     S.sub.status=(data.status==='trial'||data.status==='active')?data.status:'trial';
     S.sub.daysLeft=computeDaysLeft(data);
@@ -745,7 +788,7 @@ function toast(m){playNotifySound();pushNotify(m);const t=document.getElementByI
 const STAGES=['placed','accepted','assigned','picked','delivering','delivered'];
 const SLABEL={placed:'جديد',accepted:'اتقبل',assigned:'اتعيّن مندوب',picked:'المندوب استلم',
   delivering:'في الطريق',delivered:'اتسلّم'};
-let S={tab:'new',orders:[],expenses:[],cashCounted:'',bizType:'grocery',password:'',customStoreName:'',phone:'',availableDrivers:{},shopGeo:null,reviews:[],merchantId:'m1',shopPhoto:'',vodafoneCash:'',bizBio:'',isOpen:true,
+let S={tab:'new',orders:[],expenses:[],cashCounted:'',bizType:'grocery',password:'',customStoreName:'',phone:'',villageId:null,availableDrivers:{},shopGeo:null,reviews:[],merchantId:'m1',shopPhoto:'',vodafoneCash:'',bizBio:'',isOpen:true,
   sub:{status:'trial',daysLeft:14,price:99},
   customerStats:{},
   products:[
@@ -793,6 +836,7 @@ async function loadMyProducts(){
 function mapOrderRow(o,items){
   return {id:o.id,merchantId:o.merchant_id,name:o.customer_name,ph:o.customer_phone,addr:o.address,
     geo:(o.delivery_lat!=null)?{lat:o.delivery_lat,lng:o.delivery_lng}:null,fee:+o.delivery_fee,total:+o.total,
+    destVillageId:o.dest_village_id||null,
     stage:o.stage,driver:o.driver_name||null,placedTs:new Date(o.placed_at).getTime(),
     items:(items||[]).map(i=>({n:i.name,q:+i.qty,p:+i.unit_price,u:i.unit,sellBy:i.sell_by}))};
 }
@@ -845,7 +889,7 @@ async function refreshAvailableDrivers(){
   if(!sb)return;
   const {data}=await sb.from('drivers').select('*').eq('status','approved').eq('is_available',true);
   S.availableDrivers={};
-  (data||[]).forEach(d=>{ S.availableDrivers[d.id]={id:d.id,name:d.name,vehicle:d.vehicle,lat:d.current_lat,lng:d.current_lng}; });
+  (data||[]).forEach(d=>{ S.availableDrivers[d.id]={id:d.id,name:d.name,vehicle:d.vehicle,lat:d.current_lat,lng:d.current_lng,villageId:d.village_id||null}; });
   tryAssignWaitingOrders();
 }
 
@@ -1346,20 +1390,39 @@ function captureShopGeo(){
     {timeout:8000}
   );
 }
-function nearestAvailableDriver(){
+function nearestAvailableDriver(destVillageId){
   const drivers=Object.values(S.availableDrivers).filter(d=>!S.orders.some(o=>o.driver===d.name&&['assigned','picked','delivering'].includes(o.stage)));
   if(!drivers.length)return null;
-  if(!S.shopGeo)return drivers[0];
-  const withGeo=drivers.filter(d=>d.lat!=null);
-  if(!withGeo.length)return drivers[0];
-  return withGeo.reduce((best,d)=>haversineKm(S.shopGeo,d)<haversineKm(S.shopGeo,best)?d:best, withGeo[0]);
+  const pickByGeo=list=>{
+    if(!S.shopGeo) return list[0];
+    const withGeo=list.filter(d=>d.lat!=null);
+    if(!withGeo.length) return list[0];
+    return withGeo.reduce((best,d)=>haversineKm(S.shopGeo,d)<haversineKm(S.shopGeo,best)?d:best, withGeo[0]);
+  };
+  if(!destVillageId) return pickByGeo(drivers);
+  // ١) مناديب قرية الطلب نفسها لهم الأولوية
+  const sameVillage=drivers.filter(d=>d.villageId===destVillageId);
+  if(sameVillage.length) return {...pickByGeo(sameVillage),_fromOtherVillage:false};
+  // ٢) مفيش مناديب في القرية؟ ندوّر بالترتيب على أقرب قرية فيها مندوب متاح (مركز طلخا آخر حل قوي دايمًا)
+  const villageOrder=[...VILLAGES].sort((a,b)=>{
+    const da=villageDistanceKm(destVillageId,a.id), db=villageDistanceKm(destVillageId,b.id);
+    if(da!==db) return da-db;
+    return (b.is_markaz?1:0)-(a.is_markaz?1:0);
+  });
+  for(const v of villageOrder){
+    if(v.id===destVillageId) continue;
+    const inVillage=drivers.filter(d=>d.villageId===v.id);
+    if(inVillage.length) return {...pickByGeo(inVillage),_fromOtherVillage:true,_fromVillageName:v.name};
+  }
+  // ٣) آخر حل: أي مندوب متاح مهما كانت قريته
+  return {...pickByGeo(drivers),_fromOtherVillage:true};
 }
 function tryAssignWaitingOrders(){
   S.orders.filter(o=>o.stage==='accepted'&&o._waitingDriver).forEach(o=>autoAssignDriver(o.id));
 }
 function autoAssignDriver(id){
   const o=S.orders.find(x=>x.id===id); if(!o)return;
-  const nearest=nearestAvailableDriver();
+  const nearest=nearestAvailableDriver(o.destVillageId);
   if(!nearest){
     o._waitingDriver=true; render();
     emit({to:['owner'],type:'order:no_driver_available',orderId:id,merchantName:BIZ().name});
@@ -1370,7 +1433,8 @@ function autoAssignDriver(id){
   if(sb) sb.from('orders').update({stage:'assigned',driver_id:nearest.id,driver_name:nearest.name}).eq('id',id).then(()=>{});
   else emit({to:['customer','driver'],type:'order:assign',orderId:id,driverName:nearest.name,targetDriverId:nearest.id,order:o});
   render();
-  toast('🤖 اتعيّن '+nearest.name+' تلقائيًا — أقرب مندوب متاح'+(dist?' ('+dist+' كم)':''));
+  toast(nearest._fromOtherVillage?'🌾 مفيش مندوب في قرية الطلب — اتعيّن '+nearest.name+' من '+(nearest._fromVillageName||'قرية تانية قريبة'):
+    '🤖 اتعيّن '+nearest.name+' تلقائيًا — أقرب مندوب متاح'+(dist?' ('+dist+' كم)':''));
 }
 function accept(id){
   if(S.sub.status==='expired'){toast('🔴 اشتراكك خلص — جدده الأول عشان تقدر تقبل طلبات');return}
