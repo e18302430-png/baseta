@@ -4,6 +4,7 @@
 <title>بسيطة · المندوب</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
 :root{
   --bg:#F6F7FC;--surf:#FFFFFF;--surf2:#EEF0FA;--line:#E4E7F5;
@@ -407,6 +408,7 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
       <div class="fld mt"><label>الاسم بالكامل</label><input id="dName" placeholder="اسمك بالكامل"></div>
       <div class="fld"><label>وسيلة التوصيل</label><select id="dVehicle">
         <option value="🛵">🛵 موتوسيكل</option><option value="🚲">🚲 دراجة</option><option value="🚗">🚗 عربية</option></select></div>
+      <div class="fld"><label>قريتك (اللي هتشتغل فيها)</label><select id="dVillage"></select></div>
       <div class="fld"><label>كلمة المرور</label><input id="dNewPass" type="password" placeholder="••••••••"></div>
       <div class="fld"><label>تأكيد كلمة المرور</label><input id="dNewPassConf" type="password" placeholder="••••••••"></div>
       <div class="spacer"></div>
@@ -512,6 +514,41 @@ const ROLE='driver';
 const SUPABASE_URL='https://vymfhyleoekbhxuojudl.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5bWZoeWxlb2VrYmh4dW9qdWRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgyNTUxMjgsImV4cCI6MjEwMzgzMTEyOH0.euxtZVpwZGa023UyFzbY2zgdj0fXjWETLqkZY_5fTCQ';
 const sb=(window.supabase&&window.supabase.createClient)?window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY):null;
+
+/* ═══════════ نظام القرى والتسعير الجغرافي (بسيطة) ═══════════ */
+let VILLAGES=[
+  {id:'seed-markaz',name:'مركز طلخا',is_markaz:true,distance_km:0,active:true},
+  {id:'seed-manil',name:'المنيل',is_markaz:false,distance_km:3,active:true}
+];
+const PLATFORM_COMMISSION=2; // ١.٥٠ج + ٥٠ قرش بتتخصم من المندوب على كل طلب بيوصّله (عمولة المنصة)
+async function loadVillages(){
+  if(!sb) return VILLAGES;
+  const {data,error}=await sb.from('villages').select('*').eq('active',true).order('distance_km',{ascending:true});
+  if(!error&&data&&data.length) VILLAGES=data;
+  else if(error) console.error('basita: تعذّر تحميل قائمة القرى',error);
+  return VILLAGES;
+}
+function villageById(id){ return VILLAGES.find(v=>v.id===id)||VILLAGES.find(v=>v.is_markaz)||VILLAGES[0]||null; }
+function villageDistanceKm(aId,bId){
+  if(!aId||!bId||aId===bId) return 0;
+  const a=villageById(aId), b=villageById(bId);
+  if(!a||!b) return 6;
+  if(a.is_markaz) return +b.distance_km||0;
+  if(b.is_markaz) return +a.distance_km||0;
+  return +(((+a.distance_km||0)+(+b.distance_km||0)).toFixed(1));
+}
+// تسعير واقعي: ثابت جوه نفس القرية، ثابت أعلى شوية جوه مركز طلخا نفسه، وتدرّج مع المسافة بين القرى
+function calcDeliveryFee(originId,destId){
+  const km=villageDistanceKm(originId,destId);
+  const o=villageById(originId), d=villageById(destId);
+  if(km<=0) return (o&&o.is_markaz)?10:5;
+  const base=((o&&o.is_markaz)||(d&&d.is_markaz))?7:5;
+  return Math.max(8,Math.round(base+km*2.5));
+}
+function villageOptionsHtml(selectedId){
+  return VILLAGES.map(v=>`<option value="${v.id}" ${v.id===selectedId?'selected':''}>${v.is_markaz?'🏛️':'🌾'} ${v.name}</option>`).join('');
+}
+loadVillages();
 if(!sb) console.error('basita: تعذّر تحميل مكتبة Supabase — هيرجع النظام للمزامنة المحلية بس');
 async function hashPassword(pw){
   const enc=new TextEncoder().encode(pw);
@@ -549,6 +586,10 @@ setTimeout(()=>document.getElementById('loginFlow').classList.add('show'),1350);
 function dGoAuth(stage){
   document.querySelectorAll('#loginFlow .astage').forEach(s=>s.classList.remove('on'));
   document.getElementById('dst-'+stage).classList.add('on');
+  if(stage==='details'){
+    const sel=document.getElementById('dVillage');
+    if(sel) sel.innerHTML=villageOptionsHtml(S.villageId);
+  }
 }
 document.addEventListener('input',e=>{
   if(e.target.parentElement&&e.target.parentElement.id==='dOtpRow'){
@@ -600,6 +641,7 @@ async function finishDriverSignup(){
   const vehicle=document.getElementById('dVehicle').value;
   const pass=document.getElementById('dNewPass').value;
   S.driverName=name; S.vehicle=vehicle; S.password=pass; S.phone=dSignupPhone;
+  S.villageId=document.getElementById('dVillage').value||S.villageId;
   S.idCardPhoto=dDocs.idCard; S.selfiePhoto=dDocs.selfie; S.verifyStatus='pending';
   applyDriverIdentity();
   document.getElementById('loginFlow').classList.remove('show');
@@ -614,7 +656,7 @@ async function finishDriverSignup(){
       const selfieUrl=sb.storage.from('driver-selfies').getPublicUrl(stamp+'-selfie.jpg').data.publicUrl;
       const pass_hash=await hashPassword(pass);
       const {data,error}=await sb.from('drivers').insert({
-        name,phone:dSignupPhone,password_hash:pass_hash,vehicle,status:'pending_review',
+        name,phone:dSignupPhone,password_hash:pass_hash,vehicle,status:'pending_review',village_id:S.villageId,
         id_card_photo_url:idUrl,selfie_photo_url:selfieUrl,agreement_accepted:true,agreement_accepted_at:new Date().toISOString()
       }).select().single();
       if(error){ console.error('basita: فشل تسجيلك',error); toast('حصلت مشكلة — جرّب تاني'); return; }
@@ -698,7 +740,7 @@ async function doLogin(){
     const pass_hash=await hashPassword(pass);
     if(pass_hash!==data.password_hash){ toast('كلمة المرور غلط'); return; }
     if(data.status!=='approved'){ toast('حسابك لسه بانتظار مراجعة الأمان'); return; }
-    S.driverId=data.id; S.driverName=data.name; S.vehicle=data.vehicle; S.phone=data.phone; S.password=pass;
+    S.driverId=data.id; S.driverName=data.name; S.vehicle=data.vehicle; S.phone=data.phone; S.password=pass; S.villageId=data.village_id||S.villageId;
   }else{
     if(!S.password) S.password=pass;
     S.driverId=S.driverId||('d_'+ph);
@@ -747,7 +789,7 @@ function toast(m){playNotifySound();pushNotify(m);const t=document.getElementByI
   clearTimeout(window._tT);window._tT=setTimeout(()=>t.classList.remove('show'),2600)}
 
 /* ═══ حالة التطبيق + حفظ دائم للبيانات الحساسة (وثائق التسجيل، الصور، أرقام الشحنات، المحادثات) ═══ */
-let S={view:'tasks',avail:true,tasks:[],history:[],shiftTotal:0,settling:false,password:'',driverName:'',vehicle:'🛵',phone:'',ratings:[],tips:[],driverId:'',verifyStatus:'',idCardPhoto:'',selfiePhoto:''};
+let S={view:'tasks',avail:true,tasks:[],history:[],shiftTotal:0,netEarnings:0,settling:false,password:'',driverName:'',vehicle:'🛵',phone:'',villageId:null,ratings:[],tips:[],driverId:'',verifyStatus:'',idCardPhoto:'',selfiePhoto:''};
 const STATE_KEY='basita_state_'+ROLE;
 function loadState(){ try{return JSON.parse(localStorage.getItem(STATE_KEY)||'null')}catch(e){return null} }
 function saveState(){ try{localStorage.setItem(STATE_KEY,JSON.stringify(S));}catch(e){ console.warn('basita: تعذّر الحفظ المحلي',e); } }
@@ -1026,6 +1068,9 @@ async function confirmDeliveryPhoto(){
       driverName:S.driverName||'كريم عبد الله',driverId:S.driverId,merchantId:t.merchantId,customerId:t.customerId,total:t.total});
   }
   S.shiftTotal+=(t.total||0);
+  const netEarn=Math.max(0,(t.fee||0)-PLATFORM_COMMISSION);
+  S.netEarnings=(S.netEarnings||0)+netEarn;
+  if(sb) sb.from('orders').update({driver_net_earning:netEarn}).eq('id',id).then(()=>{});
   delete t.addr; delete t.ph; t.closedAt=new Date().toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'});
   S.history.unshift(t); S.tasks=S.tasks.filter(x=>x.id!==id); S.avail=true;
   emit({to:['owner'],type:'ticket:closed',orderId:id});
@@ -1153,7 +1198,10 @@ function openDriverSettings(){
       <h3 style="font-family:Cairo;font-size:16px;color:#151833">الإعدادات</h3>
       <button style="margin-inline-start:auto;width:32px;height:32px;border-radius:10px;background:var(--surf2);font-size:16px" onclick="closeDriverSettings()">✕</button></div>
     <div class="card mb" style="padding:14px"><div class="tiny muted">إجمالي كاش المناوبة الحالية</div>
-      <div class="kufi num" style="font-size:22px;color:var(--ac-d)">${M(S.shiftTotal)} ج</div></div>
+      <div class="kufi num" style="font-size:22px;color:var(--ac-d)">${M(S.shiftTotal)} ج</div>
+      <div class="tiny muted mt">ده كاش العميل اللي لازم تسلّمه للتاجر — مش دخلك</div></div>
+    <div class="card mb" style="padding:14px"><div class="tiny muted">صافي أرباحك من التوصيل (بعد خصم ${PLATFORM_COMMISSION} ج عمولة المنصة على كل طلب)</div>
+      <div class="kufi num" style="font-size:22px;color:#151833">${M(S.netEarnings||0)} ج</div></div>
     <button class="btn2 btn-p2" style="width:100%;margin-bottom:18px" onclick="requestSettle();closeDriverSettings()">💰 قفل المناوبة وسلّم الكاش للتاجر</button>
     <div class="sec-t" style="margin-top:0"><h3>تغيير كلمة المرور</h3></div>
     <div class="fld"><label>كلمة المرور الحالية</label><input id="dpOld" type="password" placeholder="••••••••"></div>
@@ -1320,7 +1368,7 @@ function setAvail(v){
 }
 function mapTaskRow(o,items){
   return {id:o.id,merchantId:o.merchant_id,name:o.customer_name,ph:o.customer_phone,addr:o.address,
-    geo:(o.delivery_lat!=null)?{lat:o.delivery_lat,lng:o.delivery_lng}:null,total:+o.total,stage:o.stage,
+    geo:(o.delivery_lat!=null)?{lat:o.delivery_lat,lng:o.delivery_lng}:null,total:+o.total,fee:+o.delivery_fee||0,stage:o.stage,
     accepted:false,items:(items||[]).map(i=>({n:i.name,q:+i.qty,p:+i.unit_price,u:i.unit,sellBy:i.sell_by}))};
 }
 function subscribeMyTasks(){
