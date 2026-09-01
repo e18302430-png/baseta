@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>بسيطة · التاجر</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -74,7 +74,7 @@ p.lsub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
 .btn-p{background:var(--ac);color:#211602;box-shadow:0 10px 26px -10px rgba(231,154,30,.55)}
 .btn-o{background:var(--surf);border:1.5px solid var(--line);color:var(--txt)}
 
-.astage{flex:1;display:none;flex-direction:column;padding:26px 24px;position:relative;overflow-y:auto}
+.astage{flex:1;display:none;flex-direction:column;padding:calc(26px + env(safe-area-inset-top)) 24px calc(20px + env(safe-area-inset-bottom));position:relative;overflow-y:auto}
 .astage.on{display:flex;animation:slideIn .4s cubic-bezier(.2,.8,.2,1)}
 @keyframes slideIn{from{opacity:0;transform:translateX(16px)}}
 .aback{width:36px;height:36px;border-radius:11px;background:var(--surf2);display:grid;place-items:center;
@@ -83,6 +83,47 @@ p.lsub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
 .aprog i{height:4px;flex:1;border-radius:3px;background:var(--line);font-style:normal}
 .aprog i.on{background:var(--ac)}
 .hero-ill{width:100%;max-width:220px;height:170px;margin:6px auto 20px}
+
+/* ═══════════ بانر قوة الشبكة — صفحة "افتح متجرك الرقمي" قبل الدخول ═══════════ */
+.vhero{position:relative;overflow:hidden;border-radius:26px;margin:4px 0 18px;padding:20px 19px 18px;
+  isolation:isolate;background:linear-gradient(158deg,#241A08 0%,#33260E 55%,#241A08 100%);
+  box-shadow:0 28px 60px -26px rgba(231,154,30,.5),0 1px 0 rgba(255,255,255,.06) inset}
+.vhero::before,.vhero::after{content:"";position:absolute;border-radius:50%;z-index:0;filter:blur(2px)}
+.vhero::before{width:180px;height:180px;inset:-70px -50px auto auto;
+  background:radial-gradient(circle,rgba(245,192,103,.55),transparent 70%);animation:vFloat1 7s ease-in-out infinite}
+.vhero::after{width:150px;height:150px;inset:auto auto -60px -40px;
+  background:radial-gradient(circle,rgba(0,182,122,.3),transparent 70%);animation:vFloat2 8.5s ease-in-out infinite}
+@keyframes vFloat1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-12px,10px) scale(1.08)}}
+@keyframes vFloat2{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(10px,-10px) scale(1.1)}}
+.vhero-grid{position:absolute;inset:0;z-index:0;opacity:.5;
+  background-image:radial-gradient(rgba(245,192,103,.18) 1px,transparent 1.4px);
+  background-size:16px 16px;mask-image:radial-gradient(ellipse 100% 80% at 50% 20%,#000 40%,transparent 90%)}
+.vhero-shine{position:absolute;inset:0;z-index:1;pointer-events:none;mix-blend-mode:overlay;
+  background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,.5) 50%,transparent 60%);
+  background-size:260% 260%;background-position:160% 160%;animation:vShine 5.5s ease-in-out infinite}
+@keyframes vShine{0%,60%{background-position:160% 160%}100%{background-position:-40% -40%}}
+.vhero-in{position:relative;z-index:2}
+.vhero-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:13px}
+.vhero-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.1);
+  border:1px solid rgba(245,192,103,.4);color:#F8D9A0;font-size:10px;font-weight:700;
+  padding:5px 10px;border-radius:999px;white-space:nowrap}
+.vhero-live{display:flex;align-items:center;gap:5px;font-size:9.5px;color:#CFC3AC;font-weight:600;white-space:nowrap}
+.vhero-live i{width:6px;height:6px;border-radius:50%;background:#F0A93B;display:block;box-shadow:0 0 0 0 rgba(240,169,59,.6);animation:vPulse 2s infinite}
+@keyframes vPulse{0%{box-shadow:0 0 0 0 rgba(240,169,59,.55)}70%{box-shadow:0 0 0 7px rgba(240,169,59,0)}100%{box-shadow:0 0 0 0 rgba(240,169,59,0)}}
+.vhero h2{font-family:'Cairo';font-weight:900;font-size:19px;line-height:1.42;color:#fff;letter-spacing:-.2px}
+.vhero h2 b{color:#F5C067}
+.vhero .vh-sub{font-size:12px;color:#CBBFA6;margin-top:8px;line-height:1.75}
+.vhero-stats{display:flex;gap:7px;margin-top:16px}
+.vhero-stat{flex:1;text-align:center;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);
+  border-radius:14px;padding:9px 3px 8px;backdrop-filter:blur(8px);opacity:0;transform:translateY(8px);
+  animation:vPop .5s cubic-bezier(.2,.8,.2,1) forwards}
+.vhero-stat:nth-child(1){animation-delay:.15s}.vhero-stat:nth-child(2){animation-delay:.3s}.vhero-stat:nth-child(3){animation-delay:.45s}
+@keyframes vPop{to{opacity:1;transform:none}}
+.vhero-stat b{display:block;font-family:'Cairo';font-weight:800;font-size:14px;color:#F5C067;font-variant-numeric:tabular-nums}
+.vhero-stat span{display:block;font-size:9px;color:#A99B7E;margin-top:2px;line-height:1.4}
+.vhero-trust{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+.vhero-trust span{font-size:9.5px;color:#DCD0B8;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
+  padding:4px 9px;border-radius:999px}
 .wmark{width:72px;height:72px;margin:0 auto 22px}
 h1.atitle{font-size:23px;text-align:center;line-height:1.4}
 p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-height:1.7}
@@ -112,7 +153,7 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
 /* ═══ التطبيق الأساسي ═══ */
 #mainApp{position:absolute;inset:0;display:flex;flex-direction:column;opacity:0;transition:opacity .5s ease .1s}
 #mainApp.show{opacity:1}
-.top{padding:14px 16px 12px;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20;
+.top{padding:calc(14px + env(safe-area-inset-top)) 16px 12px;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20;
   background:rgba(249,247,244,.92);backdrop-filter:blur(14px)}
 .top-r{display:flex;align-items:center;gap:10px}
 .mark{width:30px;height:30px;flex:0 0 auto}
@@ -125,7 +166,7 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
 .shop b{color:var(--txt);font-weight:600}
 .dot-open{width:6px;height:6px;border-radius:50%;background:var(--ok);display:inline-block}
 
-.body{flex:1;overflow-y:auto;padding-bottom:calc(var(--nav) + 12px)}
+.body{flex:1;overflow-y:auto;padding-bottom:calc(var(--nav) + env(safe-area-inset-bottom) + 12px)}
 .body::-webkit-scrollbar{width:0}
 .pad{padding:0 16px}
 
@@ -143,7 +184,7 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
   font-size:12px;padding:8px 12px;border-radius:10px;white-space:nowrap}
 .pickupqr{display:flex;align-items:center;gap:10px;margin-top:10px;padding:10px;border-radius:12px;background:var(--surf2)}
 .pickupqr img{border-radius:8px;background:#fff;flex:0 0 auto}
-.float-support{position:absolute;bottom:calc(var(--nav) + 14px);inset-inline-start:14px;z-index:35;
+.float-support{position:absolute;bottom:calc(var(--nav) + env(safe-area-inset-bottom) + 14px);inset-inline-start:14px;z-index:35;
   height:44px;padding:0 16px 0 14px;border-radius:999px;background:var(--ac);color:#211602;font-size:13.5px;font-weight:700;border:0;
   display:flex;align-items:center;gap:7px;font-family:'Cairo',inherit;box-shadow:0 12px 26px -8px rgba(231,154,30,.55)}
 .float-support i{font-style:normal;font-size:19px}
@@ -209,7 +250,7 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
 .brandbanner span{display:block;font-size:11px;color:#C9BB9C;margin-top:2px;position:relative;z-index:1}
 @keyframes sheen{to{background-position:-200% 0}}
 
-.nav{position:absolute;inset-inline:0;bottom:0;height:var(--nav);background:rgba(255,255,255,.97);
+.nav{position:absolute;inset-inline:0;bottom:0;height:calc(var(--nav) + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);background:rgba(255,255,255,.97);
   backdrop-filter:blur(14px);border-top:1px solid var(--line);display:flex;z-index:40}
 .nav button{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
   color:var(--txt3);font-size:10px;font-weight:600;position:relative}
@@ -253,15 +294,27 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
   <div id="loginFlow">
 
     <div class="astage on" id="mst-welcome">
-      <div class="spacer" style="flex:.3"></div>
-      <svg class="hero-ill" viewBox="0 0 220 170"><defs><radialGradient id="mg1"><stop offset="0%" stop-color="#F0A93B" stop-opacity=".25"/><stop offset="100%" stop-color="#F0A93B" stop-opacity="0"/></radialGradient></defs>
-        <circle cx="110" cy="85" r="82" fill="url(#mg1)"/>
-        <rect x="52" y="60" width="116" height="75" rx="14" fill="#fff" stroke="#E79A1E" stroke-width="2"/>
-        <path d="M52 78 L168 78" stroke="#FDF1DD" stroke-width="10"/>
-        <circle cx="150" cy="108" r="15" fill="#E79A1E"/><path d="M144 108 l4 4 8-9" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-        <circle cx="70" cy="112" r="7" fill="#00B67A"/><rect x="66" y="118" width="8" height="14" fill="#C9BB9C"/></svg>
-      <h1 class="atitle">افتح متجرك الرقمي<br>في دقايق معدودة</h1>
-      <p class="asub">إدارة كاملة لطلباتك ومخزونك وحساباتك من مكان واحد</p>
+      <div class="spacer" style="flex:.12"></div>
+      <div class="vhero">
+        <span class="vhero-grid"></span><span class="vhero-shine"></span>
+        <div class="vhero-in">
+          <div class="vhero-top">
+            <span class="vhero-badge">🇪🇬 شبكة تجّار بسيطة</span>
+            <span class="vhero-live"><i></i> طلبات بتتقفل دلوقتي</span>
+          </div>
+          <h2>افتح <b>متجرك الرقمي</b><br>في دقايق معدودة</h2>
+          <p class="vh-sub">إدارة كاملة لطلباتك ومخزونك وحساباتك — وتوصل لكل بيت في قريتك من غير مجهود</p>
+          <div class="vhero-stats">
+            <div class="vhero-stat"><b class="num">+١٢٠٠</b><span>تاجر شغّال</span></div>
+            <div class="vhero-stat"><b class="num">صفر</b><span>عمولة خفية</span></div>
+            <div class="vhero-stat"><b class="num">يومي</b><span>تحصيل مضمون</span></div>
+          </div>
+          <div class="vhero-trust">
+            <span>✅ تسجيل موثّق</span><span>📦 مخزون لحظي</span><span>💰 أرباح واضحة</span>
+          </div>
+        </div>
+      </div>
+      <p class="asub" style="margin-top:0">إدارة كاملة لطلباتك ومخزونك وحساباتك من مكان واحد</p>
       <div class="spacer"></div>
       <button class="btn btn-p" onclick="mGoAuth('phone')">سجّل متجر جديد</button>
       <button class="btn btn-o mt" onclick="mGoAuth('login')">عندي حساب بالفعل</button>
@@ -1040,11 +1093,6 @@ function vList(){
               S.orders.filter(o=>o.stage==='delivered').length;
       return `<button class="chip" aria-pressed="${S.tab===k}" onclick="S.tab='${k}';render()">${n}${c?` <span class="num">(${c})</span>`:''}</button>`}).join('')}
   </div><div class="pad" style="padding-top:12px">
-    <button class="brandbanner" style="width:100%;text-align:right;border:0;cursor:pointer" onclick="openVillageImpact()">
-      <div class="bb-ic">🌾</div>
-      <div><b>متجرك أول محل رقمي في القرية</b>
-        <span>من دفتر الحسابات الورقي لنظام بيدير بيزنسك لوحده · اعرف أكتر ‹</span></div>
-    </button>
     ${list.length?list.map(o=>oCard(o)).join(''):`<div class="empty"><div class="e">📭</div><h4>مفيش طلبات هنا</h4>
       <p class="tiny">شغّل تطبيق العميل واعمل طلب — هيوصل هنا فورًا</p></div>`}
     <div style="height:12px"></div></div>`;
@@ -1145,6 +1193,8 @@ function vQR(){
       <div class="tiny" style="line-height:1.9"><b>إزاي تستخدمه؟</b><br>
         اطبع الكود وحطه عند باب المحل. أي عميل يمسحه هيدخل متجرك مباشرة من غير ما يدوّر عليك في التطبيق.</div>
     </div>
+    <button onclick="openVillageImpact()" style="width:100%;text-align:center;margin-top:6px">
+      <p class="tiny muted">🌾 قصة بسيطة — إزاي بنرقمن قرى مصر</p></button>
     <div style="height:14px"></div></div>`;
 }
 function uploadShopPhoto(input){
