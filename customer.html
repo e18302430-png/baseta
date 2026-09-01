@@ -5,6 +5,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
 :root{
   --bg:#F7F8FB;--surf:#FFFFFF;--surf2:#F0F2F6;--line:#E7EAF0;
@@ -475,6 +476,14 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
 
 <script>
 const ROLE='customer';
+/* ═══════════ الاتصال بقاعدة البيانات الحقيقية (Supabase) ═══════════ */
+const SUPABASE_URL='https://vymfhyleoekbhxuojudl.supabase.co';
+const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5bWZoeWxlb2VrYmh4dW9qdWRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgyNTUxMjgsImV4cCI6MjEwMzgzMTEyOH0.euxtZVpwZGa023UyFzbY2zgdj0fXjWETLqkZY_5fTCQ';
+const sb=(window.supabase&&window.supabase.createClient)?window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY):null;
+if(!sb) console.error('basita: تعذّر تحميل مكتبة Supabase — المزامنة الحقيقية مش هتشتغل، وهيرجع النظام للمزامنة المحلية بس');
+const BIZ_LABELS={grocery:'بقالة',pharmacy:'صيدلية',restaurant:'مطعم',cafe:'كافيه',bakery:'مخبز',other:'نشاط عام'};
+const BIZ_ICONS={grocery:'🛒',pharmacy:'💊',restaurant:'🍔',cafe:'☕',bakery:'🥖',other:'🏪'};
+
 const bc=('BroadcastChannel' in window)?new BroadcastChannel('basita_sync'):null;
 function emit(msg){
   msg.__basita=true; msg.from=ROLE; msg.ts=Date.now(); msg.id=msg.id||Math.random().toString(36).slice(2);
@@ -502,6 +511,8 @@ function onBus(fn){
 
 setTimeout(()=>document.getElementById('boot').classList.add('gone'),1300);
 setTimeout(()=>document.getElementById('authFlow').classList.add('show'),1350);
+loadShops();
+subscribeShopsLive();
 
 let authMode='signup';
 function goAuth(stage,mode){
@@ -516,36 +527,108 @@ function sendOtp(){
   S.co.ph=v;
   goAuth('otp');
 }
-function verifyOtp(){
+async function verifyOtp(){
   if(authMode==='login'){
+    if(sb){
+      const {data,error}=await sb.from('customers').select('*').eq('phone',S.co.ph).maybeSingle();
+      if(data){ S.co.id=data.id; S.co.name=data.name; S.co.lm=data.landmark||LM[0]; document.getElementById('hiName').textContent=data.name.split(' ')[0]; }
+      else if(error){ console.error('basita: خطأ في البحث عن حسابك',error); }
+    }
     toast('أهلاً بيكي تاني 👋');
     mountApp();
   } else {
     goAuth('profile');
   }
 }
-function finishSignup(){
+async function finishSignup(){
   const nm=document.getElementById('nmInput').value.trim()||'صديقنا';
   document.getElementById('hiName').textContent=nm.split(' ')[0];
   S.co.name=nm; S.co.lm=document.getElementById('lmInput').value;
-  S.co.id=S.co.id||('c_'+(S.co.ph||Math.random().toString(36).slice(2)));
-  emit({to:['owner'],type:'customer:register',customerId:S.co.id,name:nm,phone:S.co.ph,landmark:S.co.lm});
+  if(sb){
+    const {data,error}=await sb.from('customers').insert({name:nm,phone:S.co.ph,landmark:S.co.lm}).select().single();
+    if(error){ console.error('basita: فشل إنشاء حسابك في قاعدة البيانات',error); toast('حصلت مشكلة في إنشاء حسابك — جرّب تاني'); return; }
+    S.co.id=data.id;
+  } else {
+    S.co.id=S.co.id||('c_'+(S.co.ph||Math.random().toString(36).slice(2)));
+  }
   toast('اتعمل حسابك بنجاح 🎉');
   mountApp();
 }
 function mountApp(){
   document.getElementById('authFlow').classList.remove('show');
-  setTimeout(()=>{document.getElementById('mainApp').classList.add('show');render();
+  setTimeout(()=>{
+    document.getElementById('mainApp').classList.add('show');render();
+    if(sb&&S.co.id){ loadMyOrders(); subscribeMyOrders(); subscribeMyTickets(); }
     if('Notification' in window && Notification.permission==='default') Notification.requestPermission();
   },300);
 }
+function mapRowToOrder(o,items){
+  return {
+    id:o.id, merchantId:o.merchant_id, shopName:(SHOPS[o.merchant_id]&&SHOPS[o.merchant_id].name)||'',
+    customerId:o.customer_id, name:o.customer_name, ph:o.customer_phone, addr:o.address,
+    geo:(o.delivery_lat!=null)?{lat:o.delivery_lat,lng:o.delivery_lng}:null,
+    fee:+o.delivery_fee, total:+o.total, stage:o.stage, driver:o.driver_name||null, driverId:o.driver_id||null,
+    recurring:o.is_recurring, feedbackSubmitted:o.feedback_submitted, deliveryPhoto:o.delivery_photo_url||null,
+    items:(items||[]).map(i=>({n:i.name,q:+i.qty,p:+i.unit_price,u:i.unit,sellBy:i.sell_by}))
+  };
+}
+async function loadMyOrders(){
+  const {data:orders,error}=await sb.from('orders').select('*').eq('customer_id',S.co.id).order('placed_at',{ascending:false});
+  if(error){ console.error('basita: فشل تحميل طلباتك',error); return; }
+  const ids=(orders||[]).map(o=>o.id);
+  let items=[];
+  if(ids.length){ const r=await sb.from('order_items').select('*').in('order_id',ids); items=r.data||[]; }
+  S.orders=(orders||[]).map(o=>mapRowToOrder(o,items.filter(i=>i.order_id===o.id)));
+  render();
+}
+function subscribeMyOrders(){
+  sb.channel('my-orders-'+S.co.id)
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'orders',filter:'customer_id=eq.'+S.co.id},payload=>{
+      let o=S.orders.find(x=>x.id===payload.new.id);
+      if(o){
+        o.stage=payload.new.stage; o.driver=payload.new.driver_name||o.driver; o.driverId=payload.new.driver_id||o.driverId;
+        if(payload.new.delivery_photo_url) o.deliveryPhoto=payload.new.delivery_photo_url;
+      }
+      render();
+      if(S.view==='track'&&S.oid===payload.new.id) notify('تحديث جديد على طلبك');
+    })
+    .subscribe();
+}
 
 let PRODS=[]; // بيتملى ديناميكيًا من كتالوج المحل المختار
-let SHOPS={}; // دليل المحلات الحي — بيتبني من أي تاجر بيفتح متجره فعليًا
+let SHOPS={}; // دليل المحلات الحي — بيتحمّل من قاعدة البيانات الحقيقية
 const CATS=[
   {k:'grocery',n:'بقالات',i:'🛒'},{k:'pharmacy',n:'صيدليات',i:'💊'},
   {k:'restaurant',n:'مطاعم',i:'🍔'},{k:'cafe',n:'كافيهات',i:'☕'},{k:'bakery',n:'مخابز',i:'🥖'},
 ];
+function mapProductRow(p){
+  return {id:p.id,n:p.name,br:p.brand||'',i:p.icon||'🛒',p:+p.price,u:p.unit,sellBy:p.sell_by,s:+p.stock};
+}
+async function loadShops(){
+  if(!sb)return;
+  try{
+    const {data:merchants,error:e1}=await sb.from('merchants').select('*').in('status',['trial','active','payment_review']);
+    if(e1){console.error('basita: فشل تحميل المحلات',e1);return}
+    const {data:products,error:e2}=await sb.from('products').select('*');
+    if(e2){console.error('basita: فشل تحميل المنتجات',e2);return}
+    const fresh={};
+    (merchants||[]).forEach(m=>{
+      fresh[m.id]={id:m.id,name:m.name,type:BIZ_LABELS[m.biz_type]||m.biz_type,typeKey:m.biz_type,
+        icon:BIZ_ICONS[m.biz_type]||'🏪',photo:m.shop_photo_url||'',bio:'',isOpen:m.is_open!==false,products:[]};
+    });
+    (products||[]).forEach(p=>{ if(fresh[p.merchant_id]) fresh[p.merchant_id].products.push(mapProductRow(p)); });
+    SHOPS=fresh;
+    if(S.activeShop&&SHOPS[S.activeShop]) PRODS=SHOPS[S.activeShop].products;
+    if(['home','shop'].includes(S.view)) render();
+  }catch(err){ console.error('basita: خطأ غير متوقع في تحميل المحلات',err); }
+}
+function subscribeShopsLive(){
+  if(!sb)return;
+  sb.channel('shops-live')
+    .on('postgres_changes',{event:'*',schema:'public',table:'merchants'},()=>loadShops())
+    .on('postgres_changes',{event:'*',schema:'public',table:'products'},()=>loadShops())
+    .subscribe();
+}
 const LM=['جنب الجامع الكبير','أول شارع المدرسة','عند المحول','قدام الوحدة الصحية'];
 const STAGES=['placed','accepted','assigned','picked','delivering','delivered'];
 const SLABEL={placed:'تم استلام طلبك',accepted:'المحل قبل الطلب',assigned:'اتعيّن مندوب توصيل',
@@ -708,7 +791,12 @@ function ftaCheckoutTipHtml(){
 
 function openSheet(t,h){$('#shT').textContent=t;$('#shB').innerHTML=h;$('#sheet').classList.add('show');$('#shbg').classList.add('show')}
 function closeSheet(){$('#sheet').classList.remove('show');$('#shbg').classList.remove('show')}
-function go(v,a){S.view=v;if(v==='track')S.oid=a;$('#screen').scrollTop=0;render()}
+const _chatSubscribed=new Set();
+function go(v,a){
+  S.view=v;
+  if(v==='track'){ S.oid=a; if(sb&&a&&!_chatSubscribed.has(a)){ _chatSubscribed.add(a); subscribeOrderChat(a); } }
+  $('#screen').scrollTop=0;render();
+}
 
 const cItems=()=>Object.entries(S.cart).map(([id,q])=>({p:P(+id),q}));
 const cSub=()=>cItems().reduce((s,{p,q})=>s+p.p*q,0);
@@ -787,22 +875,41 @@ function updBar(){const c=cCount();
   $('#cartbar').classList.toggle('show',c>0&&!['cart','checkout','track'].includes(S.view));
   $('#cartCount').textContent=c;$('#cartTotal').textContent=M(cSub())+' ج'}
 
-function placeOrder(){
+async function placeOrder(){
   const c=S.co;
   if(!c.house.trim()){toast('اكتب رقم البيت');return}
   if(!c.geo){toast('لازم تفعّل موقعك الأول');return}
   const shop=SHOPS[S.activeShop];
   if(!shop){toast('اختار محل الأول');return}
+  if(sb){
+    const {data:fresh}=await sb.from('merchants').select('is_open,status').eq('id',shop.id).maybeSingle();
+    if(fresh&&(fresh.is_open===false||!['trial','active','payment_review'].includes(fresh.status))){
+      shop.isOpen=false; render();
+      toast('للأسف المحل اتقفل دلوقتي بالظبط — جرّب تاني بعدين'); return;
+    }
+  }
   const wasFirstOrder=isFirstTimer();
   const items=cItems(); const fee=5;
-  const id='B'+Math.floor(1000+Math.random()*9000);
-  const order={id,merchantId:shop.id,shopName:shop.name,customerId:c.id,name:c.name,ph:c.ph||'01015974104',
-    addr:`${c.lm} — بيت ${c.house}`,geo:c.geo,
-    items:items.map(({p,q})=>({n:p.n,q,p:p.p,u:p.u,sellBy:p.sellBy})),fee,total:cSub()+fee,stage:'placed',driver:null,recurring:false};
+  const addr=`${c.lm} — بيت ${c.house}`;
+  let order;
+  if(sb&&c.id){
+    const {data:orderRow,error}=await sb.from('orders').insert({
+      merchant_id:shop.id, customer_id:c.id, customer_name:c.name, customer_phone:c.ph||'01015974104',
+      address:addr, delivery_lat:c.geo.lat, delivery_lng:c.geo.lng, delivery_fee:fee, total:cSub()+fee, stage:'placed'
+    }).select().single();
+    if(error){ console.error('basita: فشل إرسال الطلب لقاعدة البيانات',error); toast('حصلت مشكلة في إرسال الطلب — جرّب تاني'); return; }
+    const itemsPayload=items.map(({p,q})=>({order_id:orderRow.id,product_id:p.id,name:p.n,qty:q,unit_price:p.p,unit:p.u,sell_by:p.sellBy||'unit'}));
+    await sb.from('order_items').insert(itemsPayload);
+    order=mapRowToOrder(orderRow,itemsPayload);
+  }else{
+    const id='B'+Math.floor(1000+Math.random()*9000);
+    order={id,merchantId:shop.id,shopName:shop.name,customerId:c.id,name:c.name,ph:c.ph||'01015974104',
+      addr,geo:c.geo,items:items.map(({p,q})=>({n:p.n,q,p:p.p,u:p.u,sellBy:p.sellBy})),fee,total:cSub()+fee,stage:'placed',driver:null,recurring:false};
+  }
   S.orders.unshift(order); S.cart={}; S.cartShop=null;
-  emit({to:['merchant'],type:'order:new',order});
+  if(!sb) emit({to:['merchant'],type:'order:new',order});
   S.fta.dismissed=true;
-  go('track',id);
+  go('track',order.id);
   if(wasFirstOrder){
     setTimeout(()=>openSheet('🎉 مبروك أول طلب ليك!',`
       <p style="color:var(--txt2);font-size:13.5px;line-height:1.8;margin:0 0 16px">
@@ -819,12 +926,12 @@ onBus(d=>{
     render(); toast('🗑️ اتصفّرت بيانات المنصة من لوحة المالك');
     return;
   }
-  if(d.type==='support:reply'&&d.to&&d.to.includes('customer')){
+  if(d.type==='support:reply'&&d.to&&d.to.includes('customer')&&!sb){
     notify('📩 وصلك رد من الدعم الفني');
     openSupportReplySheet(d.ticketId,d.reply);
     return;
   }
-  if(d.type==='driver:message'&&d.to&&d.to.includes('customer')){
+  if(d.type==='driver:message'&&d.to&&d.to.includes('customer')&&!sb){
     const o=S.orders.find(x=>x.id===d.orderId);
     if(o){ o.chatLog=o.chatLog||[]; o.chatLog.unshift({from:'driver',name:d.driverName,msg:d.message,
       at:new Date().toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'})}); }
@@ -891,7 +998,7 @@ function vHome(){
     ${filtered.length?filtered.map(s=>`<button class="shopcard" onclick="openShop('${s.id}')">
       ${s.photo?`<img src="${s.photo}" class="shopcard-ph">`:`<span class="shopcard-ic">${s.icon}</span>`}
       <span style="flex:1;text-align:right"><b>${s.name}</b><span class="tiny muted" style="display:block">${s.type} · ${s.products.length} صنف</span></span>
-      <span class="bdg b-ac">مفتوح</span></button>`).join(''):
+      <span class="bdg ${s.isOpen?'b-ac':'b-d'}">${s.isOpen?'مفتوح':'مقفول دلوقتي'}</span></button>`).join(''):
       `<div class="empty"><div class="e">🏪</div><h4>لسه مفيش محلات فاتحة</h4>
         <p class="tiny">أول ما تاجر يسجّل ويفتح متجره، هيظهر هنا فورًا من غير ما تعمل حاجة</p></div>`}
     <div style="height:8px"></div></div>`;
@@ -930,12 +1037,15 @@ function vShop(){
       <div class="e">${s.type}</div><h2>${s.name}</h2>
       <p>توصيل ١٥-٢٥ دقيقة · رسوم التوصيل ٥ ج</p>
       ${s.bio?`<p style="margin-top:6px;color:var(--txt);opacity:.85;line-height:1.7">${s.bio}</p>`:''}</div>
+    ${!s.isOpen?`<div class="card mt" style="padding:14px;background:#FDE8E6;border-color:#F5B5AE;text-align:center">
+      <div style="font-size:22px">🔒</div><b style="display:block;margin-top:6px;color:#C23327">المحل مقفول دلوقتي</b>
+      <div class="tiny muted mt">التاجر قفل استقبال الطلبات مؤقتًا — جرّب تاني بعدين</div></div>`:''}
     ${ftaShopTipHtml()}
     <div class="sec-t"><h3>الأصناف</h3><span class="num">${s.products.length} صنف</span></div>
     ${s.products.length?s.products.map(p=>`<div class="prod"><span class="ph">${p.i}</span>
       <span style="flex:1"><span class="n">${p.n}${p.br?` <span class="muted tiny">${p.br}</span>`:''}</span>
       <span class="u">${p.sellBy==='weight'?'سعر الكيلو':p.u}</span><span class="pr num">${M(p.p)} ج</span></span>
-      <span class="act">${p.sellBy==='weight'?
+      <span class="act">${!s.isOpen?'':p.sellBy==='weight'?
         (S.cart[p.id]?`<button class="add" style="width:auto;padding:0 10px;font-size:12px;font-family:'Cairo'" onclick="openWeightPicker(${p.id})">${weightLabel(S.cart[p.id])}</button>`:
         `<button class="add" style="width:auto;padding:0 10px;font-size:18px" onclick="openWeightPicker(${p.id})">⚖️</button>`):
         (S.cart[p.id]?`<span class="stp"><button onclick="qty(${p.id},1)">+</button>
@@ -1013,6 +1123,10 @@ function vTrack(){
     <div class="card" style="padding:16px 14px">${STAGES.map((s,i)=>`
       <div class="tl-i ${i<cur?'done':i===cur?'now done':''}"><span class="tl-d">${i<=cur?'✓':''}</span>
       <span><span class="tl-t">${SLABEL[s]}</span>${i===cur?'<span class="tl-s">دلوقتي</span>':''}</span></div>`).join('')}</div>
+    ${o.stage==='accepted'&&!o.driver?`<div class="card mt" style="padding:13px;text-align:center;background:var(--ac-l)">
+      <span style="font-size:18px">🤖</span>
+      <div class="tiny mt" style="color:var(--ac-d);font-weight:700">بندوّر على أقرب مندوب متاح دلوقتي</div>
+      <div class="tiny muted mt">هيتعيّن تلقائيًا أول ما حد يفضى — من غير ما تحتاج تعمل حاجة</div></div>`:''}
     ${o.driver&&o.stage!=='delivered'?`<div class="card mt" style="padding:13px">
       <div style="display:flex;align-items:center;gap:10px">
         <span style="font-size:18px">💬</span>
@@ -1082,16 +1196,25 @@ function showCustomTip(){
   inp.style.display='block'; inp.focus();
   inp.oninput=()=>{ tipAmount=+inp.value||0; };
 }
-function submitFeedback(orderId){
+async function submitFeedback(orderId){
   if(!ratingShop||!ratingDriver){toast('قيّم المتجر والمندوب الأول');return}
   const o=S.orders.find(x=>x.id===orderId); if(!o)return;
   const complaint=(document.getElementById('complaintInput')||{}).value?.trim()||'';
   const hadTip=tipAmount>0;
   o.feedbackSubmitted=true;
-  emit({to:['merchant','driver','owner'],type:'feedback:submitted',orderId,
-    merchantRating:ratingShop,driverRating:ratingDriver,complaint,driverName:o.driver,customerName:o.name});
-  if(hadTip&&o.driver){
-    emit({to:['driver','owner'],type:'tip:sent',orderId,amount:tipAmount,driverName:o.driver,customerName:o.name});
+  if(sb){
+    await sb.from('reviews').insert({order_id:orderId,merchant_id:o.merchantId,driver_id:o.driverId,customer_id:S.co.id,
+      merchant_rating:ratingShop,driver_rating:ratingDriver,complaint:complaint||null});
+    await sb.from('orders').update({feedback_submitted:true}).eq('id',orderId);
+    if(hadTip&&o.driverId){
+      await sb.from('tips').insert({order_id:orderId,driver_id:o.driverId,customer_id:S.co.id,amount:tipAmount,status:'pending'});
+    }
+  }else{
+    emit({to:['merchant','driver','owner'],type:'feedback:submitted',orderId,
+      merchantRating:ratingShop,driverRating:ratingDriver,complaint,driverName:o.driver,customerName:o.name});
+    if(hadTip&&o.driver){
+      emit({to:['driver','owner'],type:'tip:sent',orderId,amount:tipAmount,driverName:o.driver,customerName:o.name});
+    }
   }
   ratingShop=0; ratingDriver=0; tipAmount=0;
   render(); toast(hadTip?'شكرًا لتقييمك وإكراميتك 🎁':'شكرًا لتقييمك 🙏');
@@ -1138,14 +1261,30 @@ function openMsgSheet(orderId){
     <div class="fld" style="margin-bottom:10px"><label>أو اكتب رسالة</label><input id="cMsgInput" placeholder="اكتب هنا..."></div>
     <button class="btn btn-p" onclick="sendMsgToDriver('${orderId}',null)">إرسال</button>`);
 }
-function sendMsgToDriver(orderId,preset){
+async function sendMsgToDriver(orderId,preset){
   const msg=preset||document.getElementById('cMsgInput').value.trim();
   if(!msg){toast('اكتب رسالة الأول');return}
-  emit({to:['driver'],type:'customer:message',orderId,message:msg});
   const o=S.orders.find(x=>x.id===orderId);
+  if(sb){
+    await sb.from('driver_customer_messages').insert({order_id:orderId,from_role:'customer',from_name:'إنت',message:msg});
+  }else{
+    emit({to:['driver'],type:'customer:message',orderId,message:msg});
+  }
   if(o){ o.chatLog=o.chatLog||[]; o.chatLog.unshift({from:'customer',name:'إنت',msg,
     at:new Date().toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'})}); }
   closeSheet(); toast('اتبعتت الرسالة للمندوب ✓'); render();
+}
+function subscribeOrderChat(orderId){
+  if(!sb)return;
+  sb.channel('chat-'+orderId)
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'driver_customer_messages',filter:'order_id=eq.'+orderId},payload=>{
+      if(payload.new.from_role==='customer')return;
+      const o=S.orders.find(x=>x.id===orderId);
+      if(o){ o.chatLog=o.chatLog||[]; o.chatLog.unshift({from:'driver',name:payload.new.from_name,msg:payload.new.message,
+        at:new Date(payload.new.created_at).toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'})}); }
+      notify('🛵 '+payload.new.from_name+': '+payload.new.message);
+      render();
+    }).subscribe();
 }
 function openSupportSheet(){
   openSheet('تواصل مع الدعم الفني',`
@@ -1155,13 +1294,33 @@ function openSupportSheet(){
       <textarea id="supMsg" rows="4" class="sup-fld"></textarea></div>
     <button class="btn btn-p" onclick="submitTicket()">إرسال للدعم الفني</button>`);
 }
-function submitTicket(){
+async function submitTicket(){
   const cat=document.getElementById('supCat').value;
   const msg=document.getElementById('supMsg').value.trim();
   if(!msg){toast('اكتب مشكلتك الأول');return}
-  const ticketId='T'+Math.floor(1000+Math.random()*9000);
-  emit({to:['owner'],type:'support:ticket',ticketId,role:'customer',roleName:'عميل',fromName:S.co.name||'عميل',category:cat,message:msg});
+  if(sb){
+    const {data,error}=await sb.from('support_tickets').insert({
+      role:'customer',from_id:S.co.id,from_name:S.co.name||'عميل',category:cat,message:msg
+    }).select().single();
+    if(error){ console.error('basita:',error); toast('حصلت مشكلة — جرّب تاني'); return; }
+    S.myTicketIds=S.myTicketIds||[]; S.myTicketIds.push(data.id);
+  }else{
+    const ticketId='T'+Math.floor(1000+Math.random()*9000);
+    emit({to:['owner'],type:'support:ticket',ticketId,role:'customer',roleName:'عميل',fromName:S.co.name||'عميل',category:cat,message:msg});
+  }
   closeSheet(); toast('✓ اتبعت طلبك للدعم — هنرد عليك في أقرب وقت');
+}
+function subscribeMyTickets(){
+  if(!sb||!S.co.id)return;
+  sb.channel('my-tickets-'+S.co.id)
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'support_tickets',filter:'from_id=eq.'+S.co.id},payload=>{
+      if(payload.new.status==='awaiting_confirmation'){
+        const replies=payload.new.replies||[];
+        const lastReply=replies.length?replies[replies.length-1].text:'';
+        notify('📩 وصلك رد من الدعم الفني');
+        openSupportReplySheet(payload.new.id,lastReply);
+      }
+    }).subscribe();
 }
 function openSupportReplySheet(ticketId,reply){
   openSheet('رد الدعم الفني',`
@@ -1171,8 +1330,12 @@ function openSupportReplySheet(ticketId,reply){
     <button class="btn btn-p" onclick="confirmSupportResolved('${ticketId}')">✅ آه، اتحلّت</button>
     <button class="btn btn-o mt" onclick="denySupportResolved('${ticketId}')">❌ لسه مش اتحلّت</button>`);
 }
-function confirmSupportResolved(ticketId){
-  emit({to:['owner'],type:'support:confirm_resolved',ticketId,role:'customer'});
+async function confirmSupportResolved(ticketId){
+  if(sb){
+    await sb.from('support_tickets').update({status:'resolved',resolved_at:new Date().toISOString()}).eq('id',ticketId);
+  }else{
+    emit({to:['owner'],type:'support:confirm_resolved',ticketId,role:'customer'});
+  }
   closeSheet(); toast('تمام، شكرًا لتأكيدك 🙏');
 }
 function denySupportResolved(ticketId){
@@ -1181,9 +1344,16 @@ function denySupportResolved(ticketId){
       <textarea id="supFollowup" rows="3" class="sup-fld"></textarea></div>
     <button class="btn btn-p" onclick="sendSupportFollowup('${ticketId}')">إرسال للدعم تاني</button>`);
 }
-function sendSupportFollowup(ticketId){
+async function sendSupportFollowup(ticketId){
   const note=document.getElementById('supFollowup').value.trim();
-  emit({to:['owner'],type:'support:not_resolved',ticketId,role:'customer',note});
+  if(sb){
+    const {data}=await sb.from('support_tickets').select('replies').eq('id',ticketId).maybeSingle();
+    const replies=(data&&data.replies)||[];
+    if(note) replies.push({from:'customer',text:note,at:new Date().toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'})});
+    await sb.from('support_tickets').update({status:'reopened',replies}).eq('id',ticketId);
+  }else{
+    emit({to:['owner'],type:'support:not_resolved',ticketId,role:'customer',note});
+  }
   closeSheet(); toast('اتبعتت ملاحظتك — التذكرة اتفتحت تاني');
 }
 function openPinSheet(){
