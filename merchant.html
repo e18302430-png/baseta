@@ -538,6 +538,7 @@ function proceedToStoreOpen(){
         if('Notification' in window && Notification.permission==='default') Notification.requestPermission();
         syncCatalog();
         if(S.shopPhoto) emit({to:['customer'],type:'shop:photo_updated',merchantId:S.merchantId,photo:S.shopPhoto});
+        captureShopGeo();
       },500);
     },3000);
   },350);
@@ -587,7 +588,7 @@ function toast(m){playNotifySound();pushNotify(m);const t=document.getElementByI
 const STAGES=['placed','accepted','assigned','picked','delivering','delivered'];
 const SLABEL={placed:'جديد',accepted:'اتقبل',assigned:'اتعيّن مندوب',picked:'المندوب استلم',
   delivering:'في الطريق',delivered:'اتسلّم'};
-let S={tab:'new',orders:[],expenses:[],cashCounted:'',bizType:'grocery',password:'',customStoreName:'',phone:'',availableDriver:null,reviews:[],merchantId:'m1',shopPhoto:'',vodafoneCash:'',bizBio:'',
+let S={tab:'new',orders:[],expenses:[],cashCounted:'',bizType:'grocery',password:'',customStoreName:'',phone:'',availableDrivers:{},shopGeo:null,reviews:[],merchantId:'m1',shopPhoto:'',vodafoneCash:'',bizBio:'',
   sub:{status:'trial',daysLeft:14,price:99},
   customerStats:{},
   products:[
@@ -613,6 +614,8 @@ function saveState(){ try{localStorage.setItem(STATE_KEY,JSON.stringify({
 { const _saved=loadState(); if(_saved) Object.assign(S,_saved); }
 const $=s=>document.querySelector(s);
 const M=n=>Math.round(n).toLocaleString('en');
+const weightLabel=kg=>kg<1?Math.round(kg*1000)+' جم':(kg%1===0?kg:kg.toFixed(2))+' كجم';
+const qtyLabel=i=>i.sellBy==='weight'?weightLabel(i.q):i.q+'×';
 
 /* ═══ نظام الإشعارات (بيل/إن‌بوكس) ═══ */
 const INBOX_KEY='basita_inbox_'+ROLE;
@@ -678,7 +681,17 @@ onBus(d=>{
     render(); toast('🗑️ اتصفّرت بيانات الطلبات من لوحة المالك');
     return;
   }
-  if(d.type==='driver:online'&&d.to&&d.to.includes('merchant')){ S.availableDriver={name:d.driverName,vehicle:d.vehicle}; }
+  if(d.type==='driver:online'&&d.to&&d.to.includes('merchant')){
+    S.availableDrivers[d.driverId]={id:d.driverId,name:d.driverName,vehicle:d.vehicle,lat:null,lng:null,updatedAt:Date.now()};
+    tryAssignWaitingOrders();
+  }
+  if(d.type==='driver:location_update'&&d.to&&d.to.includes('merchant')){
+    S.availableDrivers[d.driverId]={id:d.driverId,name:d.driverName,vehicle:d.vehicle,lat:d.lat,lng:d.lng,updatedAt:Date.now()};
+    tryAssignWaitingOrders();
+  }
+  if(d.type==='driver:offline'&&d.to&&d.to.includes('merchant')){
+    delete S.availableDrivers[d.driverId];
+  }
   if(d.type==='shift:settle_request'&&d.to&&d.to.includes('merchant')){
     S.pendingSettlement={driverName:d.driverName,amount:d.amount};
     render(); notify('💰 '+d.driverName+' عايز يسلّمك كاش المناوبة');
@@ -739,12 +752,16 @@ function openProductForm(id){
   const p=id?S.products.find(x=>x.id===id):null;
   const isPharm=S.bizType==='pharmacy';
   const isGrocery=S.bizType==='grocery';
+  const sellBy=p&&p.sellBy==='weight'?'weight':'unit';
   openSheet(p?'تعديل المنتج':'ضيف منتج جديد',`
     <div class="fld"><label>اسم المنتج</label><input id="pfName" value="${p?p.n:''}" placeholder="مثلاً: بانادول"></div>
-    <div class="fld"><label>السعر (جنيه)</label><input id="pfPrice" type="number" value="${p?p.p:''}"></div>
-    <div class="fld"><label>الوحدة</label><select id="pfUnit">
-      ${['قطعة','كجم','جرام','لتر','علبة','شريط'].map(u=>`<option ${p&&p.u===u?'selected':''}>${u}</option>`).join('')}</select></div>
-    <div class="fld"><label>الكمية بالمخزون</label><input id="pfStock" type="number" value="${p?p.s:''}"></div>
+    <div class="fld"><label>طريقة البيع</label><select id="pfSellBy" onchange="toggleSellByUI()">
+      <option value="unit" ${sellBy==='unit'?'selected':''}>بالوحدة (قطعة / كيس / بيكيت / علبة)</option>
+      <option value="weight" ${sellBy==='weight'?'selected':''}>بالوزن سايب (تسعير بالكيلو)</option></select></div>
+    <div class="fld" id="pfUnitWrap"><label>الوحدة</label><select id="pfUnit">
+      ${['قطعة','كيس','بيكيت','علبة','شريط','لتر'].map(u=>`<option ${p&&p.u===u?'selected':''}>${u}</option>`).join('')}</select></div>
+    <div class="fld"><label id="pfPriceLabel">السعر (جنيه)</label><input id="pfPrice" type="number" value="${p?p.p:''}"></div>
+    <div class="fld"><label>الكمية بالمخزون ${sellBy==='weight'?'(بالكيلو)':''}</label><input id="pfStock" type="number" step="any" value="${p?p.s:''}"></div>
     ${isPharm?`
     <div class="fld"><label>رقم التشغيلة</label><input id="pfBatch" value="${p&&p.batch||''}" placeholder="مطلوب — للتتبع الدوائي"></div>
     <div class="fld"><label>تاريخ الصلاحية</label><input id="pfExpiry" type="date" value="${p&&p.expiry||''}"></div>`:''}
@@ -753,11 +770,19 @@ function openProductForm(id){
     <button class="btn btn-p" style="width:100%" onclick="saveProduct(${id||'null'})">${p?'حفظ التعديل':'ضيف المنتج'}</button>
     ${p?`<button class="btn" style="width:100%;background:#FDE8E6;color:#C23327;margin-top:8px" onclick="deleteProduct(${id})">حذف المنتج</button>`:''}
   `);
+  setTimeout(toggleSellByUI,0);
+}
+function toggleSellByUI(){
+  const sel=document.getElementById('pfSellBy'); if(!sel)return;
+  const isW=sel.value==='weight';
+  document.getElementById('pfUnitWrap').style.display=isW?'none':'block';
+  document.getElementById('pfPriceLabel').textContent=isW?'سعر الكيلو الواحد (جنيه)':'السعر (جنيه)';
 }
 function saveProduct(id){
   const n=document.getElementById('pfName').value.trim();
   const price=+document.getElementById('pfPrice').value;
-  const unit=document.getElementById('pfUnit').value;
+  const sellBy=document.getElementById('pfSellBy').value;
+  const unit=sellBy==='weight'?'كجم':document.getElementById('pfUnit').value;
   const stock=+document.getElementById('pfStock').value||0;
   if(!n||!price){toast('اكتب الاسم والسعر على الأقل');return}
   if(S.bizType==='pharmacy'){
@@ -765,7 +790,7 @@ function saveProduct(id){
     const expiry=document.getElementById('pfExpiry').value;
     if(!batch||!expiry){toast('رقم التشغيلة وتاريخ الصلاحية إجباريين للأدوية');return}
   }
-  const data={n,p:price,u:unit,s:stock,
+  const data={n,p:price,u:unit,s:stock,sellBy,
     batch:S.bizType==='pharmacy'?document.getElementById('pfBatch').value.trim():undefined,
     expiry:S.bizType==='pharmacy'?document.getElementById('pfExpiry').value:undefined,
     wholesale:S.bizType==='grocery'?(+document.getElementById('pfWholesale').value||undefined):undefined};
@@ -803,7 +828,7 @@ function viewInvoice(id){
     <h1>${BIZ().name}</h1>
     <div>فاتورة رقم <b>${o.id}</b> — العميل: ${o.name}</div>
     <table><tr><th>الصنف</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th></tr>
-    ${o.items.map(i=>`<tr><td>${i.n}</td><td>${i.q}</td><td>${i.p} ج</td><td>${i.p*i.q} ج</td></tr>`).join('')}
+    ${o.items.map(i=>`<tr><td>${i.n}</td><td>${qtyLabel(i)}</td><td>${i.p} ج</td><td>${Math.round(i.p*i.q)} ج</td></tr>`).join('')}
     <tr><td colspan="3">التوصيل</td><td>${o.fee} ج</td></tr>
     <tr><td colspan="3" class="tot">الإجمالي</td><td class="tot">${sub+o.fee} ج</td></tr></table>
     <p style="margin-top:30px;color:#999;font-size:12px">بسيطة — نظام إدارة الأعمال</p>
@@ -1032,16 +1057,46 @@ function addExpense(){
   render(); toast('اتسجل المصروف');
 }
 
+function captureShopGeo(){
+  if(!navigator.geolocation)return;
+  navigator.geolocation.getCurrentPosition(
+    pos=>{ S.shopGeo={lat:+pos.coords.latitude.toFixed(5),lng:+pos.coords.longitude.toFixed(5)}; },
+    ()=>{ toast('محتاجين موقع متجرك عشان نرتّب إسناد المناديب بدقة — فعّله من إعدادات المتصفح'); },
+    {timeout:8000}
+  );
+}
+function haversineKm(a,b){
+  const R=6371,dLat=(b.lat-a.lat)*Math.PI/180,dLng=(b.lng-a.lng)*Math.PI/180;
+  const x=Math.sin(dLat/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+}
+function nearestAvailableDriver(){
+  const drivers=Object.values(S.availableDrivers).filter(d=>!S.orders.some(o=>o.driver===d.name&&['assigned','picked','delivering'].includes(o.stage)));
+  if(!drivers.length)return null;
+  if(!S.shopGeo)return drivers[0];
+  const withGeo=drivers.filter(d=>d.lat!=null);
+  if(!withGeo.length)return drivers[0];
+  return withGeo.reduce((best,d)=>haversineKm(S.shopGeo,d)<haversineKm(S.shopGeo,best)?d:best, withGeo[0]);
+}
+function tryAssignWaitingOrders(){
+  S.orders.filter(o=>o.stage==='accepted'&&o._waitingDriver).forEach(o=>autoAssignDriver(o.id));
+}
+function autoAssignDriver(id){
+  const o=S.orders.find(x=>x.id===id); if(!o)return;
+  const nearest=nearestAvailableDriver();
+  if(!nearest){ o._waitingDriver=true; render(); return; }
+  o._waitingDriver=false; o.stage='assigned'; o.driver=nearest.name;
+  const dist=(S.shopGeo&&nearest.lat!=null)?haversineKm(S.shopGeo,nearest).toFixed(1):null;
+  emit({to:['customer','driver'],type:'order:assign',orderId:id,driverName:nearest.name,targetDriverId:nearest.id,order:o});
+  render();
+  toast('🤖 اتعيّن '+nearest.name+' تلقائيًا — أقرب مندوب متاح'+(dist?' ('+dist+' كم)':''));
+}
 function accept(id){
   if(S.sub.status==='expired'){toast('🔴 اشتراكك خلص — جدده الأول عشان تقدر تقبل طلبات');return}
-  const o=S.orders.find(x=>x.id===id); o.stage='accepted'; o._pickDriver=true;
+  const o=S.orders.find(x=>x.id===id); o.stage='accepted';
   emit({to:['customer'],type:'order:accept',orderId:id});
-  render(); toast('اتبعت موافقة للعميل فورًا');
-}
-function assign(id){
-  const o=S.orders.find(x=>x.id===id); o.stage='assigned'; o.driver=(S.availableDriver&&S.availableDriver.name)||'كريم عبد الله'; o._pickDriver=false;
-  emit({to:['customer','driver'],type:'order:assign',orderId:id,driverName:o.driver,order:o});
-  render(); toast('اتبعت المهمة لتطبيق المندوب مباشرة');
+  render(); toast('اتبعت موافقة للعميل — جاري تعيين أقرب مندوب تلقائيًا 🤖');
+  autoAssignDriver(id);
 }
 function tabOrders(){
   if(S.tab==='new')return S.orders.filter(o=>o.stage==='placed');
@@ -1056,16 +1111,18 @@ function oCard(o){
       <span class="t">طلب <span class="num">${o.id}</span>${o.urgent?' · <b style="color:#C23327">⏰ متأخر عن المعتاد</b>':''}</span></span>
       <span class="bdg ${badge}">${SLABEL[o.stage]}</span></div>
     <div class="ob">
-      ${o.items.map(i=>`<div class="oitem"><span class="num">${i.q}×</span><span>${i.n}</span>
+      ${o.items.map(i=>`<div class="oitem"><span class="num">${qtyLabel(i)}</span><span>${i.n}</span>
         <b class="num">${M(i.p*i.q)}</b></div>`).join('')}
       <div class="oaddr">📍 ${o.addr} · <span class="num" dir="ltr">${o.ph}</span></div>
       ${o.stage==='placed'?`<div class="oactions">
         <button class="btn2 btn-p2" onclick="accept('${o.id}')">قبول الطلب</button>
         <button class="btn-d2" onclick="rejectO('${o.id}')">اعتذار</button></div>`:''}
-      ${o._pickDriver?`<div class="driverpick"><div class="dn"><span class="av2">👤</span>
-        <span><b>${(S.availableDriver&&S.availableDriver.name)||'كريم عبد الله'}</b><span>${(S.availableDriver&&S.availableDriver.vehicle)||'🛵'} متاح الآن · ⭐ ٤.٩</span></span></div>
-        <button class="btn2 btn-p2" style="width:100%" onclick="assign('${o.id}')">عيّن كريم كمندوب</button></div>`:''}
-      ${o.driver&&!o._pickDriver&&o.stage==='assigned'?
+      ${o.stage==='accepted'&&o._waitingDriver?`<div class="driverpick" style="text-align:center">
+        <div class="tiny" style="color:var(--ac-d);font-weight:700">⏳ مفيش مندوب متاح دلوقتي</div>
+        <div class="tiny muted mt">هنعيّن أقرب واحد تلقائيًا أول ما حد يفضى — من غير ما تعمل حاجة</div></div>`:''}
+      ${o.stage==='accepted'&&!o._waitingDriver?`<div class="driverpick" style="text-align:center">
+        <div class="tiny" style="color:var(--ac-d)">🤖 جاري تعيين أقرب مندوب متاح تلقائيًا…</div></div>`:''}
+      ${o.driver&&o.stage==='assigned'?
         `<div class="pickupqr" style="flex-direction:column;align-items:stretch;gap:9px">
          <span class="tiny muted">اطلب من <b style="color:var(--txt)">${o.driver}</b> يقولك الكود الظاهر عنده، واكتبه هنا:</span>
          <div style="display:flex;gap:8px">
@@ -1075,7 +1132,7 @@ function oCard(o){
          </div>
          <span class="tiny" style="color:var(--ac-d)">🔒 الكود بيتغيّر كل دقيقة تلقائيًا لحماية بيانات العميل</span>
        </div>`:''}
-      ${o.driver&&!o._pickDriver&&o.stage!=='delivered'&&o.stage!=='assigned'?
+      ${o.driver&&o.stage!=='delivered'&&o.stage!=='assigned'?
         `<div class="tiny muted mt">🛵 المندوب: <b style="color:var(--txt)">${o.driver}</b></div>`:''}
       ${o.stage==='delivered'?`<button class="btn2 btn-o2 mt" style="width:100%" onclick="viewInvoice('${o.id}')">🧾 عرض وطباعة الفاتورة</button>`:''}
     </div></div>`;
@@ -1207,8 +1264,28 @@ function uploadShopPhoto(input){
   };
   reader.readAsDataURL(file);
 }
-const V={list:vList,products:vProducts,acct:vAcct,qr:vQR,stats:vStats};
-const NAV=[['list','📥','الطلبات'],['products','🏷️','منتجاتي'],['acct','🧮','المحاسبة'],['qr','🔗','متجرك'],['stats','📊','إحصائيات']];
+function vInvoices(){
+  const delivered=S.orders.filter(o=>o.stage==='delivered');
+  if(!delivered.length)return `<div class="pad" style="padding-top:14px">
+    <div class="empty"><div class="e">🧾</div><h4>مفيش فواتير لسه</h4>
+    <p class="tiny">أول ما طلب يوصل للعميل، فاتورته هتظهر هنا</p></div></div>`;
+  const totalAll=delivered.reduce((s,o)=>s+o.total,0);
+  return `<div class="pad" style="padding-top:14px">
+    <div class="card mb" style="padding:16px;text-align:center">
+      <div class="tiny muted">إجمالي الفواتير</div>
+      <div class="kufi num" style="font-size:24px;color:var(--ac-d)">${M(totalAll)} ج</div>
+      <div class="tiny muted mt">${delivered.length} فاتورة</div>
+    </div>
+    <div class="card">${delivered.map(o=>`<div class="row">
+      <span class="av">🧾</span>
+      <span style="flex:1"><span class="n">${o.name}</span><span class="s">طلب <span class="num">${o.id}</span> · ${o.items.length} أصناف</span></span>
+      <span class="end"><b class="num" style="display:block">${M(o.total)} ج</b>
+        <button class="btn2 btn-o2" style="padding:5px 10px;font-size:11px;margin-top:4px" onclick="viewInvoice('${o.id}')">عرض</button></span>
+    </div>`).join('')}</div>
+    <div style="height:14px"></div></div>`;
+}
+const V={list:vList,products:vProducts,acct:vAcct,invoices:vInvoices,qr:vQR,stats:vStats};
+const NAV=[['list','📥','الطلبات'],['products','🏷️','منتجاتي'],['acct','🧮','المحاسبة'],['invoices','🧾','فواتير'],['qr','🔗','متجرك'],['stats','📊','إحصائيات']];
 function render(){
   saveState();
   renderBell();
