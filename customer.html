@@ -205,6 +205,17 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
   display:flex;align-items:center;gap:7px;font-family:'Cairo',inherit;box-shadow:0 12px 26px -8px rgba(0,182,122,.55)}
 .float-support i{font-style:normal;font-size:19px}
 .float-support:active{transform:scale(.92)}
+.float-assist{position:absolute;bottom:calc(var(--nav) + 14px);inset-inline-end:14px;z-index:35;display:none;
+  height:44px;padding:0 16px 0 14px;border-radius:999px;background:#151833;color:#fff;font-size:13.5px;font-weight:700;border:0;
+  align-items:center;gap:7px;font-family:'Cairo',inherit;box-shadow:0 12px 26px -8px rgba(21,24,51,.5);animation:assistPop .4s cubic-bezier(.34,1.56,.64,1)}
+.float-assist.show{display:flex}
+.float-assist i{font-style:normal;font-size:19px}
+@keyframes assistPop{from{transform:scale(.6);opacity:0}}
+.fta-tip{display:flex;gap:10px;align-items:flex-start;background:var(--ac-l);border-radius:14px;padding:12px 14px;margin-bottom:14px;position:relative}
+.fta-tip b{font-size:13px;line-height:1.7;display:block}
+.fta-tip .x{position:absolute;top:8px;left:8px;width:22px;height:22px;border-radius:8px;background:rgba(0,0,0,.06);display:grid;place-items:center;font-size:11px}
+.fta-chip{display:inline-flex;padding:9px 14px;border-radius:999px;background:var(--surf2);border:1px solid var(--line);
+  font-size:12.5px;font-weight:600;margin:4px 5px 4px 0;cursor:pointer}
 .sup-fld{width:100%;padding:13px;border:1.5px solid var(--line);border-radius:12px;background:var(--surf2);
   color:var(--txt);resize:vertical;font-family:inherit;font-size:14px}
 
@@ -224,6 +235,14 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
 .back{width:32px;height:32px;border-radius:10px;background:var(--surf2);display:grid;place-items:center;font-size:16px}
 .sh-b{overflow-y:auto;padding:15px}
 
+.bellBadge{display:none;position:absolute;top:-3px;left:-3px;min-width:16px;height:16px;border-radius:8px;background:var(--danger);
+  color:#fff;font-size:9.5px;font-weight:800;align-items:center;justify-content:center;padding:0 3px;font-family:'Cairo'}
+.inboxOverlay{position:fixed;inset:0;background:rgba(10,12,30,.45);z-index:300}
+.inboxPanel{position:fixed;inset-inline:0;bottom:0;max-width:412px;margin:0 auto;background:var(--surf);border-radius:22px 22px 0 0;
+  z-index:301;max-height:78vh;display:flex;flex-direction:column;box-shadow:0 -20px 50px -20px rgba(0,0,0,.35);animation:inboxUp .3s cubic-bezier(.2,.8,.2,1)}
+@keyframes inboxUp{from{transform:translateY(30px);opacity:0}}
+.inboxItem{display:flex;gap:11px;align-items:flex-start;padding:13px 4px;border-bottom:1px solid var(--line)}
+.inboxItem:last-child{border-bottom:0}
 .toast{position:absolute;bottom:calc(var(--nav) + 74px);inset-inline:15px;background:#10141C;color:#fff;
   padding:12px 15px;border-radius:13px;font-size:12.5px;z-index:60;
   transform:translateY(20px);opacity:0;transition:.3s;pointer-events:none;text-align:center}
@@ -345,6 +364,7 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
           <circle cx="25" cy="11" r="3" fill="#F5A623"/></svg>
         <div class="brand"><b>بسيطة</b><span>تطبيق العميل</span></div>
         <div class="live"><i></i> متصل</div>
+        <button style="border:0;background:rgba(0,0,0,.04);border-radius:9px;width:34px;height:34px;position:relative;display:grid;place-items:center;flex:0 0 auto;margin-inline-start:auto" onclick="openInbox()" aria-label="الإشعارات">🔔<span id="bellBadge" class="bellBadge"></span></button>
       </div>
       <div class="loc">📍 <b>المنيل</b> · طلخا
         <span class="hi">أهلاً <b id="hiName">منى</b> 👋</span></div>
@@ -354,6 +374,7 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
       <span class="c num" id="cartCount">0</span><span>عرض السلة</span>
       <span class="t num" id="cartTotal">0 ج</span></div>
     <button class="float-support" onclick="openSupportSheet()" aria-label="الدعم الفني"><i>🆘</i><span>الدعم الفني</span></button>
+    <button class="float-assist" id="ftaFab" onclick="openFtaSheet()" aria-label="مساعد الطلب الأول"><i>🤝</i><span>محتاج مساعدة؟</span></button>
     <div class="nav" id="nav"></div>
     <div class="shbg" id="shbg" onclick="closeSheet()"></div>
     <div class="sheet" id="sheet"><div class="grab"></div>
@@ -467,7 +488,8 @@ const SLABEL={placed:'تم استلام طلبك',accepted:'المحل قبل ا
   picked:'المندوب استلم طلبك من المحل',delivering:'في الطريق إليك دلوقتي',delivered:'وصلك الطلب 🎉'};
 
 let S={view:'home',cart:{},cartShop:null,orders:[],oid:null,activeShop:null,catFilter:null,
-  co:{name:'منى',ph:'',lm:LM[0],house:'12',geo:null},pin:'1234'};
+  co:{name:'منى',ph:'',lm:LM[0],house:'12',geo:null},pin:'1234',
+  fta:{dismissed:false,seenShopTip:false,seenCheckoutTip:false}};
 const $=s=>document.querySelector(s);
 const M=n=>Math.round(n).toLocaleString('en');
 function shopProducts(shopId){ return (SHOPS[shopId]&&SHOPS[shopId].products)||[]; }
@@ -491,6 +513,94 @@ function playNotifySound(){
 }
 let tT;function toast(m){playNotifySound();const t=$('#toast');t.textContent=m;t.classList.add('show');
   clearTimeout(tT);tT=setTimeout(()=>t.classList.remove('show'),2400)}
+
+/* ═══ نظام الإشعارات (بيل/إن‌بوكس) ═══ */
+const INBOX_KEY='basita_inbox_'+ROLE;
+function loadInbox(){ try{return JSON.parse(localStorage.getItem(INBOX_KEY)||'[]')}catch(e){return []} }
+S.inbox=loadInbox();
+function saveInbox(){ try{localStorage.setItem(INBOX_KEY,JSON.stringify(S.inbox.slice(0,80)))}catch(e){} }
+function notify(text){
+  S.inbox.unshift({id:Math.random().toString(36).slice(2),text,at:new Date().toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'}),read:false});
+  if(S.inbox.length>80)S.inbox.length=80;
+  saveInbox(); renderBell(); toast(text);
+}
+function renderBell(){
+  const n=S.inbox.filter(x=>!x.read).length; const b=document.getElementById('bellBadge'); if(!b)return;
+  b.style.display=n?'flex':'none'; b.textContent=n>9?'9+':n;
+}
+function openInbox(){
+  closeInbox();
+  const wrap=document.createElement('div'); wrap.id='inboxWrap';
+  wrap.innerHTML=`<div class="inboxOverlay" onclick="closeInbox()"></div>
+    <div class="inboxPanel">
+      <div style="width:38px;height:4px;background:var(--line);border-radius:3px;margin:10px auto 4px;flex:0 0 auto"></div>
+      <div style="display:flex;align-items:center;padding:8px 18px 12px;gap:10px;flex:0 0 auto">
+        <b class="kufi" style="font-size:16px">🔔 الإشعارات</b>
+        <button onclick="markAllInboxRead()" style="margin-inline-start:auto;font-size:12px;color:var(--ac-d);font-weight:700">تحديد الكل كمقروء</button>
+        <button onclick="closeInbox()" style="width:30px;height:30px;border-radius:10px;background:var(--surf2);display:grid;place-items:center;flex:0 0 auto">✕</button>
+      </div>
+      <div style="overflow-y:auto;padding:0 18px 18px" id="inboxList"></div>
+    </div>`;
+  document.body.appendChild(wrap);
+  renderInboxList();
+}
+function renderInboxList(){
+  const el=document.getElementById('inboxList'); if(!el)return;
+  if(!S.inbox.length){ el.innerHTML=`<div style="text-align:center;padding:44px 10px;color:var(--txt3)">
+    <div style="font-size:34px;margin-bottom:8px">📭</div>مفيش إشعارات لسه</div>`; return; }
+  el.innerHTML=S.inbox.map(n=>`<div class="inboxItem" style="${n.read?'opacity:.55':''}">
+    <span style="flex:1"><div style="font-size:13.5px;line-height:1.65">${n.text}</div>
+    <div class="tiny" style="color:var(--txt3);margin-top:3px">${n.at}</div></span>
+    ${n.read?'':'<span style="width:8px;height:8px;border-radius:50%;background:var(--ac);margin-top:6px;flex:0 0 auto"></span>'}
+  </div>`).join('');
+}
+function markAllInboxRead(){ S.inbox.forEach(n=>n.read=true); saveInbox(); renderBell(); renderInboxList(); }
+function closeInbox(){ document.getElementById('inboxWrap')?.remove(); }
+
+/* ═══ مساعد الطلب الأول ═══ */
+function isFirstTimer(){ return S.orders.length===0 && !S.fta.dismissed; }
+function renderFtaFab(){
+  const b=document.getElementById('ftaFab'); if(!b)return;
+  b.classList.toggle('show', isFirstTimer() && S.view==='home');
+}
+function dismissFta(){ S.fta.dismissed=true; renderFtaFab(); closeSheet(); }
+function ftaGo(step){
+  closeSheet();
+  if(step==='browse'){ go('home'); document.getElementById('screen').scrollTop=0; }
+  if(step==='faq_delivery') toast('⏱️ متوسط وقت التوصيل ١٥-٢٥ دقيقة حسب المحل والمسافة');
+  if(step==='faq_pay') toast('💵 الدفع كاش وقت الاستلام — من غير أي رسوم إضافية');
+  if(step==='faq_min') toast('🛒 مفيش حد أدنى للطلب — اطلب أي كمية تحبها');
+  if(step==='faq_track') toast('📍 هتقدر تتابع طلبك لحظة بلحظة من تبويب "طلباتي"');
+}
+function openFtaSheet(){
+  openSheet('👋 أهلاً بيك في بسيطة',`
+    <p style="color:var(--txt2);font-size:13.5px;line-height:1.8;margin:0 0 16px">
+      دي أول مرة ليك هنا، فهمساعدك خطوة بخطوة عشان تعمل أول طلب في أقل من دقيقة.</p>
+    <div class="fld" style="display:flex;flex-direction:column;gap:10px">
+      <button class="btn btn-p" onclick="ftaGo('browse')">🏪 يلا نبدأ — اختار محل</button>
+    </div>
+    <div class="sec-t" style="margin-top:18px"><h3>أسئلة شائعة</h3></div>
+    <div>
+      <span class="fta-chip" onclick="ftaGo('faq_delivery')">⏱️ التوصيل بياخد قد إيه؟</span>
+      <span class="fta-chip" onclick="ftaGo('faq_pay')">💵 الدفع إزاي؟</span>
+      <span class="fta-chip" onclick="ftaGo('faq_min')">🛒 فيه حد أدنى للطلب؟</span>
+      <span class="fta-chip" onclick="ftaGo('faq_track')">📍 أتابع طلبي إزاي؟</span>
+    </div>
+    <button class="btn btn-o mt" onclick="dismissFta()">مش محتاج مساعدة، شكرًا</button>`);
+}
+function ftaShopTipHtml(){
+  if(!isFirstTimer()||S.fta.seenShopTip)return '';
+  return `<div class="fta-tip"><span class="x" onclick="S.fta.seenShopTip=true;render()">✕</span>
+    <span style="font-size:20px">💡</span>
+    <b>دوس على علامة + جنب أي صنف عشان تضيفه لسلتك، وتقدر تزوّد أو تقلّل الكمية بسهولة</b></div>`;
+}
+function ftaCheckoutTipHtml(){
+  if(!isFirstTimer()||S.fta.seenCheckoutTip)return '';
+  return `<div class="fta-tip"><span class="x" onclick="S.fta.seenCheckoutTip=true;render()">✕</span>
+    <span style="font-size:20px">💡</span>
+    <b>هتدفع كاش وقت الاستلام. فعّل موقعك عشان المندوب يلاقيك بسهولة وبسرعة</b></div>`;
+}
+
 function openSheet(t,h){$('#shT').textContent=t;$('#shB').innerHTML=h;$('#sheet').classList.add('show');$('#shbg').classList.add('show')}
 function closeSheet(){$('#sheet').classList.remove('show');$('#shbg').classList.remove('show')}
 function go(v,a){S.view=v;if(v==='track')S.oid=a;$('#screen').scrollTop=0;render()}
@@ -555,6 +665,7 @@ function placeOrder(){
   if(!c.geo){toast('لازم تفعّل موقعك الأول');return}
   const shop=SHOPS[S.activeShop];
   if(!shop){toast('اختار محل الأول');return}
+  const wasFirstOrder=isFirstTimer();
   const items=cItems(); const fee=5;
   const id='B'+Math.floor(1000+Math.random()*9000);
   const order={id,merchantId:shop.id,shopName:shop.name,customerId:c.id,name:c.name,ph:c.ph||'01015974104',
@@ -562,8 +673,17 @@ function placeOrder(){
     items:items.map(({p,q})=>({n:p.n,q,p:p.p,u:p.u})),fee,total:cSub()+fee,stage:'placed',driver:null,recurring:false};
   S.orders.unshift(order); S.cart={}; S.cartShop=null;
   emit({to:['merchant'],type:'order:new',order});
+  S.fta.dismissed=true;
   go('track',id);
-  toast('الطلب اتبعت لـ'+shop.name+' — هيوصله فورًا');
+  if(wasFirstOrder){
+    setTimeout(()=>openSheet('🎉 مبروك أول طلب ليك!',`
+      <p style="color:var(--txt2);font-size:13.5px;line-height:1.8;margin:0 0 16px">
+        طلبك اتبعت لـ<b>${shop.name}</b> وهيوصلك قريب. تقدر تتابع كل خطوة لحظة بلحظة من هنا،
+        ومن تبويب "طلباتي" في أي وقت. هنبعتلك إشعار أول ما فيه تحديث.</p>
+      <button class="btn btn-p" onclick="closeSheet()">تمام، يلا نتابع الطلب</button>`),450);
+  }else{
+    toast('الطلب اتبعت لـ'+shop.name+' — هيوصله فورًا');
+  }
 }
 onBus(d=>{
   if(d.type==='platform:reset'){
@@ -572,14 +692,14 @@ onBus(d=>{
     return;
   }
   if(d.type==='support:reply'&&d.to&&d.to.includes('customer')){
-    toast('📩 وصلك رد من الدعم الفني');
+    notify('📩 وصلك رد من الدعم الفني');
     openSupportReplySheet(d.ticketId,d.reply);
     return;
   }
   if(d.type==='driver:message'&&d.to&&d.to.includes('customer')){
     const o=S.orders.find(x=>x.id===d.orderId);
     if(o){ o.driverMessages=o.driverMessages||[]; o.driverMessages.unshift({from:d.driverName,msg:d.message}); }
-    toast('🛵 '+d.driverName+': '+d.message);
+    notify('🛵 '+d.driverName+': '+d.message);
     render();
     return;
   }
@@ -591,7 +711,7 @@ onBus(d=>{
       products:(SHOPS[d.merchantId]&&SHOPS[d.merchantId].products)||[]};
     if(S.activeShop===d.merchantId&&PRODS.length===0) PRODS=SHOPS[d.merchantId].products;
     if(['home','shop'].includes(S.view)) render();
-    if(isNew) toast('🎉 محل جديد فتح دلوقتي: '+d.merchantName);
+    if(isNew) notify('🎉 محل جديد فتح دلوقتي: '+d.merchantName);
     return;
   }
   if(d.type==='merchant:bio_updated'&&d.to&&d.to.includes('customer')){
@@ -621,7 +741,7 @@ onBus(d=>{
     if(d.photo) o.deliveryPhoto=d.photo;
   }
   render();
-  if(S.view==='track'&&S.oid===o.id) toast('تحديث جديد على طلبك');
+  if(S.view==='track'&&S.oid===o.id) notify('تحديث جديد على طلبك');
 });
 
 function vHome(){
@@ -668,6 +788,7 @@ function vShop(){
       <div class="e">${s.type}</div><h2>${s.name}</h2>
       <p>توصيل ١٥-٢٥ دقيقة · رسوم التوصيل ٥ ج</p>
       ${s.bio?`<p style="margin-top:6px;color:var(--txt);opacity:.85;line-height:1.7">${s.bio}</p>`:''}</div>
+    ${ftaShopTipHtml()}
     <div class="sec-t"><h3>الأصناف</h3><span class="num">${s.products.length} صنف</span></div>
     ${s.products.length?s.products.map(p=>`<div class="prod"><span class="ph">${p.i}</span>
       <span style="flex:1"><span class="n">${p.n}${p.br?` <span class="muted tiny">${p.br}</span>`:''}</span>
@@ -702,6 +823,7 @@ function vCheckout(){
   const hasGeo=!!S.co.geo;
   return `<div class="pad" style="padding-top:14px">
     <h3 class="mb">بيانات التوصيل</h3>
+    ${ftaCheckoutTipHtml()}
     <div class="card mb" style="padding:14px;${hasGeo?'':'border-color:#F0A93B'}">
       ${hasGeo?`<div style="display:flex;align-items:center;gap:10px">
         <span style="font-size:20px">📍</span>
@@ -929,6 +1051,8 @@ function savePin(){
 const V={home:vHome,shop:vShop,cart:vCart,checkout:vCheckout,track:vTrack,orders:vOrders,account:vAccount};
 const NAV=[['home','🏠','المتجر'],['orders','📦','طلباتي'],['account','👤','حسابي']];
 function render(){
+  renderBell();
+  renderFtaFab();
   $('#screen').innerHTML=(V[S.view]||vHome)();
   $('#nav').innerHTML=NAV.map(([v,i,n])=>{
     const bn=(v==='orders'&&S.orders.some(o=>o.stage!=='delivered'))?`<span class="bn">•</span>`:'';
