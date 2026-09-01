@@ -215,6 +215,7 @@ function _dedupe(fn){
     _seenMsgIds.add(d.id);
     if(_seenMsgIds.size>300){ _seenMsgIds.delete(_seenMsgIds.values().next().value); }
     fn(d);
+    try{saveState();}catch(e){}
   };
 }
 function onBus(fn){
@@ -278,6 +279,14 @@ let S={view:'overview',
     {n:'الدفع الإلكتروني',s:'قيد الإعداد — لسه مقفول للكل',on:false},
     {n:'صيدلية الشفاء أونلاين',s:'مقفول لحد المراجعة القانونية',on:false},
   ]};
+/* ═══ حفظ دائم للبيانات الحساسة (وثائق، صور، أرقام) — عشان ماتضيعش لو الصفحة اتقفلت أو اتحدّثت ═══ */
+const STATE_KEY='basita_state_'+ROLE;
+function loadState(){ try{return JSON.parse(localStorage.getItem(STATE_KEY)||'null')}catch(e){return null} }
+function saveState(){ try{localStorage.setItem(STATE_KEY,JSON.stringify({
+  merchants:S.merchants,customers:S.customers,events:S.events,tickets:S.tickets,tips:S.tips,
+  driverApplications:S.driverApplications,vodafoneCash:S.vodafoneCash,pin:S.pin,flags:S.flags
+}));}catch(e){ console.warn('basita: تعذّر الحفظ المحلي',e); } }
+{ const _saved=loadState(); if(_saved) Object.assign(S,_saved); }
 const $=s=>document.querySelector(s);
 const M=n=>Math.round(n).toLocaleString('en');
 
@@ -793,6 +802,7 @@ function vAnalytics(){
 const V={overview:vOverview,merchants:vMerchants,security:vSecurity,members:vMembers,analytics:vAnalytics,support:vSupport,wallets:vWallets,flags:vFlags,map:vMap,data:vData};
 const NAV=[['overview','📊','عامة'],['merchants','🏪','تجّار'],['security','🔒','الأمان'],['members','👥','الأعضاء'],['analytics','📈','تحليلات'],['support','🆘','دعم'],['wallets','🎁','إكراميات'],['flags','🎛️','إعدادات'],['map','🗺️','خريطة'],['data','🗄️','بيانات']];
 function render(){
+  saveState();
   const pending=S.merchants.filter(m=>['awaiting_approval','payment_review'].includes(m.status)).length;
   const openTix=S.tickets.filter(t=>t.status==='open'||t.status==='reopened').length;
   const pendTips=S.tips.filter(t=>t.status==='pending').length;
@@ -833,33 +843,54 @@ function vSecurity(){
   const rejected=S.driverApplications.filter(a=>a.status==='rejected');
   if(!S.driverApplications.length)return `<div class="pad" style="padding-top:14px">
     <div class="alert info">🔒 لسه مفيش طلبات توثيق مناديب — أي مندوب يسجّل هيظهر هنا فورًا ببطاقته وصورته الشخصية</div></div>`;
+  const docCard=(a,extra)=>`<div style="display:flex;gap:8px;margin-bottom:11px">
+          <div style="flex:1"><div class="tiny muted mb">صورة البطاقة</div>
+            <img src="${a.idCardPhoto}" onclick="viewDoc('${a.idCardPhoto}')" style="width:100%;height:100px;object-fit:cover;border-radius:10px;border:1px solid var(--line);cursor:zoom-in"></div>
+          <div style="flex:1"><div class="tiny muted mb">الصورة الشخصية</div>
+            <img src="${a.selfiePhoto}" onclick="viewDoc('${a.selfiePhoto}')" style="width:100%;height:100px;object-fit:cover;border-radius:10px;border:1px solid var(--line);cursor:zoom-in"></div>
+        </div>`;
   return `<div class="pad" style="padding-top:14px">
+    <div class="alert info" style="margin-bottom:14px">🔒 وثائق كل المناديب — الحاليين والموثّقين قبل كده والمرفوضين — بتتحفظ هنا بشكل دائم كأرشيف أمان، حتى بعد الموافقة، عشان ترجعلها وقت اللي تحتاجها</div>
     ${pending.length?`<div class="sec-t" style="margin-top:0"><h3>بانتظار المراجعة</h3><span class="num">${pending.length}</span></div>
       ${pending.map(a=>`<div class="card mb" style="padding:14px">
         <div style="display:flex;align-items:center;gap:9px;margin-bottom:11px">
           <span style="font-size:18px">🛵</span><b style="font-size:13.5px">${a.driverName}</b>
           <span class="tiny muted" style="margin-inline-start:auto" dir="ltr">${a.phone||''}</span></div>
-        <div style="display:flex;gap:8px;margin-bottom:11px">
-          <div style="flex:1"><div class="tiny muted mb">صورة البطاقة</div>
-            <img src="${a.idCardPhoto}" style="width:100%;height:100px;object-fit:cover;border-radius:10px;border:1px solid var(--line)"></div>
-          <div style="flex:1"><div class="tiny muted mb">الصورة الشخصية</div>
-            <img src="${a.selfiePhoto}" style="width:100%;height:100px;object-fit:cover;border-radius:10px;border:1px solid var(--line)"></div>
-        </div>
+        ${docCard(a)}
         <div class="tiny muted" style="margin-bottom:11px">وسيلة التوصيل: ${a.vehicle} · ${a.at}</div>
         <div style="display:flex;gap:8px">
           <button class="btn2 btn-p2" style="flex:1" onclick="approveDriver('${a.driverId}')">✅ موافقة</button>
           <button class="btn2" style="flex:1;background:rgba(232,93,82,.14);color:var(--danger)" onclick="rejectDriver('${a.driverId}')">❌ رفض</button>
         </div>
       </div>`).join('')}`:''}
-    ${approved.length?`<div class="sec-t"><h3>مناديب موثّقين</h3><span class="num">${approved.length}</span></div>
-      <div class="card">${approved.map(a=>`<div class="row">
-        <span class="av">🛵</span><span style="flex:1"><span class="n">${a.driverName}</span>
-        <span class="s" dir="ltr">${a.phone||''}</span></span><span class="bdg b-active">موثّق</span></div>`).join('')}</div>`:''}
-    ${rejected.length?`<div class="sec-t"><h3>مرفوضين</h3><span class="num">${rejected.length}</span></div>
-      <div class="card">${rejected.map(a=>`<div class="row">
-        <span class="av">🛵</span><span style="flex:1"><span class="n">${a.driverName}</span>
-        <span class="s">${a.reason||''}</span></span><span class="bdg b-danger">مرفوض</span></div>`).join('')}</div>`:''}
+    ${approved.length?`<div class="sec-t"><h3>مناديب موثّقين — أرشيف دائم</h3><span class="num">${approved.length}</span></div>
+      ${approved.map(a=>`<div class="card mb" style="padding:14px">
+        <div style="display:flex;align-items:center;gap:9px;margin-bottom:11px">
+          <span style="font-size:18px">🛵</span><b style="font-size:13.5px">${a.driverName}</b>
+          <span class="tiny muted" style="margin-inline-start:auto" dir="ltr">${a.phone||''}</span>
+          <span class="bdg b-active">موثّق</span></div>
+        ${docCard(a)}
+        <div class="tiny muted">وسيلة التوصيل: ${a.vehicle} · انضم ${a.at}</div>
+      </div>`).join('')}`:''}
+    ${rejected.length?`<div class="sec-t"><h3>مرفوضين — محفوظين للمراجعة لو رجع تاني</h3><span class="num">${rejected.length}</span></div>
+      ${rejected.map(a=>`<div class="card mb" style="padding:14px">
+        <div style="display:flex;align-items:center;gap:9px;margin-bottom:11px">
+          <span style="font-size:18px">🛵</span><b style="font-size:13.5px">${a.driverName}</b>
+          <span class="tiny muted" style="margin-inline-start:auto" dir="ltr">${a.phone||''}</span>
+          <span class="bdg b-danger">مرفوض</span></div>
+        ${docCard(a)}
+        <div class="tiny muted">سبب الرفض: ${a.reason||'—'}</div>
+      </div>`).join('')}`:''}
     <div style="height:14px"></div></div>`;
 }
+function viewDoc(src){
+  const el=document.createElement('div'); el.id='docViewWrap';
+  el.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:300;display:flex;align-items:center;justify-content:center;padding:24px';
+  el.innerHTML=`<img src="${src}" style="max-width:100%;max-height:100%;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.5)">
+    <button style="position:absolute;top:18px;left:18px;width:38px;height:38px;border-radius:12px;background:rgba(255,255,255,.15);color:#fff;font-size:18px" onclick="closeDocView()">✕</button>`;
+  el.onclick=(e)=>{ if(e.target===el) closeDocView(); };
+  document.body.appendChild(el);
+}
+function closeDocView(){ document.getElementById('docViewWrap')?.remove(); }
 </script>
 </body></html>
