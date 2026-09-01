@@ -414,6 +414,7 @@ function _dedupe(fn){
     _seenMsgIds.add(d.id);
     if(_seenMsgIds.size>300){ _seenMsgIds.delete(_seenMsgIds.values().next().value); }
     fn(d);
+    try{saveState();}catch(e){}
   };
 }
 function onBus(fn){
@@ -490,6 +491,11 @@ const SLABEL={placed:'تم استلام طلبك',accepted:'المحل قبل ا
 let S={view:'home',cart:{},cartShop:null,orders:[],oid:null,activeShop:null,catFilter:null,
   co:{name:'منى',ph:'',lm:LM[0],house:'12',geo:null},pin:'1234',
   fta:{dismissed:false,seenShopTip:false,seenCheckoutTip:false}};
+/* ═══ حفظ دائم للطلبات (فيها صور إثبات التسليم ومحادثات وأرقام) عشان ماتضيعش لو الصفحة اتحدّثت ═══ */
+const STATE_KEY='basita_state_'+ROLE;
+function loadState(){ try{return JSON.parse(localStorage.getItem(STATE_KEY)||'null')}catch(e){return null} }
+function saveState(){ try{localStorage.setItem(STATE_KEY,JSON.stringify({orders:S.orders,co:S.co,pin:S.pin}));}catch(e){ console.warn('basita: تعذّر الحفظ المحلي',e); } }
+{ const _saved=loadState(); if(_saved) Object.assign(S,_saved); }
 const $=s=>document.querySelector(s);
 const M=n=>Math.round(n).toLocaleString('en');
 function shopProducts(shopId){ return (SHOPS[shopId]&&SHOPS[shopId].products)||[]; }
@@ -698,7 +704,8 @@ onBus(d=>{
   }
   if(d.type==='driver:message'&&d.to&&d.to.includes('customer')){
     const o=S.orders.find(x=>x.id===d.orderId);
-    if(o){ o.driverMessages=o.driverMessages||[]; o.driverMessages.unshift({from:d.driverName,msg:d.message}); }
+    if(o){ o.chatLog=o.chatLog||[]; o.chatLog.unshift({from:'driver',name:d.driverName,msg:d.message,
+      at:new Date().toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'})}); }
     notify('🛵 '+d.driverName+': '+d.message);
     render();
     return;
@@ -765,12 +772,27 @@ function vHome(){
       <span class="bdg b-ac">مفتوح</span></button>`).join(''):
       `<div class="empty"><div class="e">🏪</div><h4>لسه مفيش محلات فاتحة</h4>
         <p class="tiny">أول ما تاجر يسجّل ويفتح متجره، هيظهر هنا فورًا من غير ما تعمل حاجة</p></div>`}
-    <div class="brandbanner">
+    <button class="brandbanner" style="width:100%;text-align:right;border:0;cursor:pointer" onclick="openAboutBasita()">
       <div class="bb-ic">🇪🇬</div>
       <div><b>بسيطة</b> — بنرقمن مصر، نشاط ورا نشاط
-        <span>محلك مش هيفضل يشتغل بالتخمين بعد النهاردة</span></div>
-    </div>
+        <span>محلك مش هيفضل يشتغل بالتخمين بعد النهاردة · اعرف أكتر عن المنصة ‹</span></div>
+    </button>
     <div style="height:8px"></div></div>`;
+}
+function openAboutBasita(){
+  openSheet('عن بسيطة',`
+    <p style="line-height:1.9;font-size:13.5px">
+      <b>بسيطة</b> مش مجرد تطبيق توصيل — هي منظومة رقمية متكاملة بنبنيها عشان نوصل كل بيت وكل محل في مصر ببعض، خطوة ورا خطوة، ومدينة ورا مدينة.
+    </p>
+    <p style="line-height:1.9;font-size:13.5px;margin-top:10px">
+      من لحظة ما تحط طلبك، بيتحرك في شبكة متكاملة: <b>تاجر</b> بيجهزلك طلبك بدقة، <b>مندوب توصيل موثّق</b> (بياناته وهويته اتراجعت وتم التحقق منها فعليًا) بياخده ليك بأسرع وقت، و<b>نظام تتبع لحظي</b> بيوريك مكان طلبك أول بأول من غير ما تتصل بحد.
+    </p>
+    <p style="line-height:1.9;font-size:13.5px;margin-top:10px">
+      إحنا مش بنشتغل بالتخمين: كل رقم بتشوفه، كل حالة طلب، كل رسالة بينك وبين المندوب — كلها بتتسجل وبتتحفظ بأمان، عشان تجربتك تبقى واضحة وموثوقة من الأول للآخر.
+    </p>
+    <p style="line-height:1.9;font-size:13.5px;margin-top:10px">
+      الهدف بسيط زي الاسم: نخلي أي نشاط تجاري في مصر يشتغل بذكاء وبثقة، ونديك إنت كعميل تجربة توصيل محترفة تستاهلها. 🇪🇬
+    </p>`);
 }
 function openShop(id){
   S.activeShop=id; PRODS=SHOPS[id].products;
@@ -875,8 +897,8 @@ function vTrack(){
         <button style="background:var(--ac);color:#fff;border:0;border-radius:11px;padding:9px 14px;
           font-family:'Cairo';font-weight:700;font-size:12.5px;flex:0 0 auto;cursor:pointer" onclick="openMsgSheet('${o.id}')">راسله</button>
       </div>
-      ${(o.driverMessages&&o.driverMessages.length)?`<div class="mt" style="border-top:1px solid var(--line);padding-top:10px">
-        ${o.driverMessages.slice(0,3).map(m=>`<div class="tiny" style="padding:4px 0"><b style="color:var(--ac-d)">${m.from}:</b> ${m.msg}</div>`).join('')}
+      ${(o.chatLog&&o.chatLog.length)?`<div class="mt" style="border-top:1px solid var(--line);padding-top:10px">
+        ${o.chatLog.slice(0,3).map(m=>`<div class="tiny" style="padding:4px 0"><b style="color:${m.from==='driver'?'var(--ac-d)':'var(--txt2)'}">${m.name}:</b> ${m.msg}</div>`).join('')}
       </div>`:''}</div>`:''}
     ${o.stage==='delivered'&&o.deliveryPhoto?`<div class="sec-t"><h3>صورة إثبات التسليم</h3></div>
       <div class="card" style="padding:10px;text-align:center">
@@ -993,7 +1015,10 @@ function sendMsgToDriver(orderId,preset){
   const msg=preset||document.getElementById('cMsgInput').value.trim();
   if(!msg){toast('اكتب رسالة الأول');return}
   emit({to:['driver'],type:'customer:message',orderId,message:msg});
-  closeSheet(); toast('اتبعتت الرسالة للمندوب ✓');
+  const o=S.orders.find(x=>x.id===orderId);
+  if(o){ o.chatLog=o.chatLog||[]; o.chatLog.unshift({from:'customer',name:'إنت',msg,
+    at:new Date().toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'})}); }
+  closeSheet(); toast('اتبعتت الرسالة للمندوب ✓'); render();
 }
 function openSupportSheet(){
   openSheet('تواصل مع الدعم الفني',`
@@ -1051,6 +1076,7 @@ function savePin(){
 const V={home:vHome,shop:vShop,cart:vCart,checkout:vCheckout,track:vTrack,orders:vOrders,account:vAccount};
 const NAV=[['home','🏠','المتجر'],['orders','📦','طلباتي'],['account','👤','حسابي']];
 function render(){
+  saveState();
   renderBell();
   renderFtaFab();
   $('#screen').innerHTML=(V[S.view]||vHome)();
