@@ -612,7 +612,10 @@ async function resumeMerchantSession(){
   // تاجر مسجّل قبل كده ومعاه جلسة محفوظة — منطلبش منه يسجّل دخول تاني
   applyBizIdentity();
   if(sb){
-    const {data}=await sb.from('merchants').select('status').eq('id',S.merchantId).maybeSingle();
+    const {data}=await sb.from('merchants').select('status,name,biz_type').eq('id',S.merchantId).maybeSingle();
+    if(data&&data.name){ S.customStoreName=data.name; S.bizType=data.biz_type||S.bizType; applyBizIdentity(); }
+    document.getElementById('paStoreName').textContent=BIZ().name||S.customStoreName||'—';
+    document.getElementById('paStoreType').textContent=BIZ().label||'—';
     if(data&&(data.status==='trial'||data.status==='active')){
       S.sub.status=data.status;
       proceedToStoreOpen();
@@ -626,6 +629,8 @@ async function resumeMerchantSession(){
       subscribeMyApproval();
     }
   }else{
+    document.getElementById('paStoreName').textContent=BIZ().name||S.customStoreName||'—';
+    document.getElementById('paStoreType').textContent=BIZ().label||'—';
     proceedToStoreOpen();
   }
 }
