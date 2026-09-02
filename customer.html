@@ -171,16 +171,17 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
 .sec-t h3{font-size:14.5px}
 .sec-t span{font-size:11px;color:var(--txt3)}
 
-.prod{display:flex;gap:12px;align-items:center;padding:12px;border-radius:16px;border:1px solid var(--line);
-  background:var(--surf);margin-bottom:9px;transition:.2s;box-shadow:var(--sh)}
+.prod{display:flex;gap:12px;align-items:center;padding:11px;border-radius:17px;border:1px solid var(--line);
+  background:var(--surf);margin-bottom:9px;transition:.2s;box-shadow:var(--sh);position:relative;overflow:hidden}
 .prod:active{transform:scale(.98)}
-.prod .ph{width:50px;height:50px;border-radius:13px;background:var(--surf2);display:grid;place-items:center;font-size:23px;flex:0 0 auto}
+.prod .ph{width:54px;height:54px;border-radius:14px;background:linear-gradient(150deg,var(--ac-l),#fff);
+  display:grid;place-items:center;font-size:25px;flex:0 0 auto;box-shadow:inset 0 0 0 1px rgba(0,182,122,.12)}
 .prod .n{font-weight:700;font-size:13.5px;color:var(--txt)}
-.prod .u{font-size:11px;color:var(--txt3)}
-.prod .pr{font-family:'Cairo';font-weight:800;font-size:14.5px;color:var(--ac-d);margin-top:2px}
+.prod .u{font-size:10.5px;color:var(--ac-d);font-weight:700;background:var(--ac-l);padding:2px 8px;border-radius:999px;display:inline-block;margin-top:3px}
+.prod .pr{font-family:'Cairo';font-weight:800;font-size:15.5px;color:var(--ac-d);margin-top:3px;letter-spacing:-.2px}
 .prod .act{margin-inline-start:auto}
-.add{width:34px;height:34px;border-radius:11px;background:var(--ac);color:#fff;font-size:19px;
-  display:grid;place-items:center;font-weight:700;transition:.15s}
+.add{width:36px;height:36px;border-radius:12px;background:var(--ac);color:#fff;font-size:20px;
+  display:grid;place-items:center;font-weight:700;transition:.15s;box-shadow:0 6px 14px -6px rgba(0,182,122,.55)}
 .add:active{transform:scale(.85)}
 .stp{display:flex;align-items:center;background:var(--ac);border-radius:11px;padding:2px}
 .stp button{width:28px;height:28px;color:#fff;font-size:17px;border-radius:8px;display:grid;place-items:center;font-weight:700}
@@ -191,8 +192,7 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
   box-shadow:0 16px 36px -10px rgba(0,182,122,.5);transform:translateY(160%);
   transition:transform .4s cubic-bezier(.2,.8,.2,1)}
 .cartbar.show{transform:none}
-.cartbar .c{background:rgba(255,255,255,.22);width:26px;height:26px;border-radius:9px;display:grid;place-items:center;font-weight:800;font-size:12px;transition:transform .25s cubic-bezier(.34,1.56,.64,1)}
-.cartbar .c.bump{transform:scale(1.35)}
+.cartbar .c{background:rgba(255,255,255,.22);width:26px;height:26px;border-radius:9px;display:grid;place-items:center;font-weight:800;font-size:12px}
 .cartbar .t{font-family:'Cairo';margin-inline-start:auto;font-size:14.5px}
 
 .nav{position:absolute;inset-inline:0;bottom:0;height:calc(var(--nav) + env(safe-area-inset-bottom));
@@ -279,6 +279,8 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
 .sup-fld{width:100%;padding:13px;border:1.5px solid var(--line);border-radius:12px;background:var(--surf2);
   color:var(--txt);resize:vertical;font-family:inherit;font-size:14px}
 
+.alert{display:flex;align-items:flex-start;gap:9px;padding:12px 14px;border-radius:14px;font-size:12.5px;line-height:1.7}
+.alert.info{background:var(--ac-l);color:var(--ac-d)}
 .empty{text-align:center;padding:50px 22px;color:var(--txt3)}
 .empty .e{font-size:42px}
 .empty h4{font-size:15px;color:var(--txt);margin:10px 0 5px}
@@ -297,16 +299,6 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
 
 .bellBadge{display:none;position:absolute;top:-3px;left:-3px;min-width:16px;height:16px;border-radius:8px;background:var(--danger);
   color:#fff;font-size:9.5px;font-weight:800;align-items:center;justify-content:center;padding:0 3px;font-family:'Cairo'}
-@keyframes bellRing{0%,100%{transform:rotate(0)}10%,30%{transform:rotate(-18deg)}20%,40%{transform:rotate(18deg)}50%{transform:rotate(-10deg)}60%{transform:rotate(10deg)}70%{transform:rotate(0)}}
-@keyframes ringPulse{0%{box-shadow:0 0 0 0 rgba(239,68,68,.55)}100%{box-shadow:0 0 0 14px rgba(239,68,68,0)}}
-.bell-alert{animation:bellRing 1.6s ease-in-out 2,ringPulse 1.6s ease-out 2}
-.feebox{background:linear-gradient(150deg,var(--ac-l),#fff);border:1px solid var(--line);border-radius:14px;padding:13px 14px;margin:10px 0}
-.feebox .frow{display:flex;align-items:center;font-size:12.5px;padding:4px 0;color:var(--txt2)}
-.feebox .frow .fic{font-size:15px;margin-inline-end:7px}
-.feebox .frow b{margin-inline-start:auto;color:var(--txt);font-family:'Cairo'}
-.feebox .fnote{font-size:10.5px;color:var(--txt3);margin-top:2px;padding-inline-start:22px}
-.feebox .ftot{border-top:1px dashed var(--line);margin-top:7px;padding-top:8px;display:flex;align-items:center}
-.feebox .ftot b{margin-inline-start:auto;font-size:18px;color:var(--ac-d);font-family:'Cairo'}
 .inboxOverlay{position:fixed;inset:0;background:rgba(10,12,30,.45);z-index:300}
 .inboxPanel{position:fixed;inset-inline:0;bottom:0;max-width:412px;margin:0 auto;background:var(--surf);border-radius:22px 22px 0 0;
   z-index:301;max-height:78vh;display:flex;flex-direction:column;box-shadow:0 -20px 50px -20px rgba(0,0,0,.35);animation:inboxUp .3s cubic-bezier(.2,.8,.2,1)}
@@ -337,6 +329,23 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
 .cat.on-cat{background:var(--ac-l);border-color:var(--ac)}
 .cat .e{font-size:22px;line-height:1.2}
 .cat .n{font-size:11px;font-weight:600;margin-top:4px;color:var(--txt)}
+.shopcard2{display:flex;gap:12px;align-items:center;width:100%;text-align:right;background:var(--surf);
+  border:1px solid var(--line);border-radius:18px;padding:10px;margin-bottom:10px;box-shadow:var(--sh);transition:.2s}
+.shopcard2:active{transform:scale(.98)}
+.shopcard2-closed{opacity:.6}
+.shopcard2-ph{position:relative;width:64px;height:64px;border-radius:14px;overflow:hidden;flex:0 0 auto;
+  background:linear-gradient(135deg,var(--ac-l),#fff)}
+.shopcard2-ph img{width:100%;height:100%;object-fit:cover;display:block}
+.shopcard2-ic{width:100%;height:100%;display:grid;place-items:center;font-size:28px}
+.shopcard2-status{position:absolute;bottom:3px;right:3px;left:3px;text-align:center;font-size:8.5px;font-weight:800;
+  background:var(--ac);color:#fff;border-radius:6px;padding:2px 0}
+.shopcard2-status.is-closed{background:var(--danger)}
+.shopcard2-info{flex:1;min-width:0}
+.shopcard2-info b{font-size:14px;display:block;color:var(--txt)}
+.shopcard2-meta{font-size:11.5px;color:var(--txt3);display:block;margin-top:2px}
+.shopcard2-tags{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.shopcard-village{font-size:10px;font-weight:700;background:var(--surf2);color:var(--txt2);padding:3px 8px;border-radius:999px}
+.shopcard-dist{font-size:10px;font-weight:700;background:var(--ac-l);color:var(--ac-d);padding:3px 8px;border-radius:999px}
 .shopcard{display:flex;gap:11px;align-items:center;width:100%;text-align:right;background:var(--surf);
   border:1px solid var(--line);border-radius:15px;padding:11px;margin-bottom:9px;box-shadow:var(--sh)}
 .shopcard:active{transform:scale(.985)}
@@ -428,7 +437,10 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
       <h1 class="atitle">كمّل بياناتك</h1>
       <p class="asub">آخر خطوة وتقدر تبدأ تطلب</p>
       <div class="fld mt"><label>الاسم</label><input id="nmInput" placeholder="اسمك بالكامل"></div>
-      <div class="fld"><label>قريتك</label><select id="vgInput" onchange="S.co.villageId=this.value"></select></div>
+      <div class="fld"><label>قريتك</label><select id="villageInput" onchange="handleVillageChange()">
+        <option value="">جاري تحميل القرى…</option></select></div>
+      <div class="fld" id="newVillageWrap" style="display:none">
+        <label>اسم قريتك</label><input id="newVillageName" placeholder="مثلاً: الروضة"></div>
       <div class="fld"><label>أقرب معلم ليك</label><select id="lmInput">
         <option>جنب الجامع الكبير</option><option>أول شارع المدرسة</option>
         <option>عند المحول</option><option>قدام الوحدة الصحية</option></select></div>
@@ -447,7 +459,7 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
         <div class="live"><i></i> متصل</div>
         <button style="border:0;background:rgba(0,0,0,.04);border-radius:9px;width:34px;height:34px;position:relative;display:grid;place-items:center;flex:0 0 auto;margin-inline-start:auto" onclick="openInbox()" aria-label="الإشعارات">🔔<span id="bellBadge" class="bellBadge"></span></button>
       </div>
-      <div class="loc">📍 <b id="locVillage">المنيل</b> · مركز طلخا
+      <div class="loc">📍 <b>المنيل</b> · طلخا
         <span class="hi">أهلاً <b id="hiName">منى</b> 👋</span></div>
     </div>
     <div class="body" id="screen"></div>
@@ -492,80 +504,6 @@ const ROLE='customer';
 const SUPABASE_URL='https://vymfhyleoekbhxuojudl.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5bWZoeWxlb2VrYmh4dW9qdWRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgyNTUxMjgsImV4cCI6MjEwMzgzMTEyOH0.euxtZVpwZGa023UyFzbY2zgdj0fXjWETLqkZY_5fTCQ';
 const sb=(window.supabase&&window.supabase.createClient)?window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY):null;
-
-/* ═══════════ نظام القرى والتسعير الجغرافي (بسيطة) ═══════════ */
-let VILLAGES=[
-  {id:'seed-markaz',name:'مركز طلخا',is_markaz:true,distance_km:0,active:true},
-  {id:'seed-manil',name:'المنيل',is_markaz:false,distance_km:3,active:true},
-  {id:'seed-ورمان',name:'الأورمان',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-كفردميرةجديد',name:'كفر دميرة الجديد',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-كفردميرةقديم',name:'كفر دميرة القديم',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-كفرالعرب',name:'كفر العرب',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-كفورالعرب',name:'كفور العرب',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-جوجر',name:'جوجر',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-شرنقاش',name:'شرنقاش',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-ميتالكرماء',name:'ميت الكرماء',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-ميتعنتر',name:'ميت عنتر',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-الروضة',name:'الروضة',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-المنشية',name:'المنشية',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-كفرالأصالي',name:'كفر الأصالي',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-بطرة',name:'بطرة',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-دميرة',name:'دميرة',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-كتامةالشرقية',name:'كتامة الشرقية',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-ديسط',name:'ديسط',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-بساط',name:'بساط',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-كفربساط',name:'كفر بساط',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-منشيةالبكري',name:'منشية البكري',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-ميتزنقر',name:'ميت زنقر',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-ميتنابت',name:'ميت نابت',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-كفرالخوازم',name:'كفر الخوازم',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-كفرالطويلة',name:'كفر الطويلة',is_markaz:false,distance_km:5,active:true}
-];
-const PLATFORM_COMMISSION=2; // ١.٥٠ج + ٥٠ قرش بتتخصم من المندوب على كل طلب بيوصّله (عمولة المنصة)
-async function loadVillages(){
-  if(!sb) return VILLAGES;
-  const {data,error}=await sb.from('villages').select('*').eq('active',true).order('distance_km',{ascending:true});
-  if(!error&&data&&data.length) VILLAGES=data;
-  else if(error) console.error('basita: تعذّر تحميل قائمة القرى — السبب:',
-    error.message||error.details||error.hint||JSON.stringify(error),
-    '(احتمال: جدول villages مش موجود في Supabase، أو صلاحيات RLS مقفولة على anon)');
-  return VILLAGES;
-}
-function villageById(id){ return VILLAGES.find(v=>v.id===id)||VILLAGES.find(v=>v.is_markaz)||VILLAGES[0]||null; }
-function villageDistanceKm(aId,bId){
-  if(!aId||!bId||aId===bId) return 0;
-  const a=villageById(aId), b=villageById(bId);
-  if(!a||!b) return 6;
-  if(a.is_markaz) return +b.distance_km||0;
-  if(b.is_markaz) return +a.distance_km||0;
-  return +(((+a.distance_km||0)+(+b.distance_km||0)).toFixed(1));
-}
-// تسعير واقعي: ثابت جوه نفس القرية، ثابت أعلى شوية جوه مركز طلخا نفسه، وتدرّج مع المسافة بين القرى
-function calcDeliveryFee(originId,destId){
-  const km=villageDistanceKm(originId,destId);
-  const o=villageById(originId), d=villageById(destId);
-  if(km<=0) return (o&&o.is_markaz)?10:5;
-  const base=((o&&o.is_markaz)||(d&&d.is_markaz))?7:5;
-  return Math.max(8,Math.round(base+km*2.5));
-}
-/* كارت تفصيلي وواضح لرسوم التوصيل — بيوضّح للعميل سبب الرسوم (المسافة) بدل رقم مجرّد */
-function feeBreakdownHtml(sub,originId,destId){
-  const km=villageDistanceKm(originId,destId);
-  const fee=calcDeliveryFee(originId,destId);
-  const o=villageById(originId), d=villageById(destId);
-  const sameVillage=(!originId||!destId||originId===destId);
-  const distLabel=sameVillage?'داخل نفس القرية':(km>0?'≈ '+km+' كم':'قريب من المحل');
-  return `<div class="feebox">
-    <div class="frow"><span class="fic">🛍️</span><span>سعر المنتجات</span><b class="num">${M(sub)} ج</b></div>
-    <div class="frow"><span class="fic">🛵</span><span>رسوم التوصيل</span><b class="num">${M(fee)} ج</b></div>
-    <div class="fnote">📍 ${distLabel} — الرسوم بتتحسب حسب المسافة بين المحل وعنوانك</div>
-    <div class="ftot"><span class="tiny muted">الإجمالي</span><b class="kufi num">${M(sub+fee)} ج</b></div>
-  </div>`;
-}
-function villageOptionsHtml(selectedId){
-  return VILLAGES.map(v=>`<option value="${v.id}" ${v.id===selectedId?'selected':''}>${v.is_markaz?'🏛️':'🌾'} ${v.name}</option>`).join('');
-}
-loadVillages();
 if(!sb) console.error('basita: تعذّر تحميل مكتبة Supabase — المزامنة الحقيقية مش هتشتغل، وهيرجع النظام للمزامنة المحلية بس');
 const BIZ_LABELS={grocery:'بقالة',pharmacy:'صيدلية',restaurant:'مطعم',cafe:'كافيه',bakery:'مخبز',other:'نشاط عام'};
 const BIZ_ICONS={grocery:'🛒',pharmacy:'💊',restaurant:'🍔',cafe:'☕',bakery:'🥖',other:'🏪'};
@@ -596,26 +534,19 @@ function onBus(fn){
 }
 
 setTimeout(()=>document.getElementById('boot').classList.add('gone'),1300);
-setTimeout(()=>{
-  if(S.co&&S.co.id){
-    // العميل مسجّل قبل كده ومعاه جلسة محفوظة — يدخل على طول من غير ما نطلب منه يسجّل تاني
-    mountApp();
-  } else {
-    document.getElementById('authFlow').classList.add('show');
-  }
-},1350);
 loadShops();
 subscribeShopsLive();
+loadVillages();
+setTimeout(async()=>{
+  const restored=await tryRestoreSession();
+  if(!restored) document.getElementById('authFlow').classList.add('show');
+},1350);
 
 let authMode='signup';
 function goAuth(stage,mode){
   if(mode)authMode=mode;
   document.querySelectorAll('.astage').forEach(s=>s.classList.remove('on'));
   document.getElementById('st-'+stage).classList.add('on');
-  if(stage==='profile'){
-    S.co.villageId=S.co.villageId||(villageById(null)&&villageById(null).id);
-    document.getElementById('vgInput').innerHTML=villageOptionsHtml(S.co.villageId);
-  }
 }
 function sendOtp(){
   const v=document.getElementById('phInput').value.trim();
@@ -624,30 +555,71 @@ function sendOtp(){
   S.co.ph=v;
   goAuth('otp');
 }
+/* ═══ الجلسة الدائمة — تسجيل الدخول مرة واحدة بس، ويفضل شغال حتى بعد الريفريش ═══ */
+const SESSION_KEY='basita_session_'+ROLE;
+function saveSession(){
+  try{ localStorage.setItem(SESSION_KEY, JSON.stringify({id:S.co.id,name:S.co.name,ph:S.co.ph,villageId:S.co.villageId,lm:S.co.lm})); }catch(e){}
+}
+function loadSession(){ try{ return JSON.parse(localStorage.getItem(SESSION_KEY)||'null'); }catch(e){ return null; } }
+function clearSession(){ try{ localStorage.removeItem(SESSION_KEY); }catch(e){} }
+function logout(){
+  if(!confirm('متأكد إنك عايز تسجّل خروج؟'))return;
+  clearSession(); location.reload();
+}
+async function tryRestoreSession(){
+  const s=loadSession();
+  if(!s||!s.id)return false;
+  S.co={...S.co,...s};
+  document.getElementById('hiName').textContent=(s.name||'').split(' ')[0]||'صديقنا';
+  mountApp();
+  return true;
+}
 async function verifyOtp(){
   if(authMode==='login'){
     if(sb){
       const {data,error}=await sb.from('customers').select('*').eq('phone',S.co.ph).maybeSingle();
-      if(data){ S.co.id=data.id; S.co.name=data.name; S.co.lm=data.landmark||LM[0]; S.co.villageId=data.village_id||S.co.villageId; document.getElementById('hiName').textContent=data.name.split(' ')[0]; }
+      if(data){ S.co.id=data.id; S.co.name=data.name; S.co.lm=data.landmark||LM[0]; S.co.villageId=data.village_id||null; document.getElementById('hiName').textContent=data.name.split(' ')[0]; }
       else if(error){ console.error('basita: خطأ في البحث عن حسابك',error); }
     }
+    saveSession();
     toast('أهلاً بيكي تاني 👋');
     mountApp();
   } else {
     goAuth('profile');
   }
 }
+async function resolveVillageId(){
+  const v=document.getElementById('villageInput').value;
+  if(v&&v!=='__new__')return v;
+  if(v==='__new__'){
+    const name=document.getElementById('newVillageName').value.trim();
+    if(!name){toast('اكتب اسم قريتك');return null}
+    if(!S.co.geo){toast('لازم تفعّل موقعك الأول عشان نحدد قريتك الجديدة صح');return null}
+    const {data,error}=await sb.from('villages').insert({name,center_lat:S.co.geo.lat,center_lng:S.co.geo.lng}).select().single();
+    if(error){
+      if(error.code==='23505'){ const {data:existing}=await sb.from('villages').select('id').eq('name',name).maybeSingle(); return existing?existing.id:null; }
+      console.error('basita:',error); toast('حصلت مشكلة في إضافة القرية');return null;
+    }
+    VILLAGES.push(data);
+    return data.id;
+  }
+  toast('اختار قريتك الأول'); return null;
+}
 async function finishSignup(){
   const nm=document.getElementById('nmInput').value.trim()||'صديقنا';
   document.getElementById('hiName').textContent=nm.split(' ')[0];
-  S.co.name=nm; S.co.lm=document.getElementById('lmInput').value; S.co.villageId=document.getElementById('vgInput').value||S.co.villageId;
+  S.co.name=nm; S.co.lm=document.getElementById('lmInput').value;
   if(sb){
-    const {data,error}=await sb.from('customers').insert({name:nm,phone:S.co.ph,landmark:S.co.lm,village_id:S.co.villageId}).select().single();
+    const villageId=await resolveVillageId();
+    if(!villageId)return;
+    S.co.villageId=villageId;
+    const {data,error}=await sb.from('customers').insert({name:nm,phone:S.co.ph,landmark:S.co.lm,village_id:villageId}).select().single();
     if(error){ console.error('basita: فشل إنشاء حسابك في قاعدة البيانات',error); toast('حصلت مشكلة في إنشاء حسابك — جرّب تاني'); return; }
     S.co.id=data.id;
   } else {
     S.co.id=S.co.id||('c_'+(S.co.ph||Math.random().toString(36).slice(2)));
   }
+  saveSession();
   toast('اتعمل حسابك بنجاح 🎉');
   mountApp();
 }
@@ -665,7 +637,7 @@ function mapRowToOrder(o,items){
     customerId:o.customer_id, name:o.customer_name, ph:o.customer_phone, addr:o.address,
     geo:(o.delivery_lat!=null)?{lat:o.delivery_lat,lng:o.delivery_lng}:null,
     fee:+o.delivery_fee, total:+o.total, stage:o.stage, driver:o.driver_name||null, driverId:o.driver_id||null,
-    recurring:o.is_recurring, feedbackSubmitted:o.feedback_submitted, deliveryPhoto:o.delivery_photo_url||null,
+    recurring:o.is_recurring, feedbackSubmitted:o.feedback_submitted, deliveryPhoto:o.delivery_photo_url||null, notes:o.notes||'',
     items:(items||[]).map(i=>({n:i.name,q:+i.qty,p:+i.unit_price,u:i.unit,sellBy:i.sell_by}))
   };
 }
@@ -687,16 +659,58 @@ function subscribeMyOrders(){
         if(payload.new.delivery_photo_url) o.deliveryPhoto=payload.new.delivery_photo_url;
       }
       render();
-      const label=SLABEL[payload.new.stage]||'تحديث جديد على طلبك';
-      const emoji=payload.new.stage==='delivered'?'🎉':payload.new.stage==='delivering'?'🛵':'📦';
-      notify(emoji+' طلبك '+(o&&o.id?'رقم '+o.id+' ':'')+'— '+label);
-      orderUpdateAlert(label);
+      if(S.view==='track'&&S.oid===payload.new.id) notify('تحديث جديد على طلبك');
     })
     .subscribe();
 }
 
 let PRODS=[]; // بيتملى ديناميكيًا من كتالوج المحل المختار
 let SHOPS={}; // دليل المحلات الحي — بيتحمّل من قاعدة البيانات الحقيقية
+let VILLAGES=[]; // دليل القرى — قابل للتوسع من غير حد أقصى
+async function loadVillages(){
+  if(!sb)return;
+  const {data}=await sb.from('villages').select('*').order('is_center',{ascending:false}).order('name');
+  VILLAGES=data||[];
+  renderVillageOptions();
+}
+function renderVillageOptions(){
+  const sel=document.getElementById('villageInput'); if(!sel)return;
+  sel.innerHTML=`<option value="">اختار قريتك</option>
+    ${VILLAGES.map(v=>`<option value="${v.id}">${v.is_center?'🏛️ ':'🏘️ '}${v.name}</option>`).join('')}
+    <option value="__new__">➕ قريتي مش موجودة، أضيفها</option>`;
+}
+function handleVillageChange(){
+  const v=document.getElementById('villageInput').value;
+  document.getElementById('newVillageWrap').style.display=v==='__new__'?'block':'none';
+}
+function haversineKm(a,b){
+  const R=6371,dLat=(b.lat-a.lat)*Math.PI/180,dLng=(b.lng-a.lng)*Math.PI/180;
+  const x=Math.sin(dLat/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+}
+/* ═══ تسعيرة التوصيل — نفس القرية ثابتة، وبين القرى حسب المسافة الحقيقية ═══
+   القيم دي تقدير واقعي لمنطقة ريفية زي طلخا: مشاوير قريبة رخيصة، والسعر بيزيد
+   تدريجيًا مع المسافة عشان يغطي وقت المندوب ومجهوده، مش قفزة مفاجئة. */
+function computeDeliveryFee(km,sameVillage){
+  if(sameVillage) return 10;
+  if(km==null) return 12;
+  if(km<=3) return 12;
+  if(km<=6) return 15;
+  if(km<=10) return 20;
+  if(km<=15) return 25;
+  return Math.round(25+(km-15)*1.5);
+}
+/* ═══ عمولة المنصة على كل توصيلة — ١.٥٠ جنيه أساسي جوه نفس القرية،
+   وبتزيد تدريجيًا مع المسافة للطلبات بين القرى (نفس منطق تسعير التوصيل بالظبط،
+   لأن كل ما المشوار يطول، جهد المنصة في التنسيق والإسناد بين القرى بيزيد). ═══ */
+function computePlatformCommission(km,sameVillage){
+  if(sameVillage||km==null) return 1.50;
+  if(km<=3) return 2.00;
+  if(km<=6) return 2.50;
+  if(km<=10) return 3.00;
+  if(km<=15) return 3.50;
+  return 4.00;
+}
 const CATS=[
   {k:'grocery',n:'بقالات',i:'🛒'},{k:'pharmacy',n:'صيدليات',i:'💊'},
   {k:'restaurant',n:'مطاعم',i:'🍔'},{k:'cafe',n:'كافيهات',i:'☕'},{k:'bakery',n:'مخابز',i:'🥖'},
@@ -714,7 +728,8 @@ async function loadShops(){
     const fresh={};
     (merchants||[]).forEach(m=>{
       fresh[m.id]={id:m.id,name:m.name,type:BIZ_LABELS[m.biz_type]||m.biz_type,typeKey:m.biz_type,
-        icon:BIZ_ICONS[m.biz_type]||'🏪',photo:m.shop_photo_url||'',bio:'',isOpen:m.is_open!==false,villageId:m.village_id||null,products:[]};
+        icon:BIZ_ICONS[m.biz_type]||'🏪',photo:m.shop_photo_url||'',bio:'',isOpen:m.is_open!==false,
+        villageId:m.village_id||null,geo:(m.shop_lat!=null)?{lat:m.shop_lat,lng:m.shop_lng}:null,products:[]};
     });
     (products||[]).forEach(p=>{ if(fresh[p.merchant_id]) fresh[p.merchant_id].products.push(mapProductRow(p)); });
     SHOPS=fresh;
@@ -735,7 +750,7 @@ const SLABEL={placed:'تم استلام طلبك',accepted:'المحل قبل ا
   picked:'المندوب استلم طلبك من المحل',delivering:'في الطريق إليك دلوقتي',delivered:'وصلك الطلب 🎉'};
 
 let S={view:'home',cart:{},cartShop:null,orders:[],oid:null,activeShop:null,catFilter:null,
-  co:{name:'منى',ph:'',lm:LM[0],house:'12',geo:null,villageId:null},pin:'1234',
+  co:{name:'منى',ph:'',lm:LM[0],house:'12',geo:null,villageId:null},pin:'1234',cartNotes:'',
   fta:{dismissed:false,seenShopTip:false,seenCheckoutTip:false}};
 /* ═══ حفظ دائم للطلبات (فيها صور إثبات التسليم ومحادثات وأرقام) عشان ماتضيعش لو الصفحة اتحدّثت ═══ */
 const STATE_KEY='basita_state_'+ROLE;
@@ -763,24 +778,6 @@ function playNotifySound(){
     o.start();o.stop(ctx.currentTime+.3);
   }catch(e){}
 }
-/* نغمة تنبيه مميزة لتحديثات الطلب المهمة (اتقبل / وصل المندوب / اتسلّم) — أوضح من نغمة التوست العادية */
-function playOrderAlertSound(){
-  try{
-    const ctx=new (window.AudioContext||window.webkitAudioContext)();
-    const ding=(t0,freq)=>{
-      const o=ctx.createOscillator(),g=ctx.createGain();
-      o.connect(g);g.connect(ctx.destination);
-      o.type='triangle';o.frequency.value=freq;
-      g.gain.setValueAtTime(.0001,t0);
-      g.gain.exponentialRampToValueAtTime(.2,t0+.015);
-      g.gain.exponentialRampToValueAtTime(.0001,t0+.3);
-      o.start(t0);o.stop(t0+.32);
-    };
-    const now=ctx.currentTime;
-    ding(now,740); ding(now+.16,988); ding(now+.32,1318);
-  }catch(e){}
-}
-function vibrateAlert(){ try{ if(navigator.vibrate) navigator.vibrate([140,80,140]); }catch(e){} }
 function pushNotify(m){
   try{
     if('Notification' in window && Notification.permission==='granted' && document.hidden){
@@ -790,12 +787,6 @@ function pushNotify(m){
 }
 let tT;function toast(m){playNotifySound();pushNotify(m);const t=$('#toast');t.textContent=m;t.classList.add('show');
   clearTimeout(tT);tT=setTimeout(()=>t.classList.remove('show'),2400)}
-/* تنبيه تحديث الطلب: صوت أوضح + اهتزاز + جرس بيرن، بيشتغل بره شاشة التتبّع كمان مش بس لما العميل يكون فاتحها */
-function orderUpdateAlert(text){
-  playOrderAlertSound(); vibrateAlert(); pushNotify(text);
-  const bellBtn=document.querySelector('[onclick="openInbox()"]');
-  if(bellBtn){ bellBtn.classList.remove('bell-alert'); void bellBtn.offsetWidth; bellBtn.classList.add('bell-alert'); }
-}
 
 /* ═══ نظام الإشعارات (بيل/إن‌بوكس) ═══ */
 const INBOX_KEY='basita_inbox_'+ROLE;
@@ -922,7 +913,7 @@ function go(v,a){
   $('#screen').scrollTop=0;render();
 }
 
-const cItems=()=>Object.entries(S.cart).map(([id,q])=>({p:P(+id),q}));
+const cItems=()=>Object.entries(S.cart).map(([id,q])=>({p:P(id),q}));
 const cSub=()=>cItems().reduce((s,{p,q})=>s+p.p*q,0);
 const cCount=()=>Object.values(S.cart).reduce((a,b)=>a+b,0);
 function weightLabel(kg){ return kg<1?Math.round(kg*1000)+' جم':(kg%1===0?kg:kg.toFixed(2))+' كجم'; }
@@ -932,11 +923,11 @@ function openWeightPicker(id){
   openSheet('اختار الكمية — '+p.n,`
     <p class="tiny muted" style="margin:0 0 14px">السعر ${M(p.p)} ج لكل كيلو</p>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:16px">
-      ${presets.map(kg=>`<button class="btn btn-o" style="padding:12px 4px" onclick="setWeightQty(${id},${kg})">${weightLabel(kg)}</button>`).join('')}
+      ${presets.map(kg=>`<button class="btn btn-o" style="padding:12px 4px" onclick="setWeightQty('${id}',${kg})">${weightLabel(kg)}</button>`).join('')}
     </div>
     <div class="fld"><label>أو اكتب وزن مخصص (بالكيلو)</label>
       <input id="customWeight" type="number" step="0.05" placeholder="مثلاً 1.25"></div>
-    <button class="btn btn-p" onclick="setWeightQty(${id},+document.getElementById('customWeight').value||0)">تأكيد الكمية</button>`);
+    <button class="btn btn-p" onclick="setWeightQty('${id}',+document.getElementById('customWeight').value||0)">تأكيد الكمية</button>`);
 }
 function setWeightQty(id,kg){
   if(!kg||kg<=0){toast('اكتب وزن صحيح');return}
@@ -945,11 +936,8 @@ function setWeightQty(id,kg){
     S.cart={};
   }
   S.cartShop=S.activeShop;
-  const isNew=!S.cart[id];
   S.cart[id]=kg;
   closeSheet(); render();
-  if(isNew){ const pr=P(id); if(pr) toast('✅ اتضاف '+pr.n+' للسلة'); }
-  bumpCartBadge();
 }
 function addCart(id){
   if(S.cartShop&&S.cartShop!==S.activeShop&&Object.keys(S.cart).length){
@@ -957,24 +945,9 @@ function addCart(id){
     S.cart={};
   }
   S.cartShop=S.activeShop;
-  S.cart[id]=(S.cart[id]||0)+1;
-  const pr=P(id);
-  if(pr) toast('✅ اتضاف '+pr.n+' للسلة');
-  render();
-  bumpCartBadge();
-}
-function bumpCartBadge(){
-  const el=document.querySelector('#cartbar .c');
-  if(!el)return;
-  el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump');
-  setTimeout(()=>el.classList.remove('bump'),260);
+  S.cart[id]=(S.cart[id]||0)+1;render();
 }
 function qty(id,d){const n=(S.cart[id]||0)+d;if(n<=0)delete S.cart[id];else S.cart[id]=n;render()}
-function clearCart(){
-  if(!Object.keys(S.cart).length)return;
-  if(!confirm('متأكد إنك عايز تفضّي السلة؟'))return;
-  S.cart={}; S.cartShop=null; render(); toast('🗑️ اتفضّت السلة');
-}
 let scanStream=null, scanRAF=null;
 function startScan(){
   document.getElementById('manualCode').value='';
@@ -1031,14 +1004,18 @@ async function placeOrder(){
     }
   }
   const wasFirstOrder=isFirstTimer();
-  const items=cItems(); const fee=calcDeliveryFee(c.villageId,shop.villageId);
+  const items=cItems();
+  const sameVillage=!!(shop.villageId&&shop.villageId===S.co.villageId);
+  const km=shop.geo?haversineKm(c.geo,shop.geo):null;
+  const fee=computeDeliveryFee(km,sameVillage);
+  const commission=computePlatformCommission(km,sameVillage);
   const addr=`${c.lm} — بيت ${c.house}`;
   let order;
   if(sb&&c.id){
     const {data:orderRow,error}=await sb.from('orders').insert({
       merchant_id:shop.id, customer_id:c.id, customer_name:c.name, customer_phone:c.ph||'01015974104',
-      address:addr, delivery_lat:c.geo.lat, delivery_lng:c.geo.lng, delivery_fee:fee, total:cSub()+fee, stage:'placed',
-      origin_village_id:shop.villageId||null, dest_village_id:c.villageId||null, platform_commission:PLATFORM_COMMISSION
+      address:addr, delivery_lat:c.geo.lat, delivery_lng:c.geo.lng, delivery_fee:fee, delivery_km:km,
+      platform_commission:commission, total:cSub()+fee, stage:'placed', notes:S.cartNotes||null
     }).select().single();
     if(error){ console.error('basita: فشل إرسال الطلب لقاعدة البيانات',error); toast('حصلت مشكلة في إرسال الطلب — جرّب تاني'); return; }
     const itemsPayload=items.map(({p,q})=>({order_id:orderRow.id,product_id:p.id,name:p.n,qty:q,unit_price:p.p,unit:p.u,sell_by:p.sellBy||'unit'}));
@@ -1049,7 +1026,7 @@ async function placeOrder(){
     order={id,merchantId:shop.id,shopName:shop.name,customerId:c.id,name:c.name,ph:c.ph||'01015974104',
       addr,geo:c.geo,items:items.map(({p,q})=>({n:p.n,q,p:p.p,u:p.u,sellBy:p.sellBy})),fee,total:cSub()+fee,stage:'placed',driver:null,recurring:false};
   }
-  S.orders.unshift(order); S.cart={}; S.cartShop=null;
+  S.orders.unshift(order); S.cart={}; S.cartShop=null; S.cartNotes='';
   if(!sb) emit({to:['merchant'],type:'order:new',order});
   S.fta.dismissed=true;
   go('track',order.id);
@@ -1123,15 +1100,30 @@ onBus(d=>{
   if(S.view==='track'&&S.oid===o.id) notify('تحديث جديد على طلبك');
 });
 
-function shopSortKey(s){
-  const km=villageDistanceKm(S.co.villageId,s.villageId);
-  return (s.isOpen?0:10)+km; // المفتوح والأقرب يطلع الأول
+function shopCardHtml(s,opts){
+  opts=opts||{};
+  const distTxt=opts.distKm!=null?`<span class="shopcard-dist">📍 ${opts.distKm<1?Math.round(opts.distKm*1000)+' م':opts.distKm.toFixed(1)+' كم'}</span>`:'';
+  const villageTxt=opts.villageName?`<span class="shopcard-village">${opts.villageName}</span>`:'';
+  return `<button class="shopcard2 ${s.isOpen?'':'shopcard2-closed'}" onclick="openShop('${s.id}')">
+    <div class="shopcard2-ph">${s.photo?`<img src="${s.photo}">`:`<span class="shopcard2-ic">${s.icon}</span>`}
+      <span class="shopcard2-status ${s.isOpen?'':'is-closed'}">${s.isOpen?'مفتوح':'مقفول'}</span></div>
+    <div class="shopcard2-info">
+      <b>${s.name}</b>
+      <span class="shopcard2-meta">${s.type} · <span class="num">${s.products.length}</span> صنف</span>
+      <span class="shopcard2-tags">${villageTxt}${distTxt}</span>
+    </div></button>`;
 }
 function vHome(){
   const shops=Object.values(SHOPS);
-  const filtered=(S.catFilter?shops.filter(s=>s.typeKey===S.catFilter):shops).slice().sort((a,b)=>shopSortKey(a)-shopSortKey(b));
-  const ownOpenCount=filtered.filter(s=>s.isOpen&&villageDistanceKm(S.co.villageId,s.villageId)===0).length;
-  const myVillage=(villageById(S.co.villageId)||{}).name||'قريتك';
+  const applyFilter=arr=>S.catFilter?arr.filter(s=>s.typeKey===S.catFilter):arr;
+  const myVillage=VILLAGES.find(v=>v.id===S.co.villageId);
+  let mine=applyFilter(shops.filter(s=>s.villageId&&s.villageId===S.co.villageId));
+  let others=applyFilter(shops.filter(s=>!s.villageId||s.villageId!==S.co.villageId));
+  if(myVillage&&myVillage.center_lat!=null){
+    others=others.map(s=>({...s,_dist:s.geo?haversineKm({lat:myVillage.center_lat,lng:myVillage.center_lng},s.geo):null}))
+      .sort((a,b)=>(a._dist??999)-(b._dist??999));
+  }
+  const total=mine.length+others.length;
   return `<div class="pad">
     <div class="qrentry"><span class="ic">🔗</span>
       <span><b>عندك كود محل؟</b><span>امسحه وادخل متجره على طول</span></span>
@@ -1143,19 +1135,17 @@ function vHome(){
       ${CATS.map(c=>`<button class="cat ${S.catFilter===c.k?'on-cat':''}" onclick="S.catFilter='${c.k}';render()">
         <span class="e">${c.i}</span><span class="n">${c.n}</span></button>`).join('')}
     </div>
-    <div class="sec-t"><h3>${ownOpenCount?'محلات في '+myVillage:'محلات قريبة منك'}</h3><span class="num">${filtered.length}</span></div>
-    ${!ownOpenCount&&filtered.length?`<div class="alert info mb">🌾 محلات ${myVillage} قافلة دلوقتي — بنوريك أقرب محلات في القرى المجاورة بدالها</div>`:''}
-    ${filtered.length?filtered.map(s=>{
-      const km=villageDistanceKm(S.co.villageId,s.villageId);
-      const fee=calcDeliveryFee(S.co.villageId,s.villageId);
-      return `<button class="shopcard" onclick="openShop('${s.id}')">
-      ${s.photo?`<img src="${s.photo}" class="shopcard-ph">`:`<span class="shopcard-ic">${s.icon}</span>`}
-      <span style="flex:1;text-align:right">
-        <b>${s.name}</b>${km>0?` <span class="bdg" style="background:var(--ac-l);color:var(--ac-d);font-size:10px;padding:2px 7px">🌾 ${(villageById(s.villageId)||{}).name||''}</span>`:''}
-        <span class="tiny muted" style="display:block">${s.type} · ${s.products.length} صنف · توصيل ${fee} ج</span></span>
-      <span class="bdg ${s.isOpen?'b-ac':'b-d'}">${s.isOpen?'مفتوح':'مقفول دلوقتي'}</span></button>`;}).join(''):
-      `<div class="empty"><div class="e">🏪</div><h4>لسه مفيش محلات فاتحة</h4>
-        <p class="tiny">أول ما تاجر يسجّل ويفتح متجره، هيظهر هنا فورًا من غير ما تعمل حاجة</p></div>`}
+    ${!total?`<div class="empty"><div class="e">🏪</div><h4>لسه مفيش محلات فاتحة</h4>
+      <p class="tiny">أول ما تاجر يسجّل ويفتح متجره، هيظهر هنا فورًا من غير ما تعمل حاجة</p></div>`:`
+      ${mine.length?`<div class="sec-t"><h3>🏘️ محلات في قريتك${myVillage?' — '+myVillage.name:''}</h3><span class="num">${mine.length}</span></div>
+        ${mine.map(s=>shopCardHtml(s)).join('')}`:
+        `<div class="alert info mt">🏘️ لسه مفيش محلات فاتحة في قريتك — بس شايفلك خيارات من قرى جنبك تحت 👇</div>`}
+      ${others.length?`<div class="sec-t"><h3>🚴 محلات من قرى قريبة</h3><span class="num">${others.length}</span></div>
+        <p class="tiny muted" style="margin:-6px 0 10px">رسوم التوصيل منها بتتحسب على حسب المسافة الفعلية</p>
+        ${others.map(s=>{
+          const v=VILLAGES.find(x=>x.id===s.villageId);
+          return shopCardHtml(s,{villageName:v?v.name:'قرية تانية',distKm:s._dist});
+        }).join('')}`:''}`}
     <div style="height:8px"></div></div>`;
 }
 function openAboutBasita(){
@@ -1190,24 +1180,22 @@ function vShop(){
       <img src="${s.photo}" style="width:100%;height:140px;object-fit:cover;display:block"></div>`:''}
     <div class="hero" style="${s.photo?'border-radius:0 0 16px 16px;margin-top:0':''}">
       <div class="e">${s.type}</div><h2>${s.name}</h2>
-      <p>توصيل ١٥-٢٥ دقيقة · رسوم التوصيل ${calcDeliveryFee(S.co.villageId,s.villageId)} ج</p>
+      <p>توصيل ١٥-٢٥ دقيقة · رسوم التوصيل من ${estimateFee()} ج</p>
       ${s.bio?`<p style="margin-top:6px;color:var(--txt);opacity:.85;line-height:1.7">${s.bio}</p>`:''}</div>
     ${!s.isOpen?`<div class="card mt" style="padding:14px;background:#FDE8E6;border-color:#F5B5AE;text-align:center">
       <div style="font-size:22px">🔒</div><b style="display:block;margin-top:6px;color:#C23327">المحل مقفول دلوقتي</b>
       <div class="tiny muted mt">التاجر قفل استقبال الطلبات مؤقتًا — جرّب تاني بعدين</div></div>`:''}
     ${ftaShopTipHtml()}
     <div class="sec-t"><h3>الأصناف</h3><span class="num">${s.products.length} صنف</span></div>
-    ${s.products.length?s.products.map(p=>`<div class="prod" style="${p.s===0?'opacity:.5':''}">
-      <span class="ph" style="background:linear-gradient(160deg,var(--ac-l),var(--surf2));border-radius:14px;font-size:22px">${p.i}</span>
-      <span style="flex:1"><span class="n">${p.n}${p.br?` <span class="muted tiny">· ${p.br}</span>`:''}</span>
-      <span class="u">${p.sellBy==='weight'?'سعر الكيلو':p.u}${p.s>0&&p.s<=5?` · <span style="color:var(--warn)">آخر ${p.s}</span>`:p.s===0?' · <span style="color:var(--danger)">خلص من المخزون</span>':''}</span>
-      <span class="pr num" style="font-weight:800">${M(p.p)} ج</span></span>
-      <span class="act">${!s.isOpen||p.s===0?'':p.sellBy==='weight'?
-        (S.cart[p.id]?`<button class="add" style="width:auto;padding:0 10px;font-size:12px;font-family:'Cairo'" onclick="openWeightPicker(${p.id})">${weightLabel(S.cart[p.id])}</button>`:
-        `<button class="add" style="width:auto;padding:0 10px;font-size:18px" onclick="openWeightPicker(${p.id})">⚖️</button>`):
-        (S.cart[p.id]?`<span class="stp"><button onclick="qty(${p.id},1)">+</button>
-        <span class="q num">${S.cart[p.id]}</span><button onclick="qty(${p.id},-1)">−</button></span>`:
-        `<button class="add" onclick="addCart(${p.id})">+</button>`)}</span></div>`).join(''):
+    ${s.products.length?s.products.map(p=>`<div class="prod"><span class="ph">${p.i}</span>
+      <span style="flex:1"><span class="n">${p.n}${p.br?` <span class="muted tiny">${p.br}</span>`:''}</span>
+      <span class="u">${p.sellBy==='weight'?'سعر الكيلو':p.u}</span><span class="pr num">${M(p.p)} ج</span></span>
+      <span class="act">${!s.isOpen?'':p.sellBy==='weight'?
+        (S.cart[p.id]?`<button class="add" style="width:auto;padding:0 10px;font-size:12px;font-family:'Cairo'" onclick="openWeightPicker('${p.id}')">${weightLabel(S.cart[p.id])}</button>`:
+        `<button class="add" style="width:auto;padding:0 10px;font-size:18px" onclick="openWeightPicker('${p.id}')">⚖️</button>`):
+        (S.cart[p.id]?`<span class="stp"><button onclick="qty('${p.id}',1)">+</button>
+        <span class="q num">${S.cart[p.id]}</span><button onclick="qty('${p.id}',-1)">−</button></span>`:
+        `<button class="add" onclick="addCart('${p.id}')">+</button>`)}</span></div>`).join(''):
       `<div class="empty"><div class="e">🏷️</div><h4>المحل لسه بيضيف أصنافه</h4></div>`}
     <div style="height:8px"></div></div>`;
 }
@@ -1216,26 +1204,63 @@ function vCart(){
   if(!it.length)return `<div class="empty"><div class="e">🛒</div><h4>السلة فاضية</h4>
     <p class="tiny">ضيف أصناف من المتجر</p>
     <button class="btn btn-p" style="max-width:180px;margin:auto" onclick="go('home')">تصفح المتجر</button></div>`;
-  const sub=cSub(),fee=calcDeliveryFee(S.co.villageId,(SHOPS[S.cartShop]||{}).villageId),tot=sub+fee;
-  const shopName=(SHOPS[S.cartShop]||{}).name||'';
+  const sub=cSub(),fee=estimateFee(),tot=sub+fee;
+  const shop=SHOPS[S.activeShop];
   return `<div class="pad" style="padding-top:14px">
-    <div class="row" style="margin-bottom:10px">
-      ${shopName?`<span class="muted tiny">سلتك من <b style="color:var(--txt)">${shopName}</b></span>`:'<span></span>'}
-      <button class="tiny" style="color:var(--danger);font-weight:700" onclick="clearCart()">إفراغ السلة 🗑️</button>
-    </div>
+    <div class="sec-t" style="margin-top:0"><h3>سلتك${shop?' — '+shop.name:''}</h3>
+      <button onclick="clearCart()" style="color:var(--danger);font-size:11.5px;font-weight:700;background:none;border:0;cursor:pointer">🗑️ تفريغ السلة</button></div>
     <div class="card">${it.map(({p,q})=>`<div class="prod"><span class="ph">${p.i}</span>
-      <span style="flex:1"><span class="n">${p.n}</span><span class="u">${p.sellBy==='weight'?weightLabel(q):p.u} · ${M(p.p)} ج${p.sellBy==='weight'?'/كجم':''}</span></span>
-      <span style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
-      <b class="num" style="font-size:13px">${M(p.p*q)} ج</b>
-      ${p.sellBy==='weight'?`<button class="add" style="width:auto;padding:0 12px;font-size:12px;font-family:'Cairo'" onclick="openWeightPicker(${p.id})">تغيير</button>`:
-      `<span class="stp"><button onclick="qty(${p.id},1)">+</button><span class="q num">${q}</span>
-      <button onclick="qty(${p.id},-1)">−</button></span>`}</span></div>`).join('')}</div>
-    ${feeBreakdownHtml(sub,S.co.villageId,(SHOPS[S.cartShop]||{}).villageId)}
+      <span style="flex:1"><span class="n">${p.n}</span><span class="u">${p.sellBy==='weight'?weightLabel(q):p.u}</span>
+        <span class="tiny muted" style="display:block;margin-top:2px">${M(p.p*q)} ج</span></span>
+      ${p.sellBy==='weight'?`<button class="add" style="width:auto;padding:0 12px;font-size:12px;font-family:'Cairo'" onclick="openWeightPicker('${p.id}')">تغيير</button>`:
+      `<span class="stp"><button onclick="qty('${p.id}',1)">+</button><span class="q num">${q}</span>
+      <button onclick="qty('${p.id}',-1)">−</button></span>`}</div>`).join('')}</div>
+    <button onclick="go('shop')" style="width:100%;text-align:center;margin-top:10px;color:var(--ac-d);font-weight:700;font-size:12.5px;background:none;border:0;cursor:pointer">+ ضيف صنف تاني من نفس المحل</button>
+    <div class="fld mt" style="margin-bottom:0"><label>ملاحظات على طلبك (اختياري)</label>
+      <input id="cartNotes" value="${S.cartNotes||''}" oninput="S.cartNotes=this.value" placeholder="مثلاً: من غير بصل، أو اتصل قبل ما توصل"></div>
+    ${feeBreakdownHtml()}
     <button class="btn btn-p mt" onclick="go('checkout')">إتمام الطلب</button>
     <div style="height:14px"></div></div>`;
 }
+function clearCart(){
+  if(!confirm('متأكد إنك عايز تفضي السلة؟'))return;
+  S.cart={}; S.cartShop=null; S.cartNotes='';
+  render(); toast('اتفضّت السلة');
+}
+function estimateFee(){
+  const shop=SHOPS[S.activeShop]; if(!shop)return 10;
+  const sameVillage=!!(shop.villageId&&shop.villageId===S.co.villageId);
+  if(sameVillage)return 10;
+  let km=null;
+  if(S.co.geo&&shop.geo) km=haversineKm(S.co.geo,shop.geo);
+  else{
+    const myVillage=VILLAGES.find(v=>v.id===S.co.villageId);
+    if(myVillage&&myVillage.center_lat!=null&&shop.geo) km=haversineKm({lat:myVillage.center_lat,lng:myVillage.center_lng},shop.geo);
+  }
+  return computeDeliveryFee(km,false);
+}
+function feeBreakdownHtml(){
+  const shop=SHOPS[S.activeShop]; if(!shop)return '';
+  const sameVillage=!!(shop.villageId&&shop.villageId===S.co.villageId);
+  const fee=estimateFee();
+  let km=null;
+  if(S.co.geo&&shop.geo) km=haversineKm(S.co.geo,shop.geo);
+  const sub=cSub(), tot=sub+fee;
+  return `<div class="card mb" style="padding:16px;overflow:hidden;position:relative">
+    <div style="position:absolute;top:0;left:0;width:4px;height:100%;background:${sameVillage?'var(--ac)':'var(--warn)'}"></div>
+    <div style="display:flex;align-items:center;gap:9px;margin-bottom:12px">
+      <span style="font-size:20px">${sameVillage?'🏘️':'🚴'}</span>
+      <span style="flex:1"><b style="font-size:13.5px;display:block">${sameVillage?'توصيل داخل قريتك':'توصيل من قرية تانية'}</b>
+        <span class="tiny muted">${sameVillage?'سعر ثابت مهما كانت المسافة جوه القرية':(km!=null?'حوالي '+km.toFixed(1)+' كم — السعر بيتحسب حسب المسافة الفعلية':'سعر تقديري حسب المسافة')}</span></span>
+    </div>
+    <div class="row" style="border:0;padding:3px 0"><span class="muted">قيمة الأصناف</span><b class="num">${M(sub)} ج</b></div>
+    <div class="row" style="border:0;padding:3px 0"><span class="muted">رسوم التوصيل</span><b class="num" style="color:${sameVillage?'var(--ac-d)':'var(--warn)'}">${fee} ج</b></div>
+    <div class="row" style="border-top:1px solid var(--line);margin-top:6px;padding-top:10px">
+      <b style="font-size:14px">الإجمالي</b><b class="num kufi" style="font-size:19px;color:var(--ac-d)">${M(tot)} ج</b></div>
+  </div>`;
+}
 function vCheckout(){
-  const c=S.co,fee=calcDeliveryFee(S.co.villageId,(SHOPS[S.cartShop]||{}).villageId),tot=cSub()+fee;
+  const c=S.co,fee=estimateFee(),tot=cSub()+fee;
   const hasGeo=!!S.co.geo;
   return `<div class="pad" style="padding-top:14px">
     <h3 class="mb">بيانات التوصيل</h3>
@@ -1254,7 +1279,7 @@ function vCheckout(){
     <div class="fld"><label>أقرب معلم</label><select onchange="S.co.lm=this.value">
       ${LM.map(l=>`<option ${c.lm===l?'selected':''}>${l}</option>`).join('')}</select></div>
     <div class="fld"><label>رقم البيت</label><input value="${c.house}" placeholder="بيت ١٢" oninput="S.co.house=this.value"></div>
-    ${feeBreakdownHtml(cSub(),S.co.villageId,(SHOPS[S.cartShop]||{}).villageId)}
+    ${feeBreakdownHtml()}
     <button class="btn btn-p mt" onclick="${hasGeo?'placeOrder()':'requestLocation(true)'}">
       ${hasGeo?'أرسل الطلب':'فعّل الموقع وابعت الطلب'}</button>
     <div style="height:14px"></div></div>`;
@@ -1389,22 +1414,6 @@ function vOrders(){
       ${o.recurring?' · 🔁 متكرر أسبوعيًا':''}</div></button>`}).join('')}
     <div style="height:14px"></div></div>`;
 }
-function confirmLogout(){
-  if(!confirm('متأكد إنك عايز تسجّل خروج؟ هتحتاج تسجّل دخول تاني برقم موبايلك المرة الجاية.'))return;
-  logoutCustomer();
-}
-function logoutCustomer(){
-  try{ localStorage.removeItem(STATE_KEY); }catch(e){}
-  S.co={name:'',ph:'',lm:LM[0],house:'12',geo:null,villageId:null};
-  S.orders=[]; S.cart={}; S.cartShop=null; S.oid=null; S.view='home';
-  document.getElementById('mainApp').classList.remove('show');
-  authMode='signup';
-  document.querySelectorAll('.astage').forEach(s=>s.classList.remove('on'));
-  document.getElementById('st-welcome')?.classList.add('on');
-  document.getElementById('phInput')&&(document.getElementById('phInput').value='');
-  document.getElementById('authFlow').classList.add('show');
-  toast('اتسجّل خروجك بنجاح 👋');
-}
 function vAccount(){
   return `<div class="pad" style="padding-top:14px">
     <div class="card" style="padding:17px;text-align:center">
@@ -1422,8 +1431,7 @@ function vAccount(){
       <button class="row" style="width:100%;text-align:right" onclick="openAboutBasita()">
         <span class="av">🌾</span><span class="n">قصة بسيطة</span><span class="end muted">‹</span></button>
     </div>
-    <button class="btn2" style="width:100%;margin-top:16px;color:var(--danger);border-color:rgba(220,38,38,.3)" onclick="confirmLogout()">
-      🚪 تسجيل الخروج</button>
+    <button class="btn" style="width:100%;margin-top:14px;background:#FDE8E6;color:#C23327" onclick="logout()">🚪 تسجيل خروج</button>
     <button onclick="openAboutBasita()" style="width:100%;text-align:center;margin-top:20px">
       <p class="tiny muted">بسيطة · بنرقمن مصر قرية ورا قرية 🇪🇬</p></button>
     <div style="height:12px"></div></div>`;
@@ -1553,7 +1561,6 @@ function render(){
   saveState();
   renderBell();
   renderFtaFab();
-  const _lv=document.getElementById('locVillage'); if(_lv) _lv.textContent=(villageById(S.co.villageId)||{}).name||'المنيل';
   $('#screen').innerHTML=(V[S.view]||vHome)();
   $('#nav').innerHTML=NAV.map(([v,i,n])=>{
     const bn=(v==='orders'&&S.orders.some(o=>o.stage!=='delivered'))?`<span class="bn">•</span>`:'';
