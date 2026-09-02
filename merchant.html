@@ -4,8 +4,7 @@
 <title>بسيطة · التاجر</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <style>
 :root{
   --bg:#F9F7F4;--surf:#FFFFFF;--surf2:#F3EFE8;--line:#EAE3D8;
@@ -274,16 +273,6 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
 .empty h4{font-size:15px;color:var(--txt);margin:10px 0 5px}
 .bellBadge{display:none;position:absolute;top:-3px;left:-3px;min-width:16px;height:16px;border-radius:8px;background:var(--danger);
   color:#fff;font-size:9.5px;font-weight:800;align-items:center;justify-content:center;padding:0 3px;font-family:'Cairo'}
-@keyframes bellRing{0%,100%{transform:rotate(0)}10%,30%{transform:rotate(-18deg)}20%,40%{transform:rotate(18deg)}50%{transform:rotate(-10deg)}60%{transform:rotate(10deg)}70%{transform:rotate(0)}}
-@keyframes ringPulse{0%{box-shadow:0 0 0 0 rgba(239,68,68,.55)}100%{box-shadow:0 0 0 14px rgba(239,68,68,0)}}
-.bell-alert{animation:bellRing 1.6s ease-in-out 3,ringPulse 1.6s ease-out 3}
-@keyframes newOrderPop{0%{transform:scale(.94);opacity:0}60%{transform:scale(1.015)}100%{transform:scale(1);opacity:1}}
-.orderAlertBar{position:fixed;top:10px;inset-inline:10px;max-width:392px;margin:0 auto;z-index:500;
-  background:linear-gradient(120deg,#16A34A,#22C55E);color:#fff;border-radius:16px;padding:13px 16px;
-  display:flex;align-items:center;gap:10px;box-shadow:0 14px 30px -10px rgba(22,163,74,.55);
-  font-family:'Cairo';animation:newOrderPop .35s cubic-bezier(.2,.8,.2,1);cursor:pointer}
-.orderAlertBar .oa-ic{font-size:24px;flex:0 0 auto}
-.orderAlertBar .oa-x{margin-inline-start:auto;font-size:13px;opacity:.85;flex:0 0 auto}
 .inboxOverlay{position:fixed;inset:0;background:rgba(10,12,30,.45);z-index:300}
 .inboxPanel{position:fixed;inset-inline:0;bottom:0;max-width:412px;margin:0 auto;background:var(--surf);border-radius:22px 22px 0 0;
   z-index:301;max-height:78vh;display:flex;flex-direction:column;box-shadow:0 -20px 50px -20px rgba(0,0,0,.35);animation:inboxUp .3s cubic-bezier(.2,.8,.2,1)}
@@ -422,7 +411,10 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
         <option value="cafe">☕ كافيه</option>
         <option value="bakery">🥖 مخبز</option>
         <option value="other">🏪 نشاط تاني</option></select></div>
-      <div class="fld"><label>قرية متجرك</label><select id="mStoreVillage"></select></div>
+      <div class="fld"><label>قرية متجرك</label><select id="mVillageInput" onchange="handleMVillageChange()">
+        <option value="">جاري تحميل القرى…</option></select></div>
+      <div class="fld" id="mNewVillageWrap" style="display:none">
+        <label>اسم القرية</label><input id="mNewVillageName" placeholder="مثلاً: الروضة"></div>
       <div class="fld"><label>كلمة المرور</label><input id="mNewPass" type="password" placeholder="••••••••"></div>
       <div class="fld"><label>تأكيد كلمة المرور</label><input id="mNewPassConf" type="password" placeholder="••••••••"></div>
       <div class="spacer"></div>
@@ -509,66 +501,6 @@ const ROLE='merchant';
 const SUPABASE_URL='https://vymfhyleoekbhxuojudl.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5bWZoeWxlb2VrYmh4dW9qdWRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgyNTUxMjgsImV4cCI6MjEwMzgzMTEyOH0.euxtZVpwZGa023UyFzbY2zgdj0fXjWETLqkZY_5fTCQ';
 const sb=(window.supabase&&window.supabase.createClient)?window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY):null;
-
-/* ═══════════ نظام القرى والتسعير الجغرافي (بسيطة) ═══════════ */
-let VILLAGES=[
-  {id:'seed-markaz',name:'مركز طلخا',is_markaz:true,distance_km:0,active:true},
-  {id:'seed-manil',name:'المنيل',is_markaz:false,distance_km:3,active:true},
-  {id:'seed-ورمان',name:'الأورمان',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-كفردميرةجديد',name:'كفر دميرة الجديد',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-كفردميرةقديم',name:'كفر دميرة القديم',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-كفرالعرب',name:'كفر العرب',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-كفورالعرب',name:'كفور العرب',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-جوجر',name:'جوجر',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-شرنقاش',name:'شرنقاش',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-ميتالكرماء',name:'ميت الكرماء',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-ميتعنتر',name:'ميت عنتر',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-الروضة',name:'الروضة',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-المنشية',name:'المنشية',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-كفرالأصالي',name:'كفر الأصالي',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-بطرة',name:'بطرة',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-دميرة',name:'دميرة',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-كتامةالشرقية',name:'كتامة الشرقية',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-ديسط',name:'ديسط',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-بساط',name:'بساط',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-كفربساط',name:'كفر بساط',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-منشيةالبكري',name:'منشية البكري',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-ميتزنقر',name:'ميت زنقر',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-ميتنابت',name:'ميت نابت',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-كفرالخوازم',name:'كفر الخوازم',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-كفرالطويلة',name:'كفر الطويلة',is_markaz:false,distance_km:5,active:true}
-];
-const PLATFORM_COMMISSION=2; // ١.٥٠ج + ٥٠ قرش بتتخصم من المندوب على كل طلب بيوصّله (عمولة المنصة)
-async function loadVillages(){
-  if(!sb) return VILLAGES;
-  const {data,error}=await sb.from('villages').select('*').eq('active',true).order('distance_km',{ascending:true});
-  if(!error&&data&&data.length) VILLAGES=data;
-  else if(error) console.error('basita: تعذّر تحميل قائمة القرى — السبب:',
-    error.message||error.details||error.hint||JSON.stringify(error),
-    '(احتمال: جدول villages مش موجود في Supabase، أو صلاحيات RLS مقفولة على anon)');
-  return VILLAGES;
-}
-function villageById(id){ return VILLAGES.find(v=>v.id===id)||VILLAGES.find(v=>v.is_markaz)||VILLAGES[0]||null; }
-function villageDistanceKm(aId,bId){
-  if(!aId||!bId||aId===bId) return 0;
-  const a=villageById(aId), b=villageById(bId);
-  if(!a||!b) return 6;
-  if(a.is_markaz) return +b.distance_km||0;
-  if(b.is_markaz) return +a.distance_km||0;
-  return +(((+a.distance_km||0)+(+b.distance_km||0)).toFixed(1));
-}
-// تسعير واقعي: ثابت جوه نفس القرية، ثابت أعلى شوية جوه مركز طلخا نفسه، وتدرّج مع المسافة بين القرى
-function calcDeliveryFee(originId,destId){
-  const km=villageDistanceKm(originId,destId);
-  const o=villageById(originId), d=villageById(destId);
-  if(km<=0) return (o&&o.is_markaz)?10:5;
-  const base=((o&&o.is_markaz)||(d&&d.is_markaz))?7:5;
-  return Math.max(8,Math.round(base+km*2.5));
-}
-function villageOptionsHtml(selectedId){
-  return VILLAGES.map(v=>`<option value="${v.id}" ${v.id===selectedId?'selected':''}>${v.is_markaz?'🏛️':'🌾'} ${v.name}</option>`).join('');
-}
-loadVillages();
 if(!sb) console.error('basita: تعذّر تحميل مكتبة Supabase — هيرجع النظام للمزامنة المحلية بس');
 async function hashPassword(pw){
   const enc=new TextEncoder().encode(pw);
@@ -579,6 +511,34 @@ function haversineKm(a,b){
   const R=6371,dLat=(b.lat-a.lat)*Math.PI/180,dLng=(b.lng-a.lng)*Math.PI/180;
   const x=Math.sin(dLat/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLng/2)**2;
   return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+}
+let VILLAGES=[];
+async function loadVillages(){
+  if(!sb)return;
+  const {data}=await sb.from('villages').select('*').order('is_center',{ascending:false}).order('name');
+  VILLAGES=data||[];
+  const sel=document.getElementById('mVillageInput'); if(!sel)return;
+  sel.innerHTML=`<option value="">اختار قرية متجرك</option>
+    ${VILLAGES.map(v=>`<option value="${v.id}">${v.is_center?'🏛️ ':'🏘️ '}${v.name}</option>`).join('')}
+    <option value="__new__">➕ قريتي مش موجودة، أضيفها</option>`;
+}
+function handleMVillageChange(){
+  document.getElementById('mNewVillageWrap').style.display=document.getElementById('mVillageInput').value==='__new__'?'block':'none';
+}
+async function resolveVillageId(nameFieldId,geo){
+  const v=document.getElementById('mVillageInput').value;
+  if(v&&v!=='__new__')return v;
+  if(v==='__new__'){
+    const name=document.getElementById(nameFieldId).value.trim();
+    if(!name){toast('اكتب اسم القرية');return null}
+    const {data,error}=await sb.from('villages').insert({name,center_lat:geo?geo.lat:null,center_lng:geo?geo.lng:null}).select().single();
+    if(error){
+      if(error.code==='23505'){ const {data:existing}=await sb.from('villages').select('id').eq('name',name).maybeSingle(); return existing?existing.id:null; }
+      console.error('basita:',error); toast('حصلت مشكلة في إضافة القرية'); return null;
+    }
+    VILLAGES.push(data); return data.id;
+  }
+  toast('اختار قرية متجرك الأول'); return null;
 }
 const bc=('BroadcastChannel' in window)?new BroadcastChannel('basita_sync'):null;
 function emit(msg){
@@ -606,42 +566,15 @@ function onBus(fn){
 }
 
 setTimeout(()=>document.getElementById('boot').classList.add('gone'),1300);
-setTimeout(()=>{ resumeMerchantSession(); },1350);
-async function resumeMerchantSession(){
-  if(!S.merchantId){ document.getElementById('loginFlow').classList.add('show'); return; }
-  // تاجر مسجّل قبل كده ومعاه جلسة محفوظة — منطلبش منه يسجّل دخول تاني
-  applyBizIdentity();
-  if(sb){
-    const {data}=await sb.from('merchants').select('status,name,biz_type').eq('id',S.merchantId).maybeSingle();
-    if(data&&data.name){ S.customStoreName=data.name; S.bizType=data.biz_type||S.bizType; applyBizIdentity(); }
-    document.getElementById('paStoreName').textContent=BIZ().name||S.customStoreName||'—';
-    document.getElementById('paStoreType').textContent=BIZ().label||'—';
-    if(data&&(data.status==='trial'||data.status==='active')){
-      S.sub.status=data.status;
-      proceedToStoreOpen();
-    }else if(data&&data.status==='rejected'){
-      document.getElementById('pendingApproval').style.display='flex';
-      document.getElementById('pendingApproval').innerHTML=`<div class="pad" style="text-align:center;padding-top:80px">
-        <div style="font-size:44px">😔</div><h3 style="margin-top:14px">اعتذرت الإدارة عن طلبك</h3>
-        <p class="tiny muted mt">تواصل مع الدعم لمعرفة السبب</p></div>`;
-    }else{
-      document.getElementById('pendingApproval').style.display='flex';
-      subscribeMyApproval();
-    }
-  }else{
-    document.getElementById('paStoreName').textContent=BIZ().name||S.customStoreName||'—';
-    document.getElementById('paStoreType').textContent=BIZ().label||'—';
-    proceedToStoreOpen();
-  }
-}
+loadVillages();
+setTimeout(async()=>{
+  const restored=await tryRestoreSession();
+  if(!restored) document.getElementById('loginFlow').classList.add('show');
+},1350);
 
 function mGoAuth(stage){
   document.querySelectorAll('#loginFlow .astage').forEach(s=>s.classList.remove('on'));
   document.getElementById('mst-'+stage).classList.add('on');
-  if(stage==='details'){
-    const sel=document.getElementById('mStoreVillage');
-    if(sel) sel.innerHTML=villageOptionsHtml(S.villageId);
-  }
 }
 document.addEventListener('input',e=>{
   if(e.target.parentElement&&e.target.parentElement.id==='mOtpRow'){
@@ -670,24 +603,35 @@ function finishMerchantSignup(){
   const pass=document.getElementById('mNewPass').value;
   const conf=document.getElementById('mNewPassConf').value;
   if(!name){toast('اكتب اسم متجرك');return}
+  if(!document.getElementById('mVillageInput').value){toast('اختار قرية متجرك');return}
+  if(document.getElementById('mVillageInput').value==='__new__'&&!document.getElementById('mNewVillageName').value.trim()){toast('اكتب اسم قريتك');return}
   if(pass.length<4){toast('كلمة المرور قصيرة أوي');return}
   if(pass!==conf){toast('كلمة المرور والتأكيد مش متطابقين');return}
   if(!document.getElementById('mAgreeCheck').checked){toast('لازم توافق على التعهّد الأول');return}
   S.bizType=type; S.customStoreName=name; S.password=pass; S.phone=mSignupPhone;
-  S.villageId=document.getElementById('mStoreVillage').value||S.villageId;
   applyBizIdentity();
   document.getElementById('paStoreName').textContent=name;
   document.getElementById('paStoreType').textContent=BIZ().label;
   document.getElementById('loginFlow').classList.remove('show');
   (async()=>{
     if(sb){
+      let geo=null;
+      if(document.getElementById('mVillageInput').value==='__new__'){
+        geo=await new Promise(res=>{
+          if(!navigator.geolocation){res(null);return}
+          navigator.geolocation.getCurrentPosition(p=>res({lat:+p.coords.latitude.toFixed(5),lng:+p.coords.longitude.toFixed(5)}),()=>res(null),{timeout:8000});
+        });
+      }
+      const villageId=await resolveVillageId('mNewVillageName',geo);
+      if(!villageId){ document.getElementById('loginFlow').classList.add('show'); return; }
       const pass_hash=await hashPassword(pass);
       const {data,error}=await sb.from('merchants').insert({
-        name,biz_type:type,phone:mSignupPhone,password_hash:pass_hash,status:'awaiting_approval',
-        agreement_accepted:true,agreement_accepted_at:new Date().toISOString(),village_id:S.villageId
+        name,biz_type:type,phone:mSignupPhone,password_hash:pass_hash,status:'awaiting_approval',village_id:villageId,
+        agreement_accepted:true,agreement_accepted_at:new Date().toISOString()
       }).select().single();
       if(error){ console.error('basita: فشل إنشاء متجرك',error); toast('حصلت مشكلة — جرّب تاني'); setTimeout(()=>document.getElementById('loginFlow').classList.add('show'),100); return; }
       S.merchantId=data.id;
+      saveSession();
       subscribeMyApproval();
     }else{
       S.merchantId='m'+Date.now();
@@ -743,6 +687,42 @@ async function saveForgotPass(){
   document.getElementById('mPhone').value=document.getElementById('fpPhoneShow').textContent;
   mGoAuth('login');
 }
+/* ═══ الجلسة الدائمة — تسجيل الدخول أو التسجيل مرة واحدة بس ═══ */
+const SESSION_KEY='basita_session_merchant';
+function saveSession(){ try{ localStorage.setItem(SESSION_KEY, JSON.stringify({merchantId:S.merchantId})); }catch(e){} }
+function clearSession(){ try{ localStorage.removeItem(SESSION_KEY); }catch(e){} }
+function loadSession(){ try{ return JSON.parse(localStorage.getItem(SESSION_KEY)||'null'); }catch(e){ return null; } }
+function logout(){
+  if(!confirm('متأكد إنك عايز تسجّل خروج من متجرك؟'))return;
+  clearSession(); location.reload();
+}
+function applyMerchantRow(data){
+  S.merchantId=data.id; S.customStoreName=data.name; S.bizType=data.biz_type; S.phone=data.phone;
+  S.sub.status=(data.status==='trial'||data.status==='active')?data.status:'trial';
+  S.sub.daysLeft=computeDaysLeft(data);
+  if(data.shop_photo_url) S.shopPhoto=data.shop_photo_url;
+  if(data.shop_lat!=null) S.shopGeo={lat:data.shop_lat,lng:data.shop_lng};
+  S.isOpen=data.is_open!==false;
+  S.villageId=data.village_id||null;
+}
+async function tryRestoreSession(){
+  const s=loadSession();
+  if(!s||!s.merchantId||!sb)return false;
+  const {data,error}=await sb.from('merchants').select('*').eq('id',s.merchantId).maybeSingle();
+  if(error||!data){ clearSession(); return false; }
+  applyMerchantRow(data);
+  applyBizIdentity();
+  if(data.status==='awaiting_approval'){
+    document.getElementById('paStoreName').textContent=data.name;
+    document.getElementById('paStoreType').textContent=BIZ().label;
+    document.getElementById('pendingApproval').style.display='flex';
+    subscribeMyApproval();
+    return true;
+  }
+  if(data.status==='rejected'){ clearSession(); return false; }
+  proceedToStoreOpen();
+  return true;
+}
 async function doLogin(){
   const ph=document.getElementById('mPhone').value.trim();
   const pass=document.getElementById('mPass').value;
@@ -754,17 +734,12 @@ async function doLogin(){
     if(!data){ toast('مفيش متجر مسجّل بالرقم ده — سجّل متجر جديد الأول'); return; }
     const pass_hash=await hashPassword(pass);
     if(pass_hash!==data.password_hash){ toast('كلمة المرور غلط'); return; }
-    S.merchantId=data.id; S.customStoreName=data.name; S.bizType=data.biz_type; S.phone=data.phone;
-    S.villageId=data.village_id||S.villageId;
+    applyMerchantRow(data);
     S.password=pass;
-    S.sub.status=(data.status==='trial'||data.status==='active')?data.status:'trial';
-    S.sub.daysLeft=computeDaysLeft(data);
-    if(data.shop_photo_url) S.shopPhoto=data.shop_photo_url;
-    if(data.shop_lat!=null) S.shopGeo={lat:data.shop_lat,lng:data.shop_lng};
-    S.isOpen=data.is_open!==false;
   } else {
     if(!S.password) S.password=pass;
   }
+  saveSession();
   applyBizIdentity();
   proceedToStoreOpen();
 }
@@ -836,25 +811,27 @@ function playNotifySound(){
     o.start();o.stop(ctx.currentTime+.3);
   }catch(e){}
 }
-/* نغمة تنبيه "طلب جديد" — أعلى صوتًا ومميّزة عن نغمة التوست العادية، وبتتكرر عشان التاجر ميفوّتهاش */
-function playOrderAlertSound(){
+/* ═══ نغمة قوية ومميزة للطلب الجديد — مختلفة تمامًا عن التنبيه العادي، وبتتكرر مرتين عشان محدش يفوّتها ═══ */
+function playOrderAlert(){
   try{
     const ctx=new (window.AudioContext||window.webkitAudioContext)();
-    const ding=(t0,freq)=>{
-      const o=ctx.createOscillator(),g=ctx.createGain();
-      o.connect(g);g.connect(ctx.destination);
-      o.type='triangle';o.frequency.value=freq;
-      g.gain.setValueAtTime(.0001,t0);
-      g.gain.exponentialRampToValueAtTime(.22,t0+.015);
-      g.gain.exponentialRampToValueAtTime(.0001,t0+.32);
-      o.start(t0);o.stop(t0+.34);
+    const ring=startTime=>{
+      [660,880,1100].forEach((freq,i)=>{
+        const o=ctx.createOscillator(),g=ctx.createGain();
+        o.connect(g);g.connect(ctx.destination);
+        o.type='square';o.frequency.value=freq;
+        const t0=startTime+i*.13;
+        g.gain.setValueAtTime(.0001,t0);
+        g.gain.exponentialRampToValueAtTime(.3,t0+.02);
+        g.gain.exponentialRampToValueAtTime(.0001,t0+.16);
+        o.start(t0);o.stop(t0+.18);
+      });
     };
-    const now=ctx.currentTime;
-    // ثلاث نبضات (نغمة صاعدة) تتكرر مرتين — تشبه جرس استلام الطلبات في المطاعم
-    [0,.36].forEach(offset=>{ ding(now+offset,740); ding(now+offset+.16,988); ding(now+offset+.32-0.02,1318); });
+    ring(ctx.currentTime);
+    ring(ctx.currentTime+.55);
+    if(navigator.vibrate) navigator.vibrate([180,80,180,80,180]);
   }catch(e){}
 }
-function vibrateAlert(){ try{ if(navigator.vibrate) navigator.vibrate([160,90,160,90,220]); }catch(e){} }
 function pushNotify(m){
   try{
     if('Notification' in window && Notification.permission==='granted' && document.hidden){
@@ -864,27 +841,12 @@ function pushNotify(m){
 }
 function toast(m){playNotifySound();pushNotify(m);const t=document.getElementById('toast');if(!t)return;t.textContent=m;t.classList.add('show');
   clearTimeout(window._tT);window._tT=setTimeout(()=>t.classList.remove('show'),2600)}
-/* تنبيه "طلب جديد" الكامل: صوت مميز + اهتزاز + جرس بيرن + شريط أخضر فوق الشاشة لحد ما التاجر يفتحه */
-function newOrderAlert(orderId,customerName){
-  playOrderAlertSound(); vibrateAlert(); pushNotify('📦 طلب جديد من '+(customerName||'عميل')+' — افتح واقبله دلوقتي');
-  const bellBtn=document.querySelector('[onclick="openInbox()"]');
-  if(bellBtn){ bellBtn.classList.remove('bell-alert'); void bellBtn.offsetWidth; bellBtn.classList.add('bell-alert'); }
-  document.getElementById('orderAlertBar')?.remove();
-  const bar=document.createElement('div');
-  bar.id='orderAlertBar'; bar.className='orderAlertBar';
-  bar.innerHTML=`<span class="oa-ic">🔔</span><span><b style="display:block;font-size:13.5px">طلب جديد وصل!</b>
-    <span style="font-size:11.5px;opacity:.92">من ${customerName||'عميل'} — اضغط للمراجعة</span></span>
-    <span class="oa-x">✕</span>`;
-  bar.onclick=(e)=>{ if(e.target.classList.contains('oa-x')){ bar.remove(); return; } S.view='list'; S.tab='new'; render(); bar.remove(); };
-  document.body.appendChild(bar);
-  setTimeout(()=>bar.remove(),9000);
-}
 
 /* ═══ حالة التطبيق + حفظ دائم للبيانات الحساسة (إيصالات الدفع، صور المتجر، أرقام) ═══ */
 const STAGES=['placed','accepted','assigned','picked','delivering','delivered'];
 const SLABEL={placed:'جديد',accepted:'اتقبل',assigned:'اتعيّن مندوب',picked:'المندوب استلم',
   delivering:'في الطريق',delivered:'اتسلّم'};
-let S={tab:'new',orders:[],expenses:[],cashCounted:'',bizType:'grocery',password:'',customStoreName:'',phone:'',villageId:null,availableDrivers:{},shopGeo:null,reviews:[],merchantId:'',shopPhoto:'',vodafoneCash:'',bizBio:'',isOpen:true,
+let S={tab:'new',orders:[],expenses:[],cashCounted:'',bizType:'grocery',password:'',customStoreName:'',phone:'',availableDrivers:{},shopGeo:null,reviews:[],merchantId:'m1',shopPhoto:'',vodafoneCash:'',bizBio:'',isOpen:true,villageId:null,
   sub:{status:'trial',daysLeft:14,price:99},
   customerStats:{},
   products:[
@@ -932,8 +894,7 @@ async function loadMyProducts(){
 function mapOrderRow(o,items){
   return {id:o.id,merchantId:o.merchant_id,name:o.customer_name,ph:o.customer_phone,addr:o.address,
     geo:(o.delivery_lat!=null)?{lat:o.delivery_lat,lng:o.delivery_lng}:null,fee:+o.delivery_fee,total:+o.total,
-    destVillageId:o.dest_village_id||null,
-    stage:o.stage,driver:o.driver_name||null,placedTs:new Date(o.placed_at).getTime(),
+    stage:o.stage,driver:o.driver_name||null,placedTs:new Date(o.placed_at).getTime(),notes:o.notes||'',
     items:(items||[]).map(i=>({n:i.name,q:+i.qty,p:+i.unit_price,u:i.unit,sellBy:i.sell_by}))};
 }
 async function loadMyOrders(){
@@ -953,9 +914,7 @@ function subscribeMyOrders(){
       const {data:items}=await sb.from('order_items').select('*').eq('order_id',payload.new.id);
       const o=mapOrderRow(payload.new,items);
       const key=o.ph||o.name; S.customerStats[key]=(S.customerStats[key]||0)+1; o.loyal=S.customerStats[key]>=5;
-      S.orders.unshift(o); render();
-      notify('📦 طلب جديد وصل من '+(o.name||'عميل')+' — إجمالي '+M(o.total)+' ج');
-      newOrderAlert(o.id,o.name);
+      S.orders.unshift(o); notify('طلب جديد وصل من العميل ✓',true);
     })
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'orders',filter:'merchant_id=eq.'+S.merchantId},payload=>{
       const o=S.orders.find(x=>x.id===payload.new.id);
@@ -987,7 +946,7 @@ async function refreshAvailableDrivers(){
   if(!sb)return;
   const {data}=await sb.from('drivers').select('*').eq('status','approved').eq('is_available',true);
   S.availableDrivers={};
-  (data||[]).forEach(d=>{ S.availableDrivers[d.id]={id:d.id,name:d.name,vehicle:d.vehicle,lat:d.current_lat,lng:d.current_lng,villageId:d.village_id||null}; });
+  (data||[]).forEach(d=>{ S.availableDrivers[d.id]={id:d.id,name:d.name,vehicle:d.vehicle,lat:d.current_lat,lng:d.current_lng}; });
   tryAssignWaitingOrders();
 }
 
@@ -996,10 +955,12 @@ const INBOX_KEY='basita_inbox_'+ROLE;
 function loadInbox(){ try{return JSON.parse(localStorage.getItem(INBOX_KEY)||'[]')}catch(e){return []} }
 S.inbox=S.inbox||loadInbox();
 function saveInbox(){ try{localStorage.setItem(INBOX_KEY,JSON.stringify(S.inbox.slice(0,80)))}catch(e){} }
-function notify(text){
+function notify(text,urgent){
   S.inbox.unshift({id:Math.random().toString(36).slice(2),text,at:new Date().toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'}),read:false});
   if(S.inbox.length>80)S.inbox.length=80;
-  saveInbox(); renderBell(); toast(text);
+  saveInbox(); renderBell();
+  if(urgent){ playOrderAlert(); pushNotify(text); const t=document.getElementById('toast');if(t){t.textContent=text;t.classList.add('show');clearTimeout(window._tT);window._tT=setTimeout(()=>t.classList.remove('show'),3200);} }
+  else toast(text);
 }
 function renderBell(){
   const n=S.inbox.filter(x=>!x.read).length; const b=document.getElementById('bellBadge'); if(!b)return;
@@ -1086,7 +1047,7 @@ onBus(d=>{
     const key=o.ph||o.name;
     S.customerStats[key]=(S.customerStats[key]||0)+1;
     o.loyal=S.customerStats[key]>=5;
-    notify('طلب جديد وصل من العميل ✓');
+    notify('طلب جديد وصل من العميل ✓',true);
   }
   if(d.type==='order:status'){
     const o=S.orders.find(x=>x.id===d.orderId); if(o){o.stage=d.status;o._flash=true}
@@ -1318,23 +1279,7 @@ function openSettings(){
     <div class="card" style="padding:14px;line-height:1.9;font-size:12.5px;color:#4A5064">
       انضمامك لـ<b>بسيطة</b> بيحطك في قلب منظومة توصيل رقمية متكاملة: كتالوجك بيوصل لعملاء المنطقة فورًا، طلباتك بتتوزع تلقائيًا على مناديب موثّقين اتراجعت هويتهم، ومحاسبتك (مبيعات، مصاريف، توريدات) بتتحسب لوحدها من غير ورق وأخطاء. إحنا مش بنبيعلك مجرد تطبيق — إحنا بنبني معاك تحوّل حقيقي لإدارة نشاطك، بشفافية وأمان في كل خطوة. 🏪🇪🇬
     </div>
-    <button class="btn2" style="width:100%;margin-top:18px;color:var(--danger);border-color:rgba(220,38,38,.3)" onclick="confirmMerchantLogout()">
-      🚪 تسجيل الخروج</button>`);
-}
-function confirmMerchantLogout(){
-  if(!confirm('متأكد إنك عايز تسجّل خروج؟ هتحتاج تسجّل دخول تاني برقم موبايلك وكلمة المرور المرة الجاية.'))return;
-  closeSheet(); logoutMerchant();
-}
-function logoutMerchant(){
-  try{ localStorage.removeItem(STATE_KEY); }catch(e){}
-  S.merchantId=''; S.customStoreName=''; S.phone=''; S.password=''; S.orders=[]; S.products=[];
-  S.sub={status:'trial',daysLeft:14,price:99};
-  document.getElementById('mainApp').classList.remove('show');
-  document.getElementById('pendingApproval').style.display='none';
-  document.querySelectorAll('#loginFlow .astage').forEach(s=>s.classList.remove('on'));
-  document.getElementById('mst-welcome').classList.add('on');
-  document.getElementById('loginFlow').classList.add('show');
-  toast('اتسجّل خروجك بنجاح 👋');
+    <button class="btn" style="width:100%;margin-top:16px;background:#FDE8E6;color:#C23327" onclick="logout()">🚪 تسجيل خروج</button>`);
 }
 function saveBizBio(){
   const v=document.getElementById('bizBioInput').value.trim();
@@ -1505,39 +1450,20 @@ function captureShopGeo(){
     {timeout:8000}
   );
 }
-function nearestAvailableDriver(destVillageId){
+function nearestAvailableDriver(){
   const drivers=Object.values(S.availableDrivers).filter(d=>!S.orders.some(o=>o.driver===d.name&&['assigned','picked','delivering'].includes(o.stage)));
   if(!drivers.length)return null;
-  const pickByGeo=list=>{
-    if(!S.shopGeo) return list[0];
-    const withGeo=list.filter(d=>d.lat!=null);
-    if(!withGeo.length) return list[0];
-    return withGeo.reduce((best,d)=>haversineKm(S.shopGeo,d)<haversineKm(S.shopGeo,best)?d:best, withGeo[0]);
-  };
-  if(!destVillageId) return pickByGeo(drivers);
-  // ١) مناديب قرية الطلب نفسها لهم الأولوية
-  const sameVillage=drivers.filter(d=>d.villageId===destVillageId);
-  if(sameVillage.length) return {...pickByGeo(sameVillage),_fromOtherVillage:false};
-  // ٢) مفيش مناديب في القرية؟ ندوّر بالترتيب على أقرب قرية فيها مندوب متاح (مركز طلخا آخر حل قوي دايمًا)
-  const villageOrder=[...VILLAGES].sort((a,b)=>{
-    const da=villageDistanceKm(destVillageId,a.id), db=villageDistanceKm(destVillageId,b.id);
-    if(da!==db) return da-db;
-    return (b.is_markaz?1:0)-(a.is_markaz?1:0);
-  });
-  for(const v of villageOrder){
-    if(v.id===destVillageId) continue;
-    const inVillage=drivers.filter(d=>d.villageId===v.id);
-    if(inVillage.length) return {...pickByGeo(inVillage),_fromOtherVillage:true,_fromVillageName:v.name};
-  }
-  // ٣) آخر حل: أي مندوب متاح مهما كانت قريته
-  return {...pickByGeo(drivers),_fromOtherVillage:true};
+  if(!S.shopGeo)return drivers[0];
+  const withGeo=drivers.filter(d=>d.lat!=null);
+  if(!withGeo.length)return drivers[0];
+  return withGeo.reduce((best,d)=>haversineKm(S.shopGeo,d)<haversineKm(S.shopGeo,best)?d:best, withGeo[0]);
 }
 function tryAssignWaitingOrders(){
   S.orders.filter(o=>o.stage==='accepted'&&o._waitingDriver).forEach(o=>autoAssignDriver(o.id));
 }
 function autoAssignDriver(id){
   const o=S.orders.find(x=>x.id===id); if(!o)return;
-  const nearest=nearestAvailableDriver(o.destVillageId);
+  const nearest=nearestAvailableDriver();
   if(!nearest){
     o._waitingDriver=true; render();
     emit({to:['owner'],type:'order:no_driver_available',orderId:id,merchantName:BIZ().name});
@@ -1548,8 +1474,7 @@ function autoAssignDriver(id){
   if(sb) sb.from('orders').update({stage:'assigned',driver_id:nearest.id,driver_name:nearest.name}).eq('id',id).then(()=>{});
   else emit({to:['customer','driver'],type:'order:assign',orderId:id,driverName:nearest.name,targetDriverId:nearest.id,order:o});
   render();
-  toast(nearest._fromOtherVillage?'🌾 مفيش مندوب في قرية الطلب — اتعيّن '+nearest.name+' من '+(nearest._fromVillageName||'قرية تانية قريبة'):
-    '🤖 اتعيّن '+nearest.name+' تلقائيًا — أقرب مندوب متاح'+(dist?' ('+dist+' كم)':''));
+  toast('🤖 اتعيّن '+nearest.name+' تلقائيًا — أقرب مندوب متاح'+(dist?' ('+dist+' كم)':''));
 }
 function accept(id){
   if(S.sub.status==='expired'){toast('🔴 اشتراكك خلص — جدده الأول عشان تقدر تقبل طلبات');return}
@@ -1575,6 +1500,7 @@ function oCard(o){
       ${o.items.map(i=>`<div class="oitem"><span class="num">${qtyLabel(i)}</span><span>${i.n}</span>
         <b class="num">${M(i.p*i.q)}</b></div>`).join('')}
       <div class="oaddr">📍 ${o.addr} · <span class="num" dir="ltr">${o.ph}</span></div>
+      ${o.notes?`<div class="tiny" style="background:#FFF3DE;color:#8A5E10;border-radius:9px;padding:8px 10px;margin-top:6px">📝 ملاحظة العميل: ${o.notes}</div>`:''}
       ${o.stage==='placed'?`<div class="oactions">
         <button class="btn2 btn-p2" onclick="accept('${o.id}')">قبول الطلب</button>
         <button class="btn-d2" onclick="rejectO('${o.id}')">اعتذار</button></div>`:''}
