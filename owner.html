@@ -4,7 +4,6 @@
 <title>بسيطة · لوحة المالك</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
 :root{
   --bg:#08090D;--surf:#101218;--surf2:#171A22;--line:#20242F;--line2:#2C313F;
@@ -274,66 +273,6 @@ const ROLE='owner';
 const SUPABASE_URL='https://vymfhyleoekbhxuojudl.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5bWZoeWxlb2VrYmh4dW9qdWRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgyNTUxMjgsImV4cCI6MjEwMzgzMTEyOH0.euxtZVpwZGa023UyFzbY2zgdj0fXjWETLqkZY_5fTCQ';
 const sb=(window.supabase&&window.supabase.createClient)?window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY):null;
-
-/* ═══════════ نظام القرى والتسعير الجغرافي (بسيطة) ═══════════ */
-let VILLAGES=[
-  {id:'seed-markaz',name:'مركز طلخا',is_markaz:true,distance_km:0,active:true},
-  {id:'seed-manil',name:'المنيل',is_markaz:false,distance_km:3,active:true},
-  {id:'seed-ورمان',name:'الأورمان',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-كفردميرةجديد',name:'كفر دميرة الجديد',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-كفردميرةقديم',name:'كفر دميرة القديم',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-كفرالعرب',name:'كفر العرب',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-كفورالعرب',name:'كفور العرب',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-جوجر',name:'جوجر',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-شرنقاش',name:'شرنقاش',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-ميتالكرماء',name:'ميت الكرماء',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-ميتعنتر',name:'ميت عنتر',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-الروضة',name:'الروضة',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-المنشية',name:'المنشية',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-كفرالأصالي',name:'كفر الأصالي',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-بطرة',name:'بطرة',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-دميرة',name:'دميرة',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-كتامةالشرقية',name:'كتامة الشرقية',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-ديسط',name:'ديسط',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-بساط',name:'بساط',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-كفربساط',name:'كفر بساط',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-منشيةالبكري',name:'منشية البكري',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-ميتزنقر',name:'ميت زنقر',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-ميتنابت',name:'ميت نابت',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-كفرالخوازم',name:'كفر الخوازم',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-كفرالطويلة',name:'كفر الطويلة',is_markaz:false,distance_km:5,active:true}
-];
-const PLATFORM_COMMISSION=2; // ١.٥٠ج + ٥٠ قرش بتتخصم من المندوب على كل طلب بيوصّله (عمولة المنصة)
-async function loadVillages(){
-  if(!sb) return VILLAGES;
-  const {data,error}=await sb.from('villages').select('*').eq('active',true).order('distance_km',{ascending:true});
-  if(!error&&data&&data.length) VILLAGES=data;
-  else if(error) console.error('basita: تعذّر تحميل قائمة القرى — السبب:',
-    error.message||error.details||error.hint||JSON.stringify(error),
-    '(احتمال: جدول villages مش موجود في Supabase، أو صلاحيات RLS مقفولة على anon)');
-  return VILLAGES;
-}
-function villageById(id){ return VILLAGES.find(v=>v.id===id)||VILLAGES.find(v=>v.is_markaz)||VILLAGES[0]||null; }
-function villageDistanceKm(aId,bId){
-  if(!aId||!bId||aId===bId) return 0;
-  const a=villageById(aId), b=villageById(bId);
-  if(!a||!b) return 6;
-  if(a.is_markaz) return +b.distance_km||0;
-  if(b.is_markaz) return +a.distance_km||0;
-  return +(((+a.distance_km||0)+(+b.distance_km||0)).toFixed(1));
-}
-// تسعير واقعي: ثابت جوه نفس القرية، ثابت أعلى شوية جوه مركز طلخا نفسه، وتدرّج مع المسافة بين القرى
-function calcDeliveryFee(originId,destId){
-  const km=villageDistanceKm(originId,destId);
-  const o=villageById(originId), d=villageById(destId);
-  if(km<=0) return (o&&o.is_markaz)?10:5;
-  const base=((o&&o.is_markaz)||(d&&d.is_markaz))?7:5;
-  return Math.max(8,Math.round(base+km*2.5));
-}
-function villageOptionsHtml(selectedId){
-  return VILLAGES.map(v=>`<option value="${v.id}" ${v.id===selectedId?'selected':''}>${v.is_markaz?'🏛️':'🌾'} ${v.name}</option>`).join('');
-}
-loadVillages();
 if(!sb) console.error('basita: تعذّر تحميل مكتبة Supabase — هيرجع النظام للمزامنة المحلية بس');
 async function loadPendingFromDB(){
   if(!sb)return;
@@ -666,19 +605,10 @@ function openOwnerSettings(){
     <button class="btn2 btn-p2" style="width:100%" onclick="saveOwnerPin()">حفظ</button>
     <button onclick="openVillageImpact()" style="width:100%;text-align:center;margin-top:14px">
       <p class="tiny muted">🌾 قصة بسيطة والقرية المصرية</p></button>
-    <button class="btn2" style="width:100%;margin-top:16px;color:var(--danger);border-color:rgba(220,38,38,.3)" onclick="lockOwnerApp()">
-      🔒 قفل التطبيق (تسجيل خروج)</button>
   </div>`;
   document.getElementById('app').appendChild(el);
 }
 function closeOwnerSettings(){ document.getElementById('oSheetWrap')?.remove(); }
-function lockOwnerApp(){
-  closeOwnerSettings();
-  document.getElementById('mainApp').classList.remove('show');
-  const pinEl=document.getElementById('pinInput'); if(pinEl) pinEl.value='';
-  document.getElementById('loginFlow').classList.add('show');
-  toast('اتقفل التطبيق — محتاج الرمز عشان تفتحه تاني 🔒');
-}
 function saveOwnerPin(){
   const o=document.getElementById('opOld').value,n=document.getElementById('opNew').value,c=document.getElementById('opConf').value;
   if(o!==S.pin){toast('الرمز الحالي غلط');return}
@@ -1021,62 +951,18 @@ function vFlags(){
     </div>
     <div style="height:14px"></div></div>`;
 }
-let villageCounts={};
-async function loadVillageStats(){
-  if(!sb)return;
-  await loadVillages();
-  const counts={};
-  for(const v of VILLAGES){
-    const [{count:mc}={count:0},{count:dc}={count:0},{count:cc}={count:0}]=await Promise.all([
-      sb.from('merchants').select('id',{count:'exact',head:true}).eq('village_id',v.id),
-      sb.from('drivers').select('id',{count:'exact',head:true}).eq('village_id',v.id).eq('status','approved'),
-      sb.from('customers').select('id',{count:'exact',head:true}).eq('village_id',v.id)
-    ]);
-    counts[v.id]={merchants:mc||0,drivers:dc||0,customers:cc||0};
-  }
-  villageCounts=counts;
-  if(S.tab==='geo') render();
-}
-async function addVillage(){
-  const name=document.getElementById('vgNewName').value.trim();
-  const dist=+document.getElementById('vgNewDist').value||0;
-  const isMarkaz=document.getElementById('vgNewMarkaz').checked;
-  if(!name){toast('اكتب اسم القرية');return}
-  if(!sb){toast('مفيش اتصال بقاعدة البيانات');return}
-  const {error}=await sb.from('villages').insert({name,distance_km:dist,is_markaz:isMarkaz,active:true});
-  if(error){ console.error('basita:',error); toast('حصلت مشكلة في إضافة القرية'); return; }
-  document.getElementById('vgNewName').value='';
-  document.getElementById('vgNewDist').value='';
-  document.getElementById('vgNewMarkaz').checked=false;
-  toast('✓ اتضافت القرية — هتظهر فورًا في التسجيل والتسعير في كل التطبيقات');
-  loadVillageStats();
-}
-async function removeVillage(id){
-  if(!sb)return;
-  if(!confirm('متأكد إنك عايز تعطّل القرية دي؟ محدش هيقدر يختارها في التسجيل بعد كده'))return;
-  await sb.from('villages').update({active:false}).eq('id',id);
-  loadVillageStats();
-}
 function vMap(){
-  loadVillageStats();
+  const N=22*7;
+  const lit=new Set();
+  while(lit.size<26) lit.add(Math.floor(Math.random()*N));
   return `<div class="pad" style="padding-top:14px">
-    <div class="alert info">🗺️ كل قرية جديدة تضيفها هنا بتظهر فورًا في شاشة تسجيل التاجر والمندوب والعميل، وبتدخل تلقائيًا في حساب رسوم التوصيل والتوزيع الاحتياطي للمناديب — من غير أي تعديل في الكود.</div>
-    <div class="sec-t"><h3>القرى المتصلة</h3><span class="num">${VILLAGES.length}</span></div>
-    <div class="card">${VILLAGES.map(v=>{const c=villageCounts[v.id]||{merchants:0,drivers:0,customers:0};
-      return `<div class="row" style="align-items:flex-start">
-      <span class="av">${v.is_markaz?'🏛️':'🌾'}</span>
-      <span style="flex:1"><span class="n">${v.name}${v.is_markaz?' <span class="bdg b-ac">مركز</span>':''}</span>
-      <span class="s">${v.is_markaz?'نقطة المرجع':v.distance_km+' كم من المركز'} · ${c.merchants} محل · ${c.drivers} مندوب · ${c.customers} عميل</span></span>
-      ${!v.is_markaz?`<button style="background:none;border:0;color:var(--danger);font-size:11px;cursor:pointer" onclick="removeVillage('${v.id}')">تعطيل</button>`:''}
-      </div>`;}).join('')}</div>
-    <div class="sec-t"><h3>➕ إضافة قرية جديدة</h3></div>
-    <div class="card" style="padding:14px">
-      <div class="fld"><label>اسم القرية</label><input id="vgNewName" placeholder="مثلاً: الروضة"></div>
-      <div class="fld"><label>المسافة من مركز طلخا (كم)</label><input id="vgNewDist" type="number" step="0.5" placeholder="مثلاً: 4"></div>
-      <div class="row" style="border:0;padding:4px 0"><span class="n">هي مركز طلخا نفسه؟</span>
-        <input id="vgNewMarkaz" type="checkbox" style="width:20px;height:20px"></div>
-      <button class="btn2 btn-p2" style="width:100%;margin-top:8px" onclick="addVillage()">حفظ القرية</button>
+    <div class="card"><div class="egypt">${Array.from({length:N},(_,i)=>`<i class="${lit.has(i)?'on':''}"></i>`).join('')}</div></div>
+    <div class="card mt" style="padding:14px">
+      <div class="row" style="padding:6px 0;border:0"><span class="n">قرى نشطة</span><b class="num end">1</b></div>
+      <div class="row" style="padding:6px 0;border:0"><span class="n">محلات مفعّلة</span><b class="num end">1</b></div>
+      <div class="row" style="padding:6px 0;border:0"><span class="n">مناديب متاحين</span><b class="num end ok" style="color:var(--ok)">1</b></div>
     </div>
+    <div class="alert info mt">🗺️ الهيكل الجغرافي جدول واحد ذاتي المرجعية — إضافة قرية جديدة صف واحد بس، من غير أي تعديل في الكود.</div>
     <div style="height:14px"></div></div>`;
 }
 async function loadCustomersFromDB(){
@@ -1131,26 +1017,34 @@ function vMembers(){
 }
 async function refreshAnalytics(){
   if(!sb)return;
-  const {data:delivered}=await sb.from('orders').select('merchant_id,driver_id,total').eq('stage','delivered');
-  (delivered||[]).forEach(o=>{});
+  const {data:delivered}=await sb.from('orders').select('merchant_id,driver_id,total,platform_commission').eq('stage','delivered');
   const byMerchant={}, byDriver={};
+  let totalCommission=0;
   (delivered||[]).forEach(o=>{
     byMerchant[o.merchant_id]=(byMerchant[o.merchant_id]||0)+ +o.total;
+    totalCommission+=+o.platform_commission||1.5;
     if(o.driver_id){ byDriver[o.driver_id]=byDriver[o.driver_id]||{deliveries:0,earnings:0};
       byDriver[o.driver_id].deliveries++; byDriver[o.driver_id].earnings+=+o.total; }
   });
   S.merchants.forEach(m=>{ m.salesTotal=byMerchant[m.id]||0; });
   S.driverApplications.forEach(a=>{ const s=byDriver[a.driverId]; if(s){ a.deliveries=s.deliveries; a.earnings=s.earnings; } });
+  S.platformCommission=totalCommission;
   render();
 }
 function vAnalytics(){
+  const platformCommission=S.platformCommission||0;
   const topCustomers=[...S.customers].sort((a,b)=>(b.orders||0)-(a.orders||0)).slice(0,5).filter(c=>c.orders);
   const totalSales=S.merchants.reduce((s,m)=>s+(m.salesTotal||0),0)||1;
   const topMerchants=[...S.merchants].sort((a,b)=>(b.salesTotal||0)-(a.salesTotal||0)).slice(0,5).filter(m=>m.salesTotal);
   const drivers=[...S.driverApplications.filter(a=>a.status==='approved')].sort((a,b)=>(b.deliveries||0)-(a.deliveries||0));
   const topDriver=drivers[0];
   return `<div class="pad" style="padding-top:14px">
-    <div class="sec-t" style="margin-top:0"><h3>🏆 الأكتر طلبًا</h3></div>
+    <div class="card mb" style="padding:16px;text-align:center;background:linear-gradient(135deg,var(--ac-l),#fff)">
+      <div class="tiny muted">إجمالي إيرادات المنصة (عمولة التوصيل)</div>
+      <div class="kufi num" style="font-size:26px;color:var(--ac-d)">${platformCommission.toFixed(2)} ج</div>
+      <div class="tiny muted">من كل التوصيلات اللي خلصت لحد دلوقتي</div>
+    </div>
+    <div class="sec-t"><h3>🏆 الأكتر طلبًا</h3></div>
     ${topCustomers.length?`<div class="card">${topCustomers.map((c,i)=>`<div class="row">
       <span class="av">${['🥇','🥈','🥉','4️⃣','5️⃣'][i]}</span><span style="flex:1"><span class="n">${c.name}</span>
       <span class="s">${M(c.spent||0)} ج إجمالي</span></span><b class="num end">${c.orders} طلب</b></div>`).join('')}</div>`:
