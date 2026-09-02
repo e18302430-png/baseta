@@ -5,7 +5,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
 :root{
   --bg:#F7F8FB;--surf:#FFFFFF;--surf2:#F0F2F6;--line:#E7EAF0;
@@ -500,11 +499,39 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
 
 <script>
 const ROLE='customer';
-/* ═══════════ الاتصال بقاعدة البيانات الحقيقية (Supabase) ═══════════ */
+/* ═══════════ الاتصال بقاعدة البيانات الحقيقية (Supabase) — بمصادر تحميل متعددة تحسبًا لبطء الشبكة ═══════════ */
 const SUPABASE_URL='https://vymfhyleoekbhxuojudl.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5bWZoeWxlb2VrYmh4dW9qdWRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgyNTUxMjgsImV4cCI6MjEwMzgzMTEyOH0.euxtZVpwZGa023UyFzbY2zgdj0fXjWETLqkZY_5fTCQ';
-const sb=(window.supabase&&window.supabase.createClient)?window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY):null;
-if(!sb) console.error('basita: تعذّر تحميل مكتبة Supabase — المزامنة الحقيقية مش هتشتغل، وهيرجع النظام للمزامنة المحلية بس');
+let sb=null;
+function loadScriptOnce(src,timeoutMs){
+  return new Promise(resolve=>{
+    let done=false;
+    const tag=document.createElement('script');
+    tag.src=src;
+    tag.onload=()=>{ if(!done){done=true;resolve(true);} };
+    tag.onerror=()=>{ if(!done){done=true;resolve(false);} };
+    setTimeout(()=>{ if(!done){done=true;resolve(false);} },timeoutMs||7000);
+    document.head.appendChild(tag);
+  });
+}
+async function ensureSupabaseReady(){
+  if(sb)return true;
+  if(window.supabase&&window.supabase.createClient){
+    sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY); return true;
+  }
+  const sources=[
+    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js',
+    'https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js'
+  ];
+  for(const src of sources){
+    const ok=await loadScriptOnce(src);
+    if(ok&&window.supabase&&window.supabase.createClient){
+      sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY); return true;
+    }
+  }
+  console.error('basita: تعذّر تحميل مكتبة Supabase من كل المصادر المتاحة — هيرجع النظام للمزامنة المحلية بس');
+  return false;
+}
 const BIZ_LABELS={grocery:'بقالة',pharmacy:'صيدلية',restaurant:'مطعم',cafe:'كافيه',bakery:'مخبز',other:'نشاط عام'};
 const BIZ_ICONS={grocery:'🛒',pharmacy:'💊',restaurant:'🍔',cafe:'☕',bakery:'🥖',other:'🏪'};
 
@@ -534,13 +561,16 @@ function onBus(fn){
 }
 
 setTimeout(()=>document.getElementById('boot').classList.add('gone'),1300);
-loadShops();
-subscribeShopsLive();
-loadVillages();
-setTimeout(async()=>{
-  const restored=await tryRestoreSession();
-  if(!restored) document.getElementById('authFlow').classList.add('show');
-},1350);
+(async()=>{
+  await ensureSupabaseReady();
+  loadShops();
+  subscribeShopsLive();
+  loadVillages();
+  setTimeout(async()=>{
+    const restored=await tryRestoreSession();
+    if(!restored) document.getElementById('authFlow').classList.add('show');
+  }, Math.max(0,1350-performance.now()));
+})();
 
 let authMode='signup';
 function goAuth(stage,mode){
@@ -668,13 +698,32 @@ let PRODS=[]; // بيتملى ديناميكيًا من كتالوج المحل 
 let SHOPS={}; // دليل المحلات الحي — بيتحمّل من قاعدة البيانات الحقيقية
 let VILLAGES=[]; // دليل القرى — قابل للتوسع من غير حد أقصى
 async function loadVillages(){
-  if(!sb)return;
-  const {data}=await sb.from('villages').select('*').order('is_center',{ascending:false}).order('name');
-  VILLAGES=data||[];
-  renderVillageOptions();
+  if(!sb){
+    console.error('basita: مفيش اتصال بقاعدة البيانات (sb=null) — القرى مش هتتحمّل');
+    renderVillageOptions('❌ مفيش اتصال بقاعدة البيانات');
+    return;
+  }
+  try{
+    const {data,error}=await sb.from('villages').select('*').order('is_center',{ascending:false}).order('name');
+    if(error){
+      console.error('basita: فشل تحميل القرى من قاعدة البيانات —',error);
+      renderVillageOptions('❌ حصلت مشكلة — دوس هنا للمحاولة تاني',true);
+      return;
+    }
+    VILLAGES=data||[];
+    renderVillageOptions();
+  }catch(err){
+    console.error('basita: خطأ غير متوقع في تحميل القرى —',err);
+    renderVillageOptions('❌ حصلت مشكلة — دوس هنا للمحاولة تاني',true);
+  }
 }
-function renderVillageOptions(){
+function renderVillageOptions(errorMsg,retry){
   const sel=document.getElementById('villageInput'); if(!sel)return;
+  if(errorMsg){
+    sel.innerHTML=`<option value="">${errorMsg}</option>`;
+    if(retry) sel.onclick=()=>{ sel.onclick=null; loadVillages(); };
+    return;
+  }
   sel.innerHTML=`<option value="">اختار قريتك</option>
     ${VILLAGES.map(v=>`<option value="${v.id}">${v.is_center?'🏛️ ':'🏘️ '}${v.name}</option>`).join('')}
     <option value="__new__">➕ قريتي مش موجودة، أضيفها</option>`;
