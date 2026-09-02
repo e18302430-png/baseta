@@ -269,11 +269,39 @@ p.lsub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13px;line-he
 
 <script>
 const ROLE='owner';
-/* ═══════════ الاتصال بقاعدة البيانات الحقيقية (Supabase) ═══════════ */
+/* ═══════════ الاتصال بقاعدة البيانات الحقيقية (Supabase) — بمصادر تحميل متعددة تحسبًا لبطء الشبكة ═══════════ */
 const SUPABASE_URL='https://vymfhyleoekbhxuojudl.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5bWZoeWxlb2VrYmh4dW9qdWRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgyNTUxMjgsImV4cCI6MjEwMzgzMTEyOH0.euxtZVpwZGa023UyFzbY2zgdj0fXjWETLqkZY_5fTCQ';
-const sb=(window.supabase&&window.supabase.createClient)?window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY):null;
-if(!sb) console.error('basita: تعذّر تحميل مكتبة Supabase — هيرجع النظام للمزامنة المحلية بس');
+let sb=null;
+function loadScriptOnce(src,timeoutMs){
+  return new Promise(resolve=>{
+    let done=false;
+    const tag=document.createElement('script');
+    tag.src=src;
+    tag.onload=()=>{ if(!done){done=true;resolve(true);} };
+    tag.onerror=()=>{ if(!done){done=true;resolve(false);} };
+    setTimeout(()=>{ if(!done){done=true;resolve(false);} },timeoutMs||7000);
+    document.head.appendChild(tag);
+  });
+}
+async function ensureSupabaseReady(){
+  if(sb)return true;
+  if(window.supabase&&window.supabase.createClient){
+    sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY); return true;
+  }
+  const sources=[
+    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js',
+    'https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js'
+  ];
+  for(const src of sources){
+    const ok=await loadScriptOnce(src);
+    if(ok&&window.supabase&&window.supabase.createClient){
+      sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY); return true;
+    }
+  }
+  console.error('basita: تعذّر تحميل مكتبة Supabase من كل المصادر المتاحة — هيرجع النظام للمزامنة المحلية بس');
+  return false;
+}
 async function loadPendingFromDB(){
   if(!sb)return;
   const {data:merchants}=await sb.from('merchants').select('*').eq('status','awaiting_approval');
@@ -326,11 +354,13 @@ function onBus(fn){
 
 setTimeout(()=>document.getElementById('boot').classList.add('gone'),1300);
 setTimeout(()=>document.getElementById('loginFlow').classList.add('show'),1350);
+ensureSupabaseReady(); // نبدأ التحميل بدري من غير ما نأخّر شاشة الدخول — المالك بيكتب الرمز أصلًا في وقت كافي
 
-function doLogin(){
+async function doLogin(){
   const v=document.getElementById('pinInput').value.trim();
   if(v!==S.pin){toast('الرمز غلط');return}
   document.getElementById('loginFlow').classList.remove('show');
+  await ensureSupabaseReady();
   setTimeout(()=>{
     document.getElementById('mainApp').classList.add('show');render();
     emit({to:['merchant'],type:'vodafone:number_updated',number:S.vodafoneCash});
