@@ -518,7 +518,30 @@ const sb=(window.supabase&&window.supabase.createClient)?window.supabase.createC
 /* ═══════════ نظام القرى والتسعير الجغرافي (بسيطة) ═══════════ */
 let VILLAGES=[
   {id:'seed-markaz',name:'مركز طلخا',is_markaz:true,distance_km:0,active:true},
-  {id:'seed-manil',name:'المنيل',is_markaz:false,distance_km:3,active:true}
+  {id:'seed-manil',name:'المنيل',is_markaz:false,distance_km:3,active:true},
+  {id:'seed-ورمان',name:'الأورمان',is_markaz:false,distance_km:5,active:true},
+  {id:'seed-كفردميرةجديد',name:'كفر دميرة الجديد',is_markaz:false,distance_km:5,active:true},
+  {id:'seed-كفردميرةقديم',name:'كفر دميرة القديم',is_markaz:false,distance_km:5,active:true},
+  {id:'seed-كفرالعرب',name:'كفر العرب',is_markaz:false,distance_km:5,active:true},
+  {id:'seed-كفورالعرب',name:'كفور العرب',is_markaz:false,distance_km:5,active:true},
+  {id:'seed-جوجر',name:'جوجر',is_markaz:false,distance_km:5,active:true},
+  {id:'seed-شرنقاش',name:'شرنقاش',is_markaz:false,distance_km:5,active:true},
+  {id:'seed-ميتالكرماء',name:'ميت الكرماء',is_markaz:false,distance_km:5,active:true},
+  {id:'seed-ميتعنتر',name:'ميت عنتر',is_markaz:false,distance_km:5,active:true},
+  {id:'seed-الروضة',name:'الروضة',is_markaz:false,distance_km:5,active:true},
+  {id:'seed-المنشية',name:'المنشية',is_markaz:false,distance_km:5,active:true},
+  {id:'seed-كفرالأصالي',name:'كفر الأصالي',is_markaz:false,distance_km:5,active:true},
+  {id:'seed-بطرة',name:'بطرة',is_markaz:false,distance_km:5,active:true},
+  {id:'seed-دميرة',name:'دميرة',is_markaz:false,distance_km:5,active:true},
+  {id:'seed-كتامةالشرقية',name:'كتامة الشرقية',is_markaz:false,distance_km:5,active:true},
+  {id:'seed-ديسط',name:'ديسط',is_markaz:false,distance_km:5,active:true},
+  {id:'seed-بساط',name:'بساط',is_markaz:false,distance_km:5,active:true},
+  {id:'seed-كفربساط',name:'كفر بساط',is_markaz:false,distance_km:5,active:true},
+  {id:'seed-منشيةالبكري',name:'منشية البكري',is_markaz:false,distance_km:5,active:true},
+  {id:'seed-ميتزنقر',name:'ميت زنقر',is_markaz:false,distance_km:5,active:true},
+  {id:'seed-ميتنابت',name:'ميت نابت',is_markaz:false,distance_km:5,active:true},
+  {id:'seed-كفرالخوازم',name:'كفر الخوازم',is_markaz:false,distance_km:5,active:true},
+  {id:'seed-كفرالطويلة',name:'كفر الطويلة',is_markaz:false,distance_km:5,active:true}
 ];
 const PLATFORM_COMMISSION=2; // ١.٥٠ج + ٥٠ قرش بتتخصم من المندوب على كل طلب بيوصّله (عمولة المنصة)
 async function loadVillages(){
