@@ -274,6 +274,16 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
 .empty h4{font-size:15px;color:var(--txt);margin:10px 0 5px}
 .bellBadge{display:none;position:absolute;top:-3px;left:-3px;min-width:16px;height:16px;border-radius:8px;background:var(--danger);
   color:#fff;font-size:9.5px;font-weight:800;align-items:center;justify-content:center;padding:0 3px;font-family:'Cairo'}
+@keyframes bellRing{0%,100%{transform:rotate(0)}10%,30%{transform:rotate(-18deg)}20%,40%{transform:rotate(18deg)}50%{transform:rotate(-10deg)}60%{transform:rotate(10deg)}70%{transform:rotate(0)}}
+@keyframes ringPulse{0%{box-shadow:0 0 0 0 rgba(239,68,68,.55)}100%{box-shadow:0 0 0 14px rgba(239,68,68,0)}}
+.bell-alert{animation:bellRing 1.6s ease-in-out 3,ringPulse 1.6s ease-out 3}
+@keyframes newOrderPop{0%{transform:scale(.94);opacity:0}60%{transform:scale(1.015)}100%{transform:scale(1);opacity:1}}
+.orderAlertBar{position:fixed;top:10px;inset-inline:10px;max-width:392px;margin:0 auto;z-index:500;
+  background:linear-gradient(120deg,#16A34A,#22C55E);color:#fff;border-radius:16px;padding:13px 16px;
+  display:flex;align-items:center;gap:10px;box-shadow:0 14px 30px -10px rgba(22,163,74,.55);
+  font-family:'Cairo';animation:newOrderPop .35s cubic-bezier(.2,.8,.2,1);cursor:pointer}
+.orderAlertBar .oa-ic{font-size:24px;flex:0 0 auto}
+.orderAlertBar .oa-x{margin-inline-start:auto;font-size:13px;opacity:.85;flex:0 0 auto}
 .inboxOverlay{position:fixed;inset:0;background:rgba(10,12,30,.45);z-index:300}
 .inboxPanel{position:fixed;inset-inline:0;bottom:0;max-width:412px;margin:0 auto;background:var(--surf);border-radius:22px 22px 0 0;
   z-index:301;max-height:78vh;display:flex;flex-direction:column;box-shadow:0 -20px 50px -20px rgba(0,0,0,.35);animation:inboxUp .3s cubic-bezier(.2,.8,.2,1)}
@@ -533,7 +543,9 @@ async function loadVillages(){
   if(!sb) return VILLAGES;
   const {data,error}=await sb.from('villages').select('*').eq('active',true).order('distance_km',{ascending:true});
   if(!error&&data&&data.length) VILLAGES=data;
-  else if(error) console.error('basita: تعذّر تحميل قائمة القرى',error);
+  else if(error) console.error('basita: تعذّر تحميل قائمة القرى — السبب:',
+    error.message||error.details||error.hint||JSON.stringify(error),
+    '(احتمال: جدول villages مش موجود في Supabase، أو صلاحيات RLS مقفولة على anon)');
   return VILLAGES;
 }
 function villageById(id){ return VILLAGES.find(v=>v.id===id)||VILLAGES.find(v=>v.is_markaz)||VILLAGES[0]||null; }
@@ -594,7 +606,29 @@ function onBus(fn){
 }
 
 setTimeout(()=>document.getElementById('boot').classList.add('gone'),1300);
-setTimeout(()=>document.getElementById('loginFlow').classList.add('show'),1350);
+setTimeout(()=>{ resumeMerchantSession(); },1350);
+async function resumeMerchantSession(){
+  if(!S.merchantId){ document.getElementById('loginFlow').classList.add('show'); return; }
+  // تاجر مسجّل قبل كده ومعاه جلسة محفوظة — منطلبش منه يسجّل دخول تاني
+  applyBizIdentity();
+  if(sb){
+    const {data}=await sb.from('merchants').select('status').eq('id',S.merchantId).maybeSingle();
+    if(data&&(data.status==='trial'||data.status==='active')){
+      S.sub.status=data.status;
+      proceedToStoreOpen();
+    }else if(data&&data.status==='rejected'){
+      document.getElementById('pendingApproval').style.display='flex';
+      document.getElementById('pendingApproval').innerHTML=`<div class="pad" style="text-align:center;padding-top:80px">
+        <div style="font-size:44px">😔</div><h3 style="margin-top:14px">اعتذرت الإدارة عن طلبك</h3>
+        <p class="tiny muted mt">تواصل مع الدعم لمعرفة السبب</p></div>`;
+    }else{
+      document.getElementById('pendingApproval').style.display='flex';
+      subscribeMyApproval();
+    }
+  }else{
+    proceedToStoreOpen();
+  }
+}
 
 function mGoAuth(stage){
   document.querySelectorAll('#loginFlow .astage').forEach(s=>s.classList.remove('on'));
@@ -797,6 +831,25 @@ function playNotifySound(){
     o.start();o.stop(ctx.currentTime+.3);
   }catch(e){}
 }
+/* نغمة تنبيه "طلب جديد" — أعلى صوتًا ومميّزة عن نغمة التوست العادية، وبتتكرر عشان التاجر ميفوّتهاش */
+function playOrderAlertSound(){
+  try{
+    const ctx=new (window.AudioContext||window.webkitAudioContext)();
+    const ding=(t0,freq)=>{
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.connect(g);g.connect(ctx.destination);
+      o.type='triangle';o.frequency.value=freq;
+      g.gain.setValueAtTime(.0001,t0);
+      g.gain.exponentialRampToValueAtTime(.22,t0+.015);
+      g.gain.exponentialRampToValueAtTime(.0001,t0+.32);
+      o.start(t0);o.stop(t0+.34);
+    };
+    const now=ctx.currentTime;
+    // ثلاث نبضات (نغمة صاعدة) تتكرر مرتين — تشبه جرس استلام الطلبات في المطاعم
+    [0,.36].forEach(offset=>{ ding(now+offset,740); ding(now+offset+.16,988); ding(now+offset+.32-0.02,1318); });
+  }catch(e){}
+}
+function vibrateAlert(){ try{ if(navigator.vibrate) navigator.vibrate([160,90,160,90,220]); }catch(e){} }
 function pushNotify(m){
   try{
     if('Notification' in window && Notification.permission==='granted' && document.hidden){
@@ -806,12 +859,27 @@ function pushNotify(m){
 }
 function toast(m){playNotifySound();pushNotify(m);const t=document.getElementById('toast');if(!t)return;t.textContent=m;t.classList.add('show');
   clearTimeout(window._tT);window._tT=setTimeout(()=>t.classList.remove('show'),2600)}
+/* تنبيه "طلب جديد" الكامل: صوت مميز + اهتزاز + جرس بيرن + شريط أخضر فوق الشاشة لحد ما التاجر يفتحه */
+function newOrderAlert(orderId,customerName){
+  playOrderAlertSound(); vibrateAlert(); pushNotify('📦 طلب جديد من '+(customerName||'عميل')+' — افتح واقبله دلوقتي');
+  const bellBtn=document.querySelector('[onclick="openInbox()"]');
+  if(bellBtn){ bellBtn.classList.remove('bell-alert'); void bellBtn.offsetWidth; bellBtn.classList.add('bell-alert'); }
+  document.getElementById('orderAlertBar')?.remove();
+  const bar=document.createElement('div');
+  bar.id='orderAlertBar'; bar.className='orderAlertBar';
+  bar.innerHTML=`<span class="oa-ic">🔔</span><span><b style="display:block;font-size:13.5px">طلب جديد وصل!</b>
+    <span style="font-size:11.5px;opacity:.92">من ${customerName||'عميل'} — اضغط للمراجعة</span></span>
+    <span class="oa-x">✕</span>`;
+  bar.onclick=(e)=>{ if(e.target.classList.contains('oa-x')){ bar.remove(); return; } S.view='list'; S.tab='new'; render(); bar.remove(); };
+  document.body.appendChild(bar);
+  setTimeout(()=>bar.remove(),9000);
+}
 
 /* ═══ حالة التطبيق + حفظ دائم للبيانات الحساسة (إيصالات الدفع، صور المتجر، أرقام) ═══ */
 const STAGES=['placed','accepted','assigned','picked','delivering','delivered'];
 const SLABEL={placed:'جديد',accepted:'اتقبل',assigned:'اتعيّن مندوب',picked:'المندوب استلم',
   delivering:'في الطريق',delivered:'اتسلّم'};
-let S={tab:'new',orders:[],expenses:[],cashCounted:'',bizType:'grocery',password:'',customStoreName:'',phone:'',villageId:null,availableDrivers:{},shopGeo:null,reviews:[],merchantId:'m1',shopPhoto:'',vodafoneCash:'',bizBio:'',isOpen:true,
+let S={tab:'new',orders:[],expenses:[],cashCounted:'',bizType:'grocery',password:'',customStoreName:'',phone:'',villageId:null,availableDrivers:{},shopGeo:null,reviews:[],merchantId:'',shopPhoto:'',vodafoneCash:'',bizBio:'',isOpen:true,
   sub:{status:'trial',daysLeft:14,price:99},
   customerStats:{},
   products:[
@@ -880,7 +948,9 @@ function subscribeMyOrders(){
       const {data:items}=await sb.from('order_items').select('*').eq('order_id',payload.new.id);
       const o=mapOrderRow(payload.new,items);
       const key=o.ph||o.name; S.customerStats[key]=(S.customerStats[key]||0)+1; o.loyal=S.customerStats[key]>=5;
-      S.orders.unshift(o); notify('طلب جديد وصل من العميل ✓');
+      S.orders.unshift(o); render();
+      notify('📦 طلب جديد وصل من '+(o.name||'عميل')+' — إجمالي '+M(o.total)+' ج');
+      newOrderAlert(o.id,o.name);
     })
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'orders',filter:'merchant_id=eq.'+S.merchantId},payload=>{
       const o=S.orders.find(x=>x.id===payload.new.id);
@@ -1242,7 +1312,24 @@ function openSettings(){
     <div class="sec-t" style="margin-top:18px"><h3>عن بسيطة</h3></div>
     <div class="card" style="padding:14px;line-height:1.9;font-size:12.5px;color:#4A5064">
       انضمامك لـ<b>بسيطة</b> بيحطك في قلب منظومة توصيل رقمية متكاملة: كتالوجك بيوصل لعملاء المنطقة فورًا، طلباتك بتتوزع تلقائيًا على مناديب موثّقين اتراجعت هويتهم، ومحاسبتك (مبيعات، مصاريف، توريدات) بتتحسب لوحدها من غير ورق وأخطاء. إحنا مش بنبيعلك مجرد تطبيق — إحنا بنبني معاك تحوّل حقيقي لإدارة نشاطك، بشفافية وأمان في كل خطوة. 🏪🇪🇬
-    </div>`);
+    </div>
+    <button class="btn2" style="width:100%;margin-top:18px;color:var(--danger);border-color:rgba(220,38,38,.3)" onclick="confirmMerchantLogout()">
+      🚪 تسجيل الخروج</button>`);
+}
+function confirmMerchantLogout(){
+  if(!confirm('متأكد إنك عايز تسجّل خروج؟ هتحتاج تسجّل دخول تاني برقم موبايلك وكلمة المرور المرة الجاية.'))return;
+  closeSheet(); logoutMerchant();
+}
+function logoutMerchant(){
+  try{ localStorage.removeItem(STATE_KEY); }catch(e){}
+  S.merchantId=''; S.customStoreName=''; S.phone=''; S.password=''; S.orders=[]; S.products=[];
+  S.sub={status:'trial',daysLeft:14,price:99};
+  document.getElementById('mainApp').classList.remove('show');
+  document.getElementById('pendingApproval').style.display='none';
+  document.querySelectorAll('#loginFlow .astage').forEach(s=>s.classList.remove('on'));
+  document.getElementById('mst-welcome').classList.add('on');
+  document.getElementById('loginFlow').classList.add('show');
+  toast('اتسجّل خروجك بنجاح 👋');
 }
 function saveBizBio(){
   const v=document.getElementById('bizBioInput').value.trim();
