@@ -4,7 +4,6 @@
 <title>بسيطة · المندوب</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
 :root{
   --bg:#F6F7FC;--surf:#FFFFFF;--surf2:#EEF0FA;--line:#E4E7F5;
@@ -250,22 +249,6 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
 .empty h4{font-size:15px;color:var(--txt);margin:10px 0 5px}
 .bellBadge{display:none;position:absolute;top:-3px;left:-3px;min-width:16px;height:16px;border-radius:8px;background:var(--danger);
   color:#fff;font-size:9.5px;font-weight:800;align-items:center;justify-content:center;padding:0 3px;font-family:'Cairo'}
-@keyframes bellRing{0%,100%{transform:rotate(0)}10%,30%{transform:rotate(-18deg)}20%,40%{transform:rotate(18deg)}50%{transform:rotate(-10deg)}60%{transform:rotate(10deg)}70%{transform:rotate(0)}}
-@keyframes ringPulse{0%{box-shadow:0 0 0 0 rgba(239,68,68,.55)}100%{box-shadow:0 0 0 14px rgba(239,68,68,0)}}
-.bell-alert{animation:bellRing 1.6s ease-in-out 3,ringPulse 1.6s ease-out 3}
-@keyframes newOrderPop{0%{transform:scale(.94);opacity:0}60%{transform:scale(1.015)}100%{transform:scale(1);opacity:1}}
-.orderAlertBar{position:fixed;top:10px;inset-inline:10px;max-width:392px;margin:0 auto;z-index:500;
-  background:linear-gradient(120deg,#5B6EF5,#7C8CF8);color:#fff;border-radius:16px;padding:13px 16px;
-  display:flex;align-items:center;gap:10px;box-shadow:0 14px 30px -10px rgba(91,110,245,.55);
-  font-family:'Cairo';animation:newOrderPop .35s cubic-bezier(.2,.8,.2,1);cursor:pointer}
-.orderAlertBar .oa-ic{font-size:24px;flex:0 0 auto}
-.orderAlertBar .oa-x{margin-inline-start:auto;font-size:13px;opacity:.85;flex:0 0 auto}
-.invoicebox{background:var(--surf2);border-radius:12px;padding:10px 12px;margin:8px 0}
-.invoicebox .irow{display:flex;align-items:center;font-size:12.5px;padding:3px 0;color:var(--txt2)}
-.invoicebox .irow b{margin-inline-start:auto;color:var(--txt);font-family:'Cairo'}
-.invoicebox .irow.ded b{color:var(--danger)}
-.invoicebox .irow.net{border-top:1px dashed var(--line);margin-top:5px;padding-top:7px}
-.invoicebox .irow.net b{color:var(--ok);font-size:14px}
 .recdot{width:9px;height:9px;border-radius:50%;background:var(--danger);flex:0 0 auto;animation:recPulse 1.1s ease-in-out infinite}
 @keyframes recPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.75)}}
 .brandbanner{display:flex;align-items:center;gap:11px;margin-bottom:12px;padding:13px 14px;border-radius:15px;
@@ -424,7 +407,10 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
       <div class="fld mt"><label>الاسم بالكامل</label><input id="dName" placeholder="اسمك بالكامل"></div>
       <div class="fld"><label>وسيلة التوصيل</label><select id="dVehicle">
         <option value="🛵">🛵 موتوسيكل</option><option value="🚲">🚲 دراجة</option><option value="🚗">🚗 عربية</option></select></div>
-      <div class="fld"><label>قريتك (اللي هتشتغل فيها)</label><select id="dVillage"></select></div>
+      <div class="fld"><label>قريتك</label><select id="dVillageInput" onchange="handleDVillageChange()">
+        <option value="">جاري تحميل القرى…</option></select></div>
+      <div class="fld" id="dNewVillageWrap" style="display:none">
+        <label>اسم قريتك</label><input id="dNewVillageName" placeholder="مثلاً: الروضة"></div>
       <div class="fld"><label>كلمة المرور</label><input id="dNewPass" type="password" placeholder="••••••••"></div>
       <div class="fld"><label>تأكيد كلمة المرور</label><input id="dNewPassConf" type="password" placeholder="••••••••"></div>
       <div class="spacer"></div>
@@ -530,73 +516,39 @@ const ROLE='driver';
 const SUPABASE_URL='https://vymfhyleoekbhxuojudl.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5bWZoeWxlb2VrYmh4dW9qdWRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgyNTUxMjgsImV4cCI6MjEwMzgzMTEyOH0.euxtZVpwZGa023UyFzbY2zgdj0fXjWETLqkZY_5fTCQ';
 const sb=(window.supabase&&window.supabase.createClient)?window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY):null;
-
-/* ═══════════ نظام القرى والتسعير الجغرافي (بسيطة) ═══════════ */
-let VILLAGES=[
-  {id:'seed-markaz',name:'مركز طلخا',is_markaz:true,distance_km:0,active:true},
-  {id:'seed-manil',name:'المنيل',is_markaz:false,distance_km:3,active:true},
-  {id:'seed-ورمان',name:'الأورمان',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-كفردميرةجديد',name:'كفر دميرة الجديد',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-كفردميرةقديم',name:'كفر دميرة القديم',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-كفرالعرب',name:'كفر العرب',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-كفورالعرب',name:'كفور العرب',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-جوجر',name:'جوجر',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-شرنقاش',name:'شرنقاش',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-ميتالكرماء',name:'ميت الكرماء',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-ميتعنتر',name:'ميت عنتر',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-الروضة',name:'الروضة',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-المنشية',name:'المنشية',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-كفرالأصالي',name:'كفر الأصالي',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-بطرة',name:'بطرة',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-دميرة',name:'دميرة',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-كتامةالشرقية',name:'كتامة الشرقية',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-ديسط',name:'ديسط',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-بساط',name:'بساط',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-كفربساط',name:'كفر بساط',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-منشيةالبكري',name:'منشية البكري',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-ميتزنقر',name:'ميت زنقر',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-ميتنابت',name:'ميت نابت',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-كفرالخوازم',name:'كفر الخوازم',is_markaz:false,distance_km:5,active:true},
-  {id:'seed-كفرالطويلة',name:'كفر الطويلة',is_markaz:false,distance_km:5,active:true}
-];
-const PLATFORM_APP_FEE=1.5; // عمولة تطبيق بسيطة — بتتخصم من رسوم التوصيل على كل طلب
-const PLATFORM_SERVICE_FEE=0.5; // رسوم خدمة وتشغيل
-const PLATFORM_COMMISSION=PLATFORM_APP_FEE+PLATFORM_SERVICE_FEE; // إجمالي الخصم = ٢ ج (١.٥٠ج + ٥٠ قرش) من كل طلب
-async function loadVillages(){
-  if(!sb) return VILLAGES;
-  const {data,error}=await sb.from('villages').select('*').eq('active',true).order('distance_km',{ascending:true});
-  if(!error&&data&&data.length) VILLAGES=data;
-  else if(error) console.error('basita: تعذّر تحميل قائمة القرى — السبب:',
-    error.message||error.details||error.hint||JSON.stringify(error),
-    '(احتمال: جدول villages مش موجود في Supabase، أو صلاحيات RLS مقفولة على anon)');
-  return VILLAGES;
-}
-function villageById(id){ return VILLAGES.find(v=>v.id===id)||VILLAGES.find(v=>v.is_markaz)||VILLAGES[0]||null; }
-function villageDistanceKm(aId,bId){
-  if(!aId||!bId||aId===bId) return 0;
-  const a=villageById(aId), b=villageById(bId);
-  if(!a||!b) return 6;
-  if(a.is_markaz) return +b.distance_km||0;
-  if(b.is_markaz) return +a.distance_km||0;
-  return +(((+a.distance_km||0)+(+b.distance_km||0)).toFixed(1));
-}
-// تسعير واقعي: ثابت جوه نفس القرية، ثابت أعلى شوية جوه مركز طلخا نفسه، وتدرّج مع المسافة بين القرى
-function calcDeliveryFee(originId,destId){
-  const km=villageDistanceKm(originId,destId);
-  const o=villageById(originId), d=villageById(destId);
-  if(km<=0) return (o&&o.is_markaz)?10:5;
-  const base=((o&&o.is_markaz)||(d&&d.is_markaz))?7:5;
-  return Math.max(8,Math.round(base+km*2.5));
-}
-function villageOptionsHtml(selectedId){
-  return VILLAGES.map(v=>`<option value="${v.id}" ${v.id===selectedId?'selected':''}>${v.is_markaz?'🏛️':'🌾'} ${v.name}</option>`).join('');
-}
-loadVillages();
 if(!sb) console.error('basita: تعذّر تحميل مكتبة Supabase — هيرجع النظام للمزامنة المحلية بس');
 async function hashPassword(pw){
   const enc=new TextEncoder().encode(pw);
   const buf=await crypto.subtle.digest('SHA-256',enc);
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+let VILLAGES=[];
+async function loadVillages(){
+  if(!sb)return;
+  const {data}=await sb.from('villages').select('*').order('is_center',{ascending:false}).order('name');
+  VILLAGES=data||[];
+  const sel=document.getElementById('dVillageInput'); if(!sel)return;
+  sel.innerHTML=`<option value="">اختار قريتك</option>
+    ${VILLAGES.map(v=>`<option value="${v.id}">${v.is_center?'🏛️ ':'🏘️ '}${v.name}</option>`).join('')}
+    <option value="__new__">➕ قريتي مش موجودة، أضيفها</option>`;
+}
+function handleDVillageChange(){
+  document.getElementById('dNewVillageWrap').style.display=document.getElementById('dVillageInput').value==='__new__'?'block':'none';
+}
+async function resolveVillageId(nameFieldId,geo){
+  const v=document.getElementById('dVillageInput').value;
+  if(v&&v!=='__new__')return v;
+  if(v==='__new__'){
+    const name=document.getElementById(nameFieldId).value.trim();
+    if(!name){toast('اكتب اسم قريتك');return null}
+    const {data,error}=await sb.from('villages').insert({name,center_lat:geo?geo.lat:null,center_lng:geo?geo.lng:null}).select().single();
+    if(error){
+      if(error.code==='23505'){ const {data:existing}=await sb.from('villages').select('id').eq('name',name).maybeSingle(); return existing?existing.id:null; }
+      console.error('basita:',error); toast('حصلت مشكلة في إضافة القرية'); return null;
+    }
+    VILLAGES.push(data); return data.id;
+  }
+  toast('اختار قريتك الأول'); return null;
 }
 const bc=('BroadcastChannel' in window)?new BroadcastChannel('basita_sync'):null;
 function emit(msg){
@@ -624,28 +576,15 @@ function onBus(fn){
 }
 
 setTimeout(()=>document.getElementById('boot').classList.add('gone'),1300);
-setTimeout(()=>{
-  if(S.driverId){
-    // مندوب مسجّل قبل كده ومعاه جلسة محفوظة — منطلبش منه يسجّل دخول تاني
-    applyDriverIdentity();
-    if(S.verifyStatus==='approved'){
-      document.getElementById('shiftStart').classList.add('show');
-    }else{
-      document.getElementById('pendingReview').classList.add('show');
-      checkDriverApproval();
-    }
-  }else{
-    document.getElementById('loginFlow').classList.add('show');
-  }
+loadVillages();
+setTimeout(async()=>{
+  const restored=await tryRestoreSession();
+  if(!restored) document.getElementById('loginFlow').classList.add('show');
 },1350);
 
 function dGoAuth(stage){
   document.querySelectorAll('#loginFlow .astage').forEach(s=>s.classList.remove('on'));
   document.getElementById('dst-'+stage).classList.add('on');
-  if(stage==='details'){
-    const sel=document.getElementById('dVillage');
-    if(sel) sel.innerHTML=villageOptionsHtml(S.villageId);
-  }
 }
 document.addEventListener('input',e=>{
   if(e.target.parentElement&&e.target.parentElement.id==='dOtpRow'){
@@ -693,11 +632,12 @@ async function finishDriverSignup(){
   if(!dDocs.idCard){toast('لازم ترفع صورة البطاقة الشخصية');return}
   if(!dDocs.selfie){toast('لازم ترفع صورتك الشخصية');return}
   if(!document.getElementById('dAgreeCheck').checked){toast('لازم توافق على بنود الاتفاقية الأول');return}
+  if(!document.getElementById('dVillageInput').value){toast('اختار قريتك');return}
+  if(document.getElementById('dVillageInput').value==='__new__'&&!document.getElementById('dNewVillageName').value.trim()){toast('اكتب اسم قريتك');return}
   const name=document.getElementById('dName').value.trim();
   const vehicle=document.getElementById('dVehicle').value;
   const pass=document.getElementById('dNewPass').value;
   S.driverName=name; S.vehicle=vehicle; S.password=pass; S.phone=dSignupPhone;
-  S.villageId=document.getElementById('dVillage').value||S.villageId;
   S.idCardPhoto=dDocs.idCard; S.selfiePhoto=dDocs.selfie; S.verifyStatus='pending';
   applyDriverIdentity();
   document.getElementById('loginFlow').classList.remove('show');
@@ -710,13 +650,23 @@ async function finishDriverSignup(){
       const {error:e2}=await sb.storage.from('driver-selfies').upload(stamp+'-selfie.jpg',selfieBlob,{upsert:true});
       const idUrl=sb.storage.from('driver-ids').getPublicUrl(stamp+'-id.jpg').data.publicUrl;
       const selfieUrl=sb.storage.from('driver-selfies').getPublicUrl(stamp+'-selfie.jpg').data.publicUrl;
+      let geo=null;
+      if(document.getElementById('dVillageInput').value==='__new__'){
+        geo=await new Promise(res=>{
+          if(!navigator.geolocation){res(null);return}
+          navigator.geolocation.getCurrentPosition(p=>res({lat:+p.coords.latitude.toFixed(5),lng:+p.coords.longitude.toFixed(5)}),()=>res(null),{timeout:8000});
+        });
+      }
+      const villageId=await resolveVillageId('dNewVillageName',geo);
+      if(!villageId){ document.getElementById('loginFlow').classList.add('show'); return; }
       const pass_hash=await hashPassword(pass);
       const {data,error}=await sb.from('drivers').insert({
-        name,phone:dSignupPhone,password_hash:pass_hash,vehicle,status:'pending_review',village_id:S.villageId,
+        name,phone:dSignupPhone,password_hash:pass_hash,vehicle,status:'pending_review',village_id:villageId,
         id_card_photo_url:idUrl,selfie_photo_url:selfieUrl,agreement_accepted:true,agreement_accepted_at:new Date().toISOString()
       }).select().single();
       if(error){ console.error('basita: فشل تسجيلك',error); toast('حصلت مشكلة — جرّب تاني'); return; }
       S.driverId=data.id;
+      saveSession();
       subscribeMyApproval();
     }catch(err){ console.error('basita:',err); toast('حصلت مشكلة في رفع الصور — جرّب تاني'); return; }
   }else{
@@ -784,6 +734,35 @@ async function saveForgotPass(){
   document.getElementById('dPhone').value=document.getElementById('fpPhoneShow').textContent;
   dGoAuth('login');
 }
+/* ═══ الجلسة الدائمة — تسجيل الدخول أو التسجيل مرة واحدة بس ═══ */
+const SESSION_KEY='basita_session_driver';
+function saveSession(){ try{ localStorage.setItem(SESSION_KEY, JSON.stringify({driverId:S.driverId})); }catch(e){} }
+function clearSession(){ try{ localStorage.removeItem(SESSION_KEY); }catch(e){} }
+function loadSession(){ try{ return JSON.parse(localStorage.getItem(SESSION_KEY)||'null'); }catch(e){ return null; } }
+function logout(){
+  if(!confirm('متأكد إنك عايز تسجّل خروج؟'))return;
+  clearSession(); location.reload();
+}
+function applyDriverRow(data){
+  S.driverId=data.id; S.driverName=data.name; S.vehicle=data.vehicle; S.phone=data.phone; S.villageId=data.village_id||null;
+}
+async function tryRestoreSession(){
+  const s=loadSession();
+  if(!s||!s.driverId||!sb)return false;
+  const {data,error}=await sb.from('drivers').select('*').eq('id',s.driverId).maybeSingle();
+  if(error||!data){ clearSession(); return false; }
+  applyDriverRow(data);
+  applyDriverIdentity();
+  if(data.status==='pending_review'){
+    S.verifyStatus='pending';
+    document.getElementById('pendingReview').classList.add('show');
+    subscribeMyApproval();
+    return true;
+  }
+  if(data.status==='rejected'){ clearSession(); return false; }
+  document.getElementById('shiftStart').classList.add('show');
+  return true;
+}
 async function doLogin(){
   const ph=document.getElementById('dPhone').value.trim();
   const pass=document.getElementById('dPass').value;
@@ -796,12 +775,14 @@ async function doLogin(){
     const pass_hash=await hashPassword(pass);
     if(pass_hash!==data.password_hash){ toast('كلمة المرور غلط'); return; }
     if(data.status!=='approved'){ toast('حسابك لسه بانتظار مراجعة الأمان'); return; }
-    S.driverId=data.id; S.driverName=data.name; S.vehicle=data.vehicle; S.phone=data.phone; S.password=pass; S.villageId=data.village_id||S.villageId;
+    applyDriverRow(data);
+    S.password=pass;
   }else{
     if(!S.password) S.password=pass;
     S.driverId=S.driverId||('d_'+ph);
     S.phone=S.phone||ph;
   }
+  saveSession();
   applyDriverIdentity();
   document.getElementById('loginFlow').classList.remove('show');
   setTimeout(()=>document.getElementById('shiftStart').classList.add('show'),350);
@@ -834,24 +815,27 @@ function playNotifySound(){
     o.start();o.stop(ctx.currentTime+.3);
   }catch(e){}
 }
-/* نغمة تنبيه "مهمة جديدة" — أعلى صوتًا ومميّزة، وبتتكرر عشان المندوب ميفوّتهاش وهو سايق أو في جيبه */
-function playOrderAlertSound(){
+/* ═══ نغمة قوية ومميزة لمهمة جديدة — مختلفة تمامًا عن التنبيه العادي، وبتتكرر مرتين عشان محدش يفوّتها ═══ */
+function playOrderAlert(){
   try{
     const ctx=new (window.AudioContext||window.webkitAudioContext)();
-    const ding=(t0,freq)=>{
-      const o=ctx.createOscillator(),g=ctx.createGain();
-      o.connect(g);g.connect(ctx.destination);
-      o.type='triangle';o.frequency.value=freq;
-      g.gain.setValueAtTime(.0001,t0);
-      g.gain.exponentialRampToValueAtTime(.22,t0+.015);
-      g.gain.exponentialRampToValueAtTime(.0001,t0+.32);
-      o.start(t0);o.stop(t0+.34);
+    const ring=startTime=>{
+      [660,880,1100].forEach((freq,i)=>{
+        const o=ctx.createOscillator(),g=ctx.createGain();
+        o.connect(g);g.connect(ctx.destination);
+        o.type='square';o.frequency.value=freq;
+        const t0=startTime+i*.13;
+        g.gain.setValueAtTime(.0001,t0);
+        g.gain.exponentialRampToValueAtTime(.3,t0+.02);
+        g.gain.exponentialRampToValueAtTime(.0001,t0+.16);
+        o.start(t0);o.stop(t0+.18);
+      });
     };
-    const now=ctx.currentTime;
-    [0,.36].forEach(offset=>{ ding(now+offset,740); ding(now+offset+.16,988); ding(now+offset+.32-0.02,1318); });
+    ring(ctx.currentTime);
+    ring(ctx.currentTime+.55);
+    if(navigator.vibrate) navigator.vibrate([180,80,180,80,180]);
   }catch(e){}
 }
-function vibrateAlert(){ try{ if(navigator.vibrate) navigator.vibrate([160,90,160,90,220]); }catch(e){} }
 function pushNotify(m){
   try{
     if('Notification' in window && Notification.permission==='granted' && document.hidden){
@@ -861,24 +845,9 @@ function pushNotify(m){
 }
 function toast(m){playNotifySound();pushNotify(m);const t=document.getElementById('toast');if(!t)return;t.textContent=m;t.classList.add('show');
   clearTimeout(window._tT);window._tT=setTimeout(()=>t.classList.remove('show'),2600)}
-/* تنبيه "مهمة جديدة" الكامل: صوت مميز + اهتزاز + جرس بيرن + شريط فوق الشاشة لحد ما المندوب يفتحه */
-function newTaskAlert(taskId,customerName){
-  playOrderAlertSound(); vibrateAlert(); pushNotify('🛵 مهمة جديدة وصلتك — افتح التطبيق وقبلها دلوقتي');
-  const bellBtn=document.querySelector('[onclick="openInbox()"]');
-  if(bellBtn){ bellBtn.classList.remove('bell-alert'); void bellBtn.offsetWidth; bellBtn.classList.add('bell-alert'); }
-  document.getElementById('orderAlertBar')?.remove();
-  const bar=document.createElement('div');
-  bar.id='orderAlertBar'; bar.className='orderAlertBar';
-  bar.innerHTML=`<span class="oa-ic">🛵</span><span><b style="display:block;font-size:13.5px">مهمة توصيل جديدة!</b>
-    <span style="font-size:11.5px;opacity:.92">للعميل ${customerName||''} — اضغط للمراجعة</span></span>
-    <span class="oa-x">✕</span>`;
-  bar.onclick=(e)=>{ if(e.target.classList.contains('oa-x')){ bar.remove(); return; } S.view='tasks'; render(); bar.remove(); };
-  document.body.appendChild(bar);
-  setTimeout(()=>bar.remove(),9000);
-}
 
 /* ═══ حالة التطبيق + حفظ دائم للبيانات الحساسة (وثائق التسجيل، الصور، أرقام الشحنات، المحادثات) ═══ */
-let S={view:'tasks',avail:true,tasks:[],history:[],shiftTotal:0,netEarnings:0,settling:false,password:'',driverName:'',vehicle:'🛵',phone:'',villageId:null,ratings:[],tips:[],driverId:'',verifyStatus:'',idCardPhoto:'',selfiePhoto:''};
+let S={view:'tasks',avail:true,tasks:[],history:[],shiftTotal:0,settling:false,password:'',driverName:'',vehicle:'🛵',phone:'',ratings:[],tips:[],driverId:'',verifyStatus:'',idCardPhoto:'',selfiePhoto:'',villageId:null,commissionOwed:0,deliveryEarnings:0};
 const STATE_KEY='basita_state_'+ROLE;
 function loadState(){ try{return JSON.parse(localStorage.getItem(STATE_KEY)||'null')}catch(e){return null} }
 function saveState(){ try{localStorage.setItem(STATE_KEY,JSON.stringify(S));}catch(e){ console.warn('basita: تعذّر الحفظ المحلي',e); } }
@@ -891,10 +860,12 @@ const INBOX_KEY='basita_inbox_'+ROLE;
 function loadInbox(){ try{return JSON.parse(localStorage.getItem(INBOX_KEY)||'[]')}catch(e){return []} }
 S.inbox=S.inbox||loadInbox();
 function saveInbox(){ try{localStorage.setItem(INBOX_KEY,JSON.stringify(S.inbox.slice(0,80)))}catch(e){} }
-function notify(text){
+function notify(text,urgent){
   S.inbox.unshift({id:Math.random().toString(36).slice(2),text,at:new Date().toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'}),read:false});
   if(S.inbox.length>80)S.inbox.length=80;
-  saveInbox(); renderBell(); toast(text);
+  saveInbox(); renderBell();
+  if(urgent){ playOrderAlert(); pushNotify(text); const t=document.getElementById('toast');if(t){t.textContent=text;t.classList.add('show');clearTimeout(window._tT);window._tT=setTimeout(()=>t.classList.remove('show'),3200);} }
+  else toast(text);
 }
 function renderBell(){
   const n=S.inbox.filter(x=>!x.read).length; const b=document.getElementById('bellBadge'); if(!b)return;
@@ -957,6 +928,29 @@ function openVillageImpact(){
 
 const STEPS=['assigned','picked','delivering','delivered'];
 const SHOP_GEO={lat:31.0958,lng:31.3789}; // إحداثيات تقريبية — المنيل، طلخا، الدقهلية
+function qtyLabel2(i){ return i.sellBy==='weight'?(i.q<1?Math.round(i.q*1000)+' جم':i.q+' كجم'):i.q+'×'; }
+function viewDriverInvoice(id){
+  const t=S.tasks.find(x=>x.id===id)||S.history.find(x=>x.id===id); if(!t)return;
+  const productsSub=t.total-t.deliveryFee;
+  const html=`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
+    <title>فاتورة ${id}</title>
+    <style>body{font-family:'Cairo',Arial,sans-serif;padding:30px;color:#151833}
+    h1{font-size:20px}table{width:100%;border-collapse:collapse;margin-top:16px}
+    td,th{padding:9px;border-bottom:1px solid #E5E7F0;text-align:right;font-size:14px}
+    .tot{font-weight:800;font-size:17px}.neg{color:#EF4A3E}</style></head><body>
+    <h1>بسيطة · فاتورة توصيلة</h1>
+    <div>طلب رقم <b>${id}</b> — العميل: ${t.name||''}</div>
+    <table>
+    ${(t.items||[]).map(i=>`<tr><td>${i.n}</td><td>${qtyLabel2(i)}</td><td>${i.p} ج</td><td>${Math.round(i.p*i.q)} ج</td></tr>`).join('')}
+    <tr><td colspan="3">إجمالي المنتجات</td><td>${M(productsSub)} ج</td></tr>
+    <tr><td colspan="3">رسوم التوصيل (ربحك)</td><td>${M(t.deliveryFee)} ج</td></tr>
+    <tr><td colspan="3" class="neg">عمولة منصة بسيطة</td><td class="neg">− ${t.commission.toFixed(2)} ج</td></tr>
+    <tr><td colspan="3" class="tot">إجمالي المطلوب تحصيله كاش</td><td class="tot">${M(t.total)} ج</td></tr></table>
+    <p style="margin-top:30px;color:#999;font-size:12px">بسيطة — شبكة توصيل موثّقة</p>
+    <script>window.print()<\/script></body></html>`;
+  const w=window.open('','_blank'); if(w){w.document.write(html);w.document.close();}
+  else toast('السماح بالنوافذ المنبثقة مقفول — فعّله عشان تطبع الفاتورة');
+}
 function distanceKm(a,b){
   if(!a||!b)return null;
   const R=6371,dLat=(b.lat-a.lat)*Math.PI/180,dLng=(b.lng-a.lng)*Math.PI/180;
@@ -1025,7 +1019,7 @@ onBus(d=>{
     const hasActive=S.tasks.some(x=>x.accepted);
     S.tasks.push({...d.order,stage:'assigned',accepted:false,batchHint:hasActive});
     S.avail=false;
-    notify(hasActive?'🔗 طلب تاني من نفس المحل — ممكن تضيفه لنفس رحلتك':'مهمة جديدة وصلت من التاجر!');
+    notify(hasActive?'🔗 طلب تاني من نفس المحل — ممكن تضيفه لنفس رحلتك':'مهمة جديدة وصلت من التاجر!',true);
   }
   render();
 });
@@ -1097,46 +1091,7 @@ function openRouteMap(taskId){
     {timeout:6000}
   );
 }
-function acceptTask(id){
-  const t=S.tasks.find(x=>x.id===id); t.accepted=true; render();
-  const net=Math.max(0,(t.fee||0)-PLATFORM_COMMISSION);
-  toast('اتقبلت المهمة — هيتخصم '+PLATFORM_COMMISSION+' ج عمولة المنصة من رسوم التوصيل (صافيك '+net+' ج)');
-}
-function taskInvoiceHtml(t){
-  const productsSub=Math.max(0,(t.total||0)-(t.fee||0));
-  const fee=t.fee||0, net=Math.max(0,fee-PLATFORM_COMMISSION);
-  return `<div class="invoicebox">
-    <div class="irow"><span>🛍️ قيمة المنتجات (بتتحصّل من العميل للمحل)</span><b class="num">${M(productsSub)} ج</b></div>
-    <div class="irow"><span>🛵 رسوم التوصيل (مستحقّة ليك)</span><b class="num">${M(fee)} ج</b></div>
-    <div class="irow ded"><span>➖ خصم عمولة المنصة (١.٥٠ ج تطبيق + ٠.٥٠ ج خدمة)</span><b class="num">${PLATFORM_COMMISSION} ج</b></div>
-    <div class="irow net"><span>✅ صافي أرباحك من الطلب ده</span><b class="num">${M(net)} ج</b></div>
-    <button class="btn2 btn-o2" style="width:100%;margin-top:8px;font-size:11.5px" onclick="viewTaskInvoice('${t.id}')">🧾 عرض الفاتورة الكاملة</button>
-  </div>`;
-}
-function viewTaskInvoice(id){
-  const t=S.tasks.find(x=>x.id===id); if(!t)return;
-  const productsSub=Math.max(0,(t.total||0)-(t.fee||0));
-  const net=Math.max(0,(t.fee||0)-PLATFORM_COMMISSION);
-  const html=`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
-    <title>فاتورة طلب ${t.id}</title>
-    <style>body{font-family:'Cairo',Arial,sans-serif;padding:30px;color:#1A1710}
-    h1{font-size:20px}table{width:100%;border-collapse:collapse;margin-top:16px}
-    td,th{padding:9px;border-bottom:1px solid #EAE3D8;text-align:right;font-size:14px}
-    .tot{font-weight:800;font-size:17px}.ded{color:#B91C1C}.net{color:#15803D;font-weight:800}</style></head><body>
-    <h1>بسيطة · فاتورة توصيل</h1>
-    <div>طلب رقم <b>${t.id}</b> — العميل: ${t.name}</div>
-    <table>
-    ${(t.items||[]).map(i=>`<tr><td>${i.n}</td><td>${i.q}×</td><td>${i.p} ج</td><td>${Math.round(i.p*i.q)} ج</td></tr>`).join('')}
-    <tr><td colspan="3">إجمالي قيمة المنتجات</td><td>${M(productsSub)} ج</td></tr>
-    <tr><td colspan="3">رسوم التوصيل (مستحقّة للمندوب)</td><td>${M(t.fee||0)} ج</td></tr>
-    <tr><td colspan="3" class="ded">خصم عمولة المنصة (١.٥٠ ج + ٠.٥٠ ج)</td><td class="ded">- ${PLATFORM_COMMISSION} ج</td></tr>
-    <tr><td colspan="3" class="net">صافي أرباح المندوب</td><td class="net">${M(net)} ج</td></tr>
-    <tr><td colspan="3" class="tot">إجمالي الطلب (للعميل)</td><td class="tot">${M(t.total||0)} ج</td></tr></table>
-    <p style="margin-top:30px;color:#999;font-size:12px">بسيطة — نظام إدارة الأعمال</p>
-    <script>window.print()<\/script></body></html>`;
-  const w=window.open('','_blank'); if(w){w.document.write(html);w.document.close();}
-  else toast('السماح بالنوافذ المنبثقة مقفول — فعّله عشان تطبع الفاتورة');
-}
+function acceptTask(id){const t=S.tasks.find(x=>x.id===id); t.accepted=true; render(); toast('اتقبلت المهمة');}
 
 /* ═══════ التصوير الإجباري قبل التسليم ═══════ */
 let photoStream=null, capturedPhoto=null, deliverOrderId=null;
@@ -1196,9 +1151,8 @@ async function confirmDeliveryPhoto(){
       driverName:S.driverName||'كريم عبد الله',driverId:S.driverId,merchantId:t.merchantId,customerId:t.customerId,total:t.total});
   }
   S.shiftTotal+=(t.total||0);
-  const netEarn=Math.max(0,(t.fee||0)-PLATFORM_COMMISSION);
-  S.netEarnings=(S.netEarnings||0)+netEarn;
-  if(sb) sb.from('orders').update({driver_net_earning:netEarn}).eq('id',id).then(()=>{});
+  S.commissionOwed=(S.commissionOwed||0)+(t.commission||1.5);
+  S.deliveryEarnings=(S.deliveryEarnings||0)+(t.deliveryFee||0);
   delete t.addr; delete t.ph; t.closedAt=new Date().toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'});
   S.history.unshift(t); S.tasks=S.tasks.filter(x=>x.id!==id); S.avail=true;
   emit({to:['owner'],type:'ticket:closed',orderId:id});
@@ -1326,10 +1280,7 @@ function openDriverSettings(){
       <h3 style="font-family:Cairo;font-size:16px;color:#151833">الإعدادات</h3>
       <button style="margin-inline-start:auto;width:32px;height:32px;border-radius:10px;background:var(--surf2);font-size:16px" onclick="closeDriverSettings()">✕</button></div>
     <div class="card mb" style="padding:14px"><div class="tiny muted">إجمالي كاش المناوبة الحالية</div>
-      <div class="kufi num" style="font-size:22px;color:var(--ac-d)">${M(S.shiftTotal)} ج</div>
-      <div class="tiny muted mt">ده كاش العميل اللي لازم تسلّمه للتاجر — مش دخلك</div></div>
-    <div class="card mb" style="padding:14px"><div class="tiny muted">صافي أرباحك من التوصيل (بعد خصم ${PLATFORM_COMMISSION} ج عمولة المنصة على كل طلب)</div>
-      <div class="kufi num" style="font-size:22px;color:#151833">${M(S.netEarnings||0)} ج</div></div>
+      <div class="kufi num" style="font-size:22px;color:var(--ac-d)">${M(S.shiftTotal)} ج</div></div>
     <button class="btn2 btn-p2" style="width:100%;margin-bottom:18px" onclick="requestSettle();closeDriverSettings()">💰 قفل المناوبة وسلّم الكاش للتاجر</button>
     <div class="sec-t" style="margin-top:0"><h3>تغيير كلمة المرور</h3></div>
     <div class="fld"><label>كلمة المرور الحالية</label><input id="dpOld" type="password" placeholder="••••••••"></div>
@@ -1340,30 +1291,11 @@ function openDriverSettings(){
     <div class="card" style="padding:14px;line-height:1.9;font-size:12.5px;color:#4A5064">
       إنت جزء من شبكة توصيل موحّدة بتغطي محلات كتير في منطقتك في نفس الوقت. بياناتك وصورك اتراجعت وبتتحفظ بأمان في أرشيف موثّق عشان تحمي حقك وحق العميل في أي وقت. كل مهمة بتوصلك فورًا، وكل مجهودك بيتحسب وبيترجملك لحوافز وإكراميات حقيقية. إحنا بنبني نظام توصيل احترافي لمصر — وإنت شريك أساسي فيه. 🛵🇪🇬
     </div>
-    <button class="btn2" style="width:100%;margin-top:16px;color:var(--danger);border-color:rgba(220,38,38,.3)" onclick="confirmDriverLogout()">
-      🚪 تسجيل الخروج</button>
+    <button class="btn2" style="width:100%;margin-top:14px;background:#FDE8E6;color:#C23327" onclick="logout()">🚪 تسجيل خروج</button>
   </div>`;
   document.getElementById('app').appendChild(el);
 }
 function closeDriverSettings(){ document.getElementById('dSheetWrap')?.remove(); }
-function confirmDriverLogout(){
-  if(!confirm('متأكد إنك عايز تسجّل خروج؟ هتحتاج تسجّل دخول تاني برقم موبايلك وكلمة المرور المرة الجاية.'))return;
-  closeDriverSettings(); logoutDriver();
-}
-function logoutDriver(){
-  stopLocBroadcast();
-  if(sb&&S.driverId) sb.from('drivers').update({is_available:false}).eq('id',S.driverId).then(()=>{});
-  try{ localStorage.removeItem(STATE_KEY); }catch(e){}
-  S.driverId=''; S.driverName=''; S.phone=''; S.password=''; S.vehicle=''; S.tasks=[]; S.history=[];
-  S.verifyStatus=''; S.avail=false;
-  document.getElementById('mainApp').classList.remove('show');
-  document.getElementById('shiftStart').classList.remove('show');
-  document.getElementById('pendingReview').classList.remove('show');
-  document.querySelectorAll('#loginFlow .astage').forEach(s=>s.classList.remove('on'));
-  document.getElementById('dst-welcome').classList.add('on');
-  document.getElementById('loginFlow').classList.add('show');
-  toast('اتسجّل خروجك بنجاح 👋');
-}
 function saveDriverPassword(){
   const o=document.getElementById('dpOld').value,n=document.getElementById('dpNew').value,c=document.getElementById('dpConf').value;
   if(o!==S.password){toast('كلمة المرور الحالية غلط');return}
@@ -1423,6 +1355,18 @@ function vTasks(){
           <span class="bdg b-prog">مهمة نشطة</span></div>
         <div class="tb">
           <div class="taddr"><span class="k">📍</span><span>${t.addr}</span></div>
+          ${t.notes?`<div class="tiny" style="background:#FFF3DE;color:#8A5E10;border-radius:9px;padding:7px 9px;margin:4px 0">📝 ${t.notes}</div>`:""}
+          <div class="card" style="padding:11px;margin:8px 0;background:var(--surf2);border:0">
+            <div class="row" style="border:0;padding:2px 0"><span class="muted tiny">قيمة المنتجات</span>
+              <b class="end num tiny">${M(t.total-t.deliveryFee)} ج</b></div>
+            <div class="row" style="border:0;padding:2px 0"><span class="muted tiny">رسوم التوصيل (ربحك)</span>
+              <b class="end num tiny" style="color:var(--ac-d)">${M(t.deliveryFee)} ج</b></div>
+            <div class="row" style="border:0;padding:2px 0"><span class="muted tiny">عمولة منصة بسيطة</span>
+              <b class="end num tiny" style="color:var(--danger)">− ${t.commission.toFixed(2)} ج</b></div>
+            <div class="row" style="border-top:1px solid var(--line);margin-top:4px;padding-top:6px">
+              <b class="tiny">إجمالي تحصّله من العميل كاش</b><b class="end num" style="color:var(--ac-d)">${M(t.total)} ج</b></div>
+            <button class="btn2 btn-o2" style="width:100%;margin-top:9px" onclick="viewDriverInvoice('${t.id}')">🧾 عرض الفاتورة</button>
+          </div>
           ${t.geo?`<button onclick="openRouteMap('${t.id}')"
               style="display:flex;align-items:center;gap:8px;width:100%;text-align:right;border:0;cursor:pointer;background:var(--ac-l);color:var(--ac-d);
               padding:9px 12px;border-radius:11px;font-size:12.5px;font-weight:700;margin:6px 0;font-family:inherit">
@@ -1435,7 +1379,6 @@ function vTasks(){
             ${t.chatLog.slice(0,3).map(m=>`<div style="padding:3px 0"><b style="color:${m.from==='driver'?'var(--ac-d)':'var(--txt2)'}">${m.name}:</b> ${m.msg}</div>`).join('')}
           </div>`:''}
           <div class="tsteps">${STEPS.map((s,i)=>`<div class="tstep ${i<=idx?'on':''}"></div>`).join('')}</div>
-          ${taskInvoiceHtml(t)}
           ${t.stage==='assigned'?
             `<div style="text-align:center;padding:14px;background:var(--ac-l);border-radius:12px">
                <div class="tiny muted">قول الكود ده للتاجر عشان يأكّد استلامك</div>
@@ -1452,7 +1395,6 @@ function vTasks(){
         <span class="t">مهمة جديدة من ماركت أبو حمزة</span></span>
         <span class="bdg b-new">جديدة</span></div>
       <div class="tb"><div class="taddr"><span class="k">📍</span><span>${t.addr}</span></div>
-        ${taskInvoiceHtml(t)}
         <button class="btn2 btn-ok2 mt" onclick="acceptTask('${t.id}')">قبول المهمة</button></div></div>`).join('')}
     <div style="height:12px"></div></div>`;
 }
@@ -1472,8 +1414,18 @@ function vWallet(){
   const paid=S.tips.filter(t=>t.status==='paid');
   const pendingTotal=pending.reduce((s,t)=>s+t.amount,0);
   const paidTotal=paid.reduce((s,t)=>s+t.amount,0);
+  const net=(S.deliveryEarnings||0)-(S.commissionOwed||0);
   return `<div class="pad" style="padding-top:14px">
-    <div class="card" style="padding:20px;text-align:center;background:linear-gradient(135deg,var(--ac-l),#fff)">
+    <div class="card" style="padding:18px">
+      <div class="tiny muted mb">أرباح التوصيل (المناوبة الحالية)</div>
+      <div class="row" style="border:0;padding:4px 0"><span class="muted">إجمالي رسوم التوصيل اللي جمعتها</span>
+        <b class="end num">${(S.deliveryEarnings||0).toFixed(2)} ج</b></div>
+      <div class="row" style="border:0;padding:4px 0"><span class="muted">عمولة منصة بسيطة</span>
+        <b class="end num" style="color:var(--danger)">− ${(S.commissionOwed||0).toFixed(2)} ج</b></div>
+      <div class="row" style="border-top:1px solid var(--line);margin-top:5px;padding-top:9px">
+        <b>صافي ربحك من التوصيل</b><b class="end num kufi" style="font-size:17px;color:var(--ac-d)">${net.toFixed(2)} ج</b></div>
+    </div>
+    <div class="card mt" style="padding:20px;text-align:center;background:linear-gradient(135deg,var(--ac-l),#fff)">
       <div class="tiny muted">إكراميات معلّقة</div>
       <div class="kufi num" style="font-size:32px;color:var(--ac-d);margin:5px 0">${pendingTotal} ج</div>
       <div class="tiny muted">هتوصلك من صاحب المنصة قريب</div>
@@ -1518,7 +1470,8 @@ function setAvail(v){
 }
 function mapTaskRow(o,items){
   return {id:o.id,merchantId:o.merchant_id,name:o.customer_name,ph:o.customer_phone,addr:o.address,
-    geo:(o.delivery_lat!=null)?{lat:o.delivery_lat,lng:o.delivery_lng}:null,total:+o.total,fee:+o.delivery_fee||0,stage:o.stage,
+    geo:(o.delivery_lat!=null)?{lat:o.delivery_lat,lng:o.delivery_lng}:null,total:+o.total,stage:o.stage,
+    deliveryFee:+o.delivery_fee||0,commission:+o.platform_commission||1.5,notes:o.notes||'',
     accepted:false,items:(items||[]).map(i=>({n:i.name,q:+i.qty,p:+i.unit_price,u:i.unit,sellBy:i.sell_by}))};
 }
 function subscribeMyTasks(){
@@ -1531,9 +1484,8 @@ function subscribeMyTasks(){
         const hasActive=S.tasks.some(x=>x.accepted);
         S.tasks.push({...mapTaskRow(payload.new,items),batchHint:hasActive});
         subscribeTaskChat(payload.new.id);
-        S.avail=false; render();
-        notify(hasActive?'🔗 طلب تاني من نفس المحل — ممكن تضيفه لنفس رحلتك':'مهمة جديدة وصلت من التاجر! 🛵');
-        newTaskAlert(payload.new.id,payload.new.customer_name);
+        S.avail=false;
+        notify(hasActive?'🔗 طلب تاني من نفس المحل — ممكن تضيفه لنفس رحلتك':'مهمة جديدة وصلت من التاجر!',true);
       }
     })
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'tips',filter:'driver_id=eq.'+S.driverId},payload=>{
