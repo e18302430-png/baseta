@@ -414,7 +414,9 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
       <div class="fld"><label>قرية متجرك</label><select id="mVillageInput" onchange="handleMVillageChange()">
         <option value="">جاري تحميل القرى…</option></select></div>
       <div class="fld" id="mNewVillageWrap" style="display:none">
-        <label>اسم القرية</label><input id="mNewVillageName" placeholder="مثلاً: الروضة"></div>
+        <label>اسم القرية</label><input id="mNewVillageName" placeholder="مثلاً: الروضة">
+        <label class="mt" style="display:block">قد إيه المسافة من مركز طلخا؟ (بالكيلومتر تقريبًا)</label>
+        <input id="mNewVillageDist" type="number" step="0.5" placeholder="مثلاً 6"></div>
       <div class="fld"><label>كلمة المرور</label><input id="mNewPass" type="password" placeholder="••••••••"></div>
       <div class="fld"><label>تأكيد كلمة المرور</label><input id="mNewPassConf" type="password" placeholder="••••••••"></div>
       <div class="spacer"></div>
@@ -549,7 +551,7 @@ async function loadVillages(){
     return;
   }
   try{
-    const {data,error}=await sb.from('villages').select('*').order('is_center',{ascending:false}).order('name');
+    const {data,error}=await sb.from('villages').select('*').not('active','is',false).order('is_markaz',{ascending:false}).order('name');
     if(error){
       console.error('basita: فشل تحميل القرى من قاعدة البيانات —',error);
       if(sel){ sel.innerHTML=`<option value="">❌ حصلت مشكلة — دوس هنا للمحاولة تاني</option>`; sel.onclick=()=>{sel.onclick=null;loadVillages();}; }
@@ -558,7 +560,7 @@ async function loadVillages(){
     VILLAGES=data||[];
     if(!sel)return;
     sel.innerHTML=`<option value="">اختار قرية متجرك</option>
-      ${VILLAGES.map(v=>`<option value="${v.id}">${v.is_center?'🏛️ ':'🏘️ '}${v.name}</option>`).join('')}
+      ${VILLAGES.map(v=>`<option value="${v.id}">${v.is_markaz?'🏛️ ':'🏘️ '}${v.name}</option>`).join('')}
       <option value="__new__">➕ قريتي مش موجودة، أضيفها</option>`;
   }catch(err){
     console.error('basita: خطأ غير متوقع في تحميل القرى —',err);
@@ -568,13 +570,15 @@ async function loadVillages(){
 function handleMVillageChange(){
   document.getElementById('mNewVillageWrap').style.display=document.getElementById('mVillageInput').value==='__new__'?'block':'none';
 }
-async function resolveVillageId(nameFieldId,geo){
+async function resolveVillageId(nameFieldId){
   const v=document.getElementById('mVillageInput').value;
   if(v&&v!=='__new__')return v;
   if(v==='__new__'){
     const name=document.getElementById(nameFieldId).value.trim();
+    const dist=+document.getElementById('mNewVillageDist').value;
     if(!name){toast('اكتب اسم القرية');return null}
-    const {data,error}=await sb.from('villages').insert({name,center_lat:geo?geo.lat:null,center_lng:geo?geo.lng:null}).select().single();
+    if(!dist||dist<=0){toast('اكتب تقدير المسافة من مركز طلخا');return null}
+    const {data,error}=await sb.from('villages').insert({name,distance_km:dist,is_markaz:false,active:true}).select().single();
     if(error){
       if(error.code==='23505'){ const {data:existing}=await sb.from('villages').select('id').eq('name',name).maybeSingle(); return existing?existing.id:null; }
       console.error('basita:',error); toast('حصلت مشكلة في إضافة القرية'); return null;
@@ -661,14 +665,7 @@ function finishMerchantSignup(){
   document.getElementById('loginFlow').classList.remove('show');
   (async()=>{
     if(sb){
-      let geo=null;
-      if(document.getElementById('mVillageInput').value==='__new__'){
-        geo=await new Promise(res=>{
-          if(!navigator.geolocation){res(null);return}
-          navigator.geolocation.getCurrentPosition(p=>res({lat:+p.coords.latitude.toFixed(5),lng:+p.coords.longitude.toFixed(5)}),()=>res(null),{timeout:8000});
-        });
-      }
-      const villageId=await resolveVillageId('mNewVillageName',geo);
+      const villageId=await resolveVillageId('mNewVillageName');
       if(!villageId){ document.getElementById('loginFlow').classList.add('show'); return; }
       const pass_hash=await hashPassword(pass);
       const {data,error}=await sb.from('merchants').insert({
