@@ -308,7 +308,9 @@ async function loadVillages(){
   if(!sb) return VILLAGES;
   const {data,error}=await sb.from('villages').select('*').eq('active',true).order('distance_km',{ascending:true});
   if(!error&&data&&data.length) VILLAGES=data;
-  else if(error) console.error('basita: تعذّر تحميل قائمة القرى',error);
+  else if(error) console.error('basita: تعذّر تحميل قائمة القرى — السبب:',
+    error.message||error.details||error.hint||JSON.stringify(error),
+    '(احتمال: جدول villages مش موجود في Supabase، أو صلاحيات RLS مقفولة على anon)');
   return VILLAGES;
 }
 function villageById(id){ return VILLAGES.find(v=>v.id===id)||VILLAGES.find(v=>v.is_markaz)||VILLAGES[0]||null; }
@@ -664,10 +666,19 @@ function openOwnerSettings(){
     <button class="btn2 btn-p2" style="width:100%" onclick="saveOwnerPin()">حفظ</button>
     <button onclick="openVillageImpact()" style="width:100%;text-align:center;margin-top:14px">
       <p class="tiny muted">🌾 قصة بسيطة والقرية المصرية</p></button>
+    <button class="btn2" style="width:100%;margin-top:16px;color:var(--danger);border-color:rgba(220,38,38,.3)" onclick="lockOwnerApp()">
+      🔒 قفل التطبيق (تسجيل خروج)</button>
   </div>`;
   document.getElementById('app').appendChild(el);
 }
 function closeOwnerSettings(){ document.getElementById('oSheetWrap')?.remove(); }
+function lockOwnerApp(){
+  closeOwnerSettings();
+  document.getElementById('mainApp').classList.remove('show');
+  const pinEl=document.getElementById('pinInput'); if(pinEl) pinEl.value='';
+  document.getElementById('loginFlow').classList.add('show');
+  toast('اتقفل التطبيق — محتاج الرمز عشان تفتحه تاني 🔒');
+}
 function saveOwnerPin(){
   const o=document.getElementById('opOld').value,n=document.getElementById('opNew').value,c=document.getElementById('opConf').value;
   if(o!==S.pin){toast('الرمز الحالي غلط');return}
