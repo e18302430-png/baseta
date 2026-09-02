@@ -191,7 +191,8 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
   box-shadow:0 16px 36px -10px rgba(0,182,122,.5);transform:translateY(160%);
   transition:transform .4s cubic-bezier(.2,.8,.2,1)}
 .cartbar.show{transform:none}
-.cartbar .c{background:rgba(255,255,255,.22);width:26px;height:26px;border-radius:9px;display:grid;place-items:center;font-weight:800;font-size:12px}
+.cartbar .c{background:rgba(255,255,255,.22);width:26px;height:26px;border-radius:9px;display:grid;place-items:center;font-weight:800;font-size:12px;transition:transform .25s cubic-bezier(.34,1.56,.64,1)}
+.cartbar .c.bump{transform:scale(1.35)}
 .cartbar .t{font-family:'Cairo';margin-inline-start:auto;font-size:14.5px}
 
 .nav{position:absolute;inset-inline:0;bottom:0;height:calc(var(--nav) + env(safe-area-inset-bottom));
@@ -296,6 +297,16 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
 
 .bellBadge{display:none;position:absolute;top:-3px;left:-3px;min-width:16px;height:16px;border-radius:8px;background:var(--danger);
   color:#fff;font-size:9.5px;font-weight:800;align-items:center;justify-content:center;padding:0 3px;font-family:'Cairo'}
+@keyframes bellRing{0%,100%{transform:rotate(0)}10%,30%{transform:rotate(-18deg)}20%,40%{transform:rotate(18deg)}50%{transform:rotate(-10deg)}60%{transform:rotate(10deg)}70%{transform:rotate(0)}}
+@keyframes ringPulse{0%{box-shadow:0 0 0 0 rgba(239,68,68,.55)}100%{box-shadow:0 0 0 14px rgba(239,68,68,0)}}
+.bell-alert{animation:bellRing 1.6s ease-in-out 2,ringPulse 1.6s ease-out 2}
+.feebox{background:linear-gradient(150deg,var(--ac-l),#fff);border:1px solid var(--line);border-radius:14px;padding:13px 14px;margin:10px 0}
+.feebox .frow{display:flex;align-items:center;font-size:12.5px;padding:4px 0;color:var(--txt2)}
+.feebox .frow .fic{font-size:15px;margin-inline-end:7px}
+.feebox .frow b{margin-inline-start:auto;color:var(--txt);font-family:'Cairo'}
+.feebox .fnote{font-size:10.5px;color:var(--txt3);margin-top:2px;padding-inline-start:22px}
+.feebox .ftot{border-top:1px dashed var(--line);margin-top:7px;padding-top:8px;display:flex;align-items:center}
+.feebox .ftot b{margin-inline-start:auto;font-size:18px;color:var(--ac-d);font-family:'Cairo'}
 .inboxOverlay{position:fixed;inset:0;background:rgba(10,12,30,.45);z-index:300}
 .inboxPanel{position:fixed;inset-inline:0;bottom:0;max-width:412px;margin:0 auto;background:var(--surf);border-radius:22px 22px 0 0;
   z-index:301;max-height:78vh;display:flex;flex-direction:column;box-shadow:0 -20px 50px -20px rgba(0,0,0,.35);animation:inboxUp .3s cubic-bezier(.2,.8,.2,1)}
@@ -515,7 +526,9 @@ async function loadVillages(){
   if(!sb) return VILLAGES;
   const {data,error}=await sb.from('villages').select('*').eq('active',true).order('distance_km',{ascending:true});
   if(!error&&data&&data.length) VILLAGES=data;
-  else if(error) console.error('basita: تعذّر تحميل قائمة القرى',error);
+  else if(error) console.error('basita: تعذّر تحميل قائمة القرى — السبب:',
+    error.message||error.details||error.hint||JSON.stringify(error),
+    '(احتمال: جدول villages مش موجود في Supabase، أو صلاحيات RLS مقفولة على anon)');
   return VILLAGES;
 }
 function villageById(id){ return VILLAGES.find(v=>v.id===id)||VILLAGES.find(v=>v.is_markaz)||VILLAGES[0]||null; }
@@ -534,6 +547,20 @@ function calcDeliveryFee(originId,destId){
   if(km<=0) return (o&&o.is_markaz)?10:5;
   const base=((o&&o.is_markaz)||(d&&d.is_markaz))?7:5;
   return Math.max(8,Math.round(base+km*2.5));
+}
+/* كارت تفصيلي وواضح لرسوم التوصيل — بيوضّح للعميل سبب الرسوم (المسافة) بدل رقم مجرّد */
+function feeBreakdownHtml(sub,originId,destId){
+  const km=villageDistanceKm(originId,destId);
+  const fee=calcDeliveryFee(originId,destId);
+  const o=villageById(originId), d=villageById(destId);
+  const sameVillage=(!originId||!destId||originId===destId);
+  const distLabel=sameVillage?'داخل نفس القرية':(km>0?'≈ '+km+' كم':'قريب من المحل');
+  return `<div class="feebox">
+    <div class="frow"><span class="fic">🛍️</span><span>سعر المنتجات</span><b class="num">${M(sub)} ج</b></div>
+    <div class="frow"><span class="fic">🛵</span><span>رسوم التوصيل</span><b class="num">${M(fee)} ج</b></div>
+    <div class="fnote">📍 ${distLabel} — الرسوم بتتحسب حسب المسافة بين المحل وعنوانك</div>
+    <div class="ftot"><span class="tiny muted">الإجمالي</span><b class="kufi num">${M(sub+fee)} ج</b></div>
+  </div>`;
 }
 function villageOptionsHtml(selectedId){
   return VILLAGES.map(v=>`<option value="${v.id}" ${v.id===selectedId?'selected':''}>${v.is_markaz?'🏛️':'🌾'} ${v.name}</option>`).join('');
@@ -569,7 +596,14 @@ function onBus(fn){
 }
 
 setTimeout(()=>document.getElementById('boot').classList.add('gone'),1300);
-setTimeout(()=>document.getElementById('authFlow').classList.add('show'),1350);
+setTimeout(()=>{
+  if(S.co&&S.co.id){
+    // العميل مسجّل قبل كده ومعاه جلسة محفوظة — يدخل على طول من غير ما نطلب منه يسجّل تاني
+    mountApp();
+  } else {
+    document.getElementById('authFlow').classList.add('show');
+  }
+},1350);
 loadShops();
 subscribeShopsLive();
 
@@ -653,7 +687,10 @@ function subscribeMyOrders(){
         if(payload.new.delivery_photo_url) o.deliveryPhoto=payload.new.delivery_photo_url;
       }
       render();
-      if(S.view==='track'&&S.oid===payload.new.id) notify('تحديث جديد على طلبك');
+      const label=SLABEL[payload.new.stage]||'تحديث جديد على طلبك';
+      const emoji=payload.new.stage==='delivered'?'🎉':payload.new.stage==='delivering'?'🛵':'📦';
+      notify(emoji+' طلبك '+(o&&o.id?'رقم '+o.id+' ':'')+'— '+label);
+      orderUpdateAlert(label);
     })
     .subscribe();
 }
@@ -726,6 +763,24 @@ function playNotifySound(){
     o.start();o.stop(ctx.currentTime+.3);
   }catch(e){}
 }
+/* نغمة تنبيه مميزة لتحديثات الطلب المهمة (اتقبل / وصل المندوب / اتسلّم) — أوضح من نغمة التوست العادية */
+function playOrderAlertSound(){
+  try{
+    const ctx=new (window.AudioContext||window.webkitAudioContext)();
+    const ding=(t0,freq)=>{
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.connect(g);g.connect(ctx.destination);
+      o.type='triangle';o.frequency.value=freq;
+      g.gain.setValueAtTime(.0001,t0);
+      g.gain.exponentialRampToValueAtTime(.2,t0+.015);
+      g.gain.exponentialRampToValueAtTime(.0001,t0+.3);
+      o.start(t0);o.stop(t0+.32);
+    };
+    const now=ctx.currentTime;
+    ding(now,740); ding(now+.16,988); ding(now+.32,1318);
+  }catch(e){}
+}
+function vibrateAlert(){ try{ if(navigator.vibrate) navigator.vibrate([140,80,140]); }catch(e){} }
 function pushNotify(m){
   try{
     if('Notification' in window && Notification.permission==='granted' && document.hidden){
@@ -735,6 +790,12 @@ function pushNotify(m){
 }
 let tT;function toast(m){playNotifySound();pushNotify(m);const t=$('#toast');t.textContent=m;t.classList.add('show');
   clearTimeout(tT);tT=setTimeout(()=>t.classList.remove('show'),2400)}
+/* تنبيه تحديث الطلب: صوت أوضح + اهتزاز + جرس بيرن، بيشتغل بره شاشة التتبّع كمان مش بس لما العميل يكون فاتحها */
+function orderUpdateAlert(text){
+  playOrderAlertSound(); vibrateAlert(); pushNotify(text);
+  const bellBtn=document.querySelector('[onclick="openInbox()"]');
+  if(bellBtn){ bellBtn.classList.remove('bell-alert'); void bellBtn.offsetWidth; bellBtn.classList.add('bell-alert'); }
+}
 
 /* ═══ نظام الإشعارات (بيل/إن‌بوكس) ═══ */
 const INBOX_KEY='basita_inbox_'+ROLE;
@@ -884,8 +945,11 @@ function setWeightQty(id,kg){
     S.cart={};
   }
   S.cartShop=S.activeShop;
+  const isNew=!S.cart[id];
   S.cart[id]=kg;
   closeSheet(); render();
+  if(isNew){ const pr=P(id); if(pr) toast('✅ اتضاف '+pr.n+' للسلة'); }
+  bumpCartBadge();
 }
 function addCart(id){
   if(S.cartShop&&S.cartShop!==S.activeShop&&Object.keys(S.cart).length){
@@ -893,9 +957,24 @@ function addCart(id){
     S.cart={};
   }
   S.cartShop=S.activeShop;
-  S.cart[id]=(S.cart[id]||0)+1;render();
+  S.cart[id]=(S.cart[id]||0)+1;
+  const pr=P(id);
+  if(pr) toast('✅ اتضاف '+pr.n+' للسلة');
+  render();
+  bumpCartBadge();
+}
+function bumpCartBadge(){
+  const el=document.querySelector('#cartbar .c');
+  if(!el)return;
+  el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump');
+  setTimeout(()=>el.classList.remove('bump'),260);
 }
 function qty(id,d){const n=(S.cart[id]||0)+d;if(n<=0)delete S.cart[id];else S.cart[id]=n;render()}
+function clearCart(){
+  if(!Object.keys(S.cart).length)return;
+  if(!confirm('متأكد إنك عايز تفضّي السلة؟'))return;
+  S.cart={}; S.cartShop=null; render(); toast('🗑️ اتفضّت السلة');
+}
 let scanStream=null, scanRAF=null;
 function startScan(){
   document.getElementById('manualCode').value='';
@@ -1138,17 +1217,20 @@ function vCart(){
     <p class="tiny">ضيف أصناف من المتجر</p>
     <button class="btn btn-p" style="max-width:180px;margin:auto" onclick="go('home')">تصفح المتجر</button></div>`;
   const sub=cSub(),fee=calcDeliveryFee(S.co.villageId,(SHOPS[S.cartShop]||{}).villageId),tot=sub+fee;
+  const shopName=(SHOPS[S.cartShop]||{}).name||'';
   return `<div class="pad" style="padding-top:14px">
+    <div class="row" style="margin-bottom:10px">
+      ${shopName?`<span class="muted tiny">سلتك من <b style="color:var(--txt)">${shopName}</b></span>`:'<span></span>'}
+      <button class="tiny" style="color:var(--danger);font-weight:700" onclick="clearCart()">إفراغ السلة 🗑️</button>
+    </div>
     <div class="card">${it.map(({p,q})=>`<div class="prod"><span class="ph">${p.i}</span>
-      <span style="flex:1"><span class="n">${p.n}</span><span class="u">${p.sellBy==='weight'?weightLabel(q):p.u}</span></span>
+      <span style="flex:1"><span class="n">${p.n}</span><span class="u">${p.sellBy==='weight'?weightLabel(q):p.u} · ${M(p.p)} ج${p.sellBy==='weight'?'/كجم':''}</span></span>
+      <span style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+      <b class="num" style="font-size:13px">${M(p.p*q)} ج</b>
       ${p.sellBy==='weight'?`<button class="add" style="width:auto;padding:0 12px;font-size:12px;font-family:'Cairo'" onclick="openWeightPicker(${p.id})">تغيير</button>`:
       `<span class="stp"><button onclick="qty(${p.id},1)">+</button><span class="q num">${q}</span>
-      <button onclick="qty(${p.id},-1)">−</button></span>`}</div>`).join('')}</div>
-    <div class="card mt" style="padding:13px">
-      <div class="row"><span class="muted">المجموع</span><b class="num">${M(sub)} ج</b></div>
-      <div class="row"><span class="muted">التوصيل</span><b class="num">${fee} ج</b></div>
-      <div class="row" style="border-top:1px solid var(--line);margin-top:5px;padding-top:9px">
-        <b>الإجمالي</b><b class="num kufi" style="font-size:17px;color:var(--ac-d)">${M(tot)} ج</b></div></div>
+      <button onclick="qty(${p.id},-1)">−</button></span>`}</span></div>`).join('')}</div>
+    ${feeBreakdownHtml(sub,S.co.villageId,(SHOPS[S.cartShop]||{}).villageId)}
     <button class="btn btn-p mt" onclick="go('checkout')">إتمام الطلب</button>
     <div style="height:14px"></div></div>`;
 }
@@ -1172,8 +1254,7 @@ function vCheckout(){
     <div class="fld"><label>أقرب معلم</label><select onchange="S.co.lm=this.value">
       ${LM.map(l=>`<option ${c.lm===l?'selected':''}>${l}</option>`).join('')}</select></div>
     <div class="fld"><label>رقم البيت</label><input value="${c.house}" placeholder="بيت ١٢" oninput="S.co.house=this.value"></div>
-    <div class="card" style="padding:13px"><div class="row"><b>الإجمالي</b>
-      <b class="num kufi" style="font-size:17px;color:var(--ac-d)">${M(tot)} ج</b></div></div>
+    ${feeBreakdownHtml(cSub(),S.co.villageId,(SHOPS[S.cartShop]||{}).villageId)}
     <button class="btn btn-p mt" onclick="${hasGeo?'placeOrder()':'requestLocation(true)'}">
       ${hasGeo?'أرسل الطلب':'فعّل الموقع وابعت الطلب'}</button>
     <div style="height:14px"></div></div>`;
@@ -1308,6 +1389,22 @@ function vOrders(){
       ${o.recurring?' · 🔁 متكرر أسبوعيًا':''}</div></button>`}).join('')}
     <div style="height:14px"></div></div>`;
 }
+function confirmLogout(){
+  if(!confirm('متأكد إنك عايز تسجّل خروج؟ هتحتاج تسجّل دخول تاني برقم موبايلك المرة الجاية.'))return;
+  logoutCustomer();
+}
+function logoutCustomer(){
+  try{ localStorage.removeItem(STATE_KEY); }catch(e){}
+  S.co={name:'',ph:'',lm:LM[0],house:'12',geo:null,villageId:null};
+  S.orders=[]; S.cart={}; S.cartShop=null; S.oid=null; S.view='home';
+  document.getElementById('mainApp').classList.remove('show');
+  authMode='signup';
+  document.querySelectorAll('.astage').forEach(s=>s.classList.remove('on'));
+  document.getElementById('st-welcome')?.classList.add('on');
+  document.getElementById('phInput')&&(document.getElementById('phInput').value='');
+  document.getElementById('authFlow').classList.add('show');
+  toast('اتسجّل خروجك بنجاح 👋');
+}
 function vAccount(){
   return `<div class="pad" style="padding-top:14px">
     <div class="card" style="padding:17px;text-align:center">
@@ -1325,6 +1422,8 @@ function vAccount(){
       <button class="row" style="width:100%;text-align:right" onclick="openAboutBasita()">
         <span class="av">🌾</span><span class="n">قصة بسيطة</span><span class="end muted">‹</span></button>
     </div>
+    <button class="btn2" style="width:100%;margin-top:16px;color:var(--danger);border-color:rgba(220,38,38,.3)" onclick="confirmLogout()">
+      🚪 تسجيل الخروج</button>
     <button onclick="openAboutBasita()" style="width:100%;text-align:center;margin-top:20px">
       <p class="tiny muted">بسيطة · بنرقمن مصر قرية ورا قرية 🇪🇬</p></button>
     <div style="height:12px"></div></div>`;
