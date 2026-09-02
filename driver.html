@@ -512,11 +512,39 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
 
 <script>
 const ROLE='driver';
-/* ═══════════ الاتصال بقاعدة البيانات الحقيقية (Supabase) ═══════════ */
+/* ═══════════ الاتصال بقاعدة البيانات الحقيقية (Supabase) — بمصادر تحميل متعددة تحسبًا لبطء الشبكة ═══════════ */
 const SUPABASE_URL='https://vymfhyleoekbhxuojudl.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5bWZoeWxlb2VrYmh4dW9qdWRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgyNTUxMjgsImV4cCI6MjEwMzgzMTEyOH0.euxtZVpwZGa023UyFzbY2zgdj0fXjWETLqkZY_5fTCQ';
-const sb=(window.supabase&&window.supabase.createClient)?window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY):null;
-if(!sb) console.error('basita: تعذّر تحميل مكتبة Supabase — هيرجع النظام للمزامنة المحلية بس');
+let sb=null;
+function loadScriptOnce(src,timeoutMs){
+  return new Promise(resolve=>{
+    let done=false;
+    const tag=document.createElement('script');
+    tag.src=src;
+    tag.onload=()=>{ if(!done){done=true;resolve(true);} };
+    tag.onerror=()=>{ if(!done){done=true;resolve(false);} };
+    setTimeout(()=>{ if(!done){done=true;resolve(false);} },timeoutMs||7000);
+    document.head.appendChild(tag);
+  });
+}
+async function ensureSupabaseReady(){
+  if(sb)return true;
+  if(window.supabase&&window.supabase.createClient){
+    sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY); return true;
+  }
+  const sources=[
+    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js',
+    'https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js'
+  ];
+  for(const src of sources){
+    const ok=await loadScriptOnce(src);
+    if(ok&&window.supabase&&window.supabase.createClient){
+      sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY); return true;
+    }
+  }
+  console.error('basita: تعذّر تحميل مكتبة Supabase من كل المصادر المتاحة — هيرجع النظام للمزامنة المحلية بس');
+  return false;
+}
 async function hashPassword(pw){
   const enc=new TextEncoder().encode(pw);
   const buf=await crypto.subtle.digest('SHA-256',enc);
@@ -524,13 +552,28 @@ async function hashPassword(pw){
 }
 let VILLAGES=[];
 async function loadVillages(){
-  if(!sb)return;
-  const {data}=await sb.from('villages').select('*').order('is_center',{ascending:false}).order('name');
-  VILLAGES=data||[];
-  const sel=document.getElementById('dVillageInput'); if(!sel)return;
-  sel.innerHTML=`<option value="">اختار قريتك</option>
-    ${VILLAGES.map(v=>`<option value="${v.id}">${v.is_center?'🏛️ ':'🏘️ '}${v.name}</option>`).join('')}
-    <option value="__new__">➕ قريتي مش موجودة، أضيفها</option>`;
+  const sel=document.getElementById('dVillageInput');
+  if(!sb){
+    console.error('basita: مفيش اتصال بقاعدة البيانات (sb=null) — القرى مش هتتحمّل');
+    if(sel) sel.innerHTML=`<option value="">❌ مفيش اتصال بقاعدة البيانات</option>`;
+    return;
+  }
+  try{
+    const {data,error}=await sb.from('villages').select('*').order('is_center',{ascending:false}).order('name');
+    if(error){
+      console.error('basita: فشل تحميل القرى من قاعدة البيانات —',error);
+      if(sel){ sel.innerHTML=`<option value="">❌ حصلت مشكلة — دوس هنا للمحاولة تاني</option>`; sel.onclick=()=>{sel.onclick=null;loadVillages();}; }
+      return;
+    }
+    VILLAGES=data||[];
+    if(!sel)return;
+    sel.innerHTML=`<option value="">اختار قريتك</option>
+      ${VILLAGES.map(v=>`<option value="${v.id}">${v.is_center?'🏛️ ':'🏘️ '}${v.name}</option>`).join('')}
+      <option value="__new__">➕ قريتي مش موجودة، أضيفها</option>`;
+  }catch(err){
+    console.error('basita: خطأ غير متوقع في تحميل القرى —',err);
+    if(sel){ sel.innerHTML=`<option value="">❌ حصلت مشكلة — دوس هنا للمحاولة تاني</option>`; sel.onclick=()=>{sel.onclick=null;loadVillages();}; }
+  }
 }
 function handleDVillageChange(){
   document.getElementById('dNewVillageWrap').style.display=document.getElementById('dVillageInput').value==='__new__'?'block':'none';
@@ -576,11 +619,14 @@ function onBus(fn){
 }
 
 setTimeout(()=>document.getElementById('boot').classList.add('gone'),1300);
-loadVillages();
-setTimeout(async()=>{
-  const restored=await tryRestoreSession();
-  if(!restored) document.getElementById('loginFlow').classList.add('show');
-},1350);
+(async()=>{
+  await ensureSupabaseReady();
+  loadVillages();
+  setTimeout(async()=>{
+    const restored=await tryRestoreSession();
+    if(!restored) document.getElementById('loginFlow').classList.add('show');
+  }, Math.max(0,1350-performance.now()));
+})();
 
 function dGoAuth(stage){
   document.querySelectorAll('#loginFlow .astage').forEach(s=>s.classList.remove('on'));
