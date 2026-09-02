@@ -439,7 +439,9 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
       <div class="fld"><label>قريتك</label><select id="villageInput" onchange="handleVillageChange()">
         <option value="">جاري تحميل القرى…</option></select></div>
       <div class="fld" id="newVillageWrap" style="display:none">
-        <label>اسم قريتك</label><input id="newVillageName" placeholder="مثلاً: الروضة"></div>
+        <label>اسم قريتك</label><input id="newVillageName" placeholder="مثلاً: الروضة">
+        <label class="mt" style="display:block">قد إيه المسافة من مركز طلخا؟ (بالكيلومتر تقريبًا)</label>
+        <input id="newVillageDist" type="number" step="0.5" placeholder="مثلاً 6"></div>
       <div class="fld"><label>أقرب معلم ليك</label><select id="lmInput">
         <option>جنب الجامع الكبير</option><option>أول شارع المدرسة</option>
         <option>عند المحول</option><option>قدام الوحدة الصحية</option></select></div>
@@ -623,9 +625,10 @@ async function resolveVillageId(){
   if(v&&v!=='__new__')return v;
   if(v==='__new__'){
     const name=document.getElementById('newVillageName').value.trim();
+    const dist=+document.getElementById('newVillageDist').value;
     if(!name){toast('اكتب اسم قريتك');return null}
-    if(!S.co.geo){toast('لازم تفعّل موقعك الأول عشان نحدد قريتك الجديدة صح');return null}
-    const {data,error}=await sb.from('villages').insert({name,center_lat:S.co.geo.lat,center_lng:S.co.geo.lng}).select().single();
+    if(!dist||dist<=0){toast('اكتب تقدير المسافة من مركز طلخا');return null}
+    const {data,error}=await sb.from('villages').insert({name,distance_km:dist,is_markaz:false,active:true}).select().single();
     if(error){
       if(error.code==='23505'){ const {data:existing}=await sb.from('villages').select('id').eq('name',name).maybeSingle(); return existing?existing.id:null; }
       console.error('basita:',error); toast('حصلت مشكلة في إضافة القرية');return null;
@@ -634,6 +637,16 @@ async function resolveVillageId(){
     return data.id;
   }
   toast('اختار قريتك الأول'); return null;
+}
+/* ═══ مسافة تقديرية بين قريتين — بالاعتماد على مسافة كل قرية من مركز طلخا (distance_km) ═══
+   نفس القرية = صفر (سعر ثابت). لو واحدة منهم المركز نفسه = مسافة القرية التانية مباشرة.
+   لو الاتنين قرى فرعية، بنجمع المسافتين كتقدير واقعي (الطريق غالبًا بيعدي على المركز). */
+function villageDistanceKm(vA,vB){
+  if(!vA||!vB)return null;
+  if(vA.id===vB.id)return 0;
+  if(vA.is_markaz)return vB.distance_km;
+  if(vB.is_markaz)return vA.distance_km;
+  return (vA.distance_km||0)+(vB.distance_km||0);
 }
 async function finishSignup(){
   const nm=document.getElementById('nmInput').value.trim()||'صديقنا';
@@ -704,7 +717,7 @@ async function loadVillages(){
     return;
   }
   try{
-    const {data,error}=await sb.from('villages').select('*').order('is_center',{ascending:false}).order('name');
+    const {data,error}=await sb.from('villages').select('*').not('active','is',false).order('is_markaz',{ascending:false}).order('name');
     if(error){
       console.error('basita: فشل تحميل القرى من قاعدة البيانات —',error);
       renderVillageOptions('❌ حصلت مشكلة — دوس هنا للمحاولة تاني',true);
@@ -725,7 +738,7 @@ function renderVillageOptions(errorMsg,retry){
     return;
   }
   sel.innerHTML=`<option value="">اختار قريتك</option>
-    ${VILLAGES.map(v=>`<option value="${v.id}">${v.is_center?'🏛️ ':'🏘️ '}${v.name}</option>`).join('')}
+    ${VILLAGES.map(v=>`<option value="${v.id}">${v.is_markaz?'🏛️ ':'🏘️ '}${v.name}</option>`).join('')}
     <option value="__new__">➕ قريتي مش موجودة، أضيفها</option>`;
 }
 function handleVillageChange(){
@@ -1055,7 +1068,7 @@ async function placeOrder(){
   const wasFirstOrder=isFirstTimer();
   const items=cItems();
   const sameVillage=!!(shop.villageId&&shop.villageId===S.co.villageId);
-  const km=shop.geo?haversineKm(c.geo,shop.geo):null;
+  const km=villageDistanceKm(VILLAGES.find(v=>v.id===c.villageId),VILLAGES.find(v=>v.id===shop.villageId));
   const fee=computeDeliveryFee(km,sameVillage);
   const commission=computePlatformCommission(km,sameVillage);
   const addr=`${c.lm} — بيت ${c.house}`;
@@ -1168,8 +1181,8 @@ function vHome(){
   const myVillage=VILLAGES.find(v=>v.id===S.co.villageId);
   let mine=applyFilter(shops.filter(s=>s.villageId&&s.villageId===S.co.villageId));
   let others=applyFilter(shops.filter(s=>!s.villageId||s.villageId!==S.co.villageId));
-  if(myVillage&&myVillage.center_lat!=null){
-    others=others.map(s=>({...s,_dist:s.geo?haversineKm({lat:myVillage.center_lat,lng:myVillage.center_lng},s.geo):null}))
+  if(myVillage){
+    others=others.map(s=>({...s,_dist:villageDistanceKm(myVillage,VILLAGES.find(v=>v.id===s.villageId))}))
       .sort((a,b)=>(a._dist??999)-(b._dist??999));
   }
   const total=mine.length+others.length;
@@ -1280,20 +1293,18 @@ function estimateFee(){
   const shop=SHOPS[S.activeShop]; if(!shop)return 10;
   const sameVillage=!!(shop.villageId&&shop.villageId===S.co.villageId);
   if(sameVillage)return 10;
-  let km=null;
-  if(S.co.geo&&shop.geo) km=haversineKm(S.co.geo,shop.geo);
-  else{
-    const myVillage=VILLAGES.find(v=>v.id===S.co.villageId);
-    if(myVillage&&myVillage.center_lat!=null&&shop.geo) km=haversineKm({lat:myVillage.center_lat,lng:myVillage.center_lng},shop.geo);
-  }
+  const myVillage=VILLAGES.find(v=>v.id===S.co.villageId);
+  const shopVillage=VILLAGES.find(v=>v.id===shop.villageId);
+  const km=villageDistanceKm(myVillage,shopVillage);
   return computeDeliveryFee(km,false);
 }
 function feeBreakdownHtml(){
   const shop=SHOPS[S.activeShop]; if(!shop)return '';
   const sameVillage=!!(shop.villageId&&shop.villageId===S.co.villageId);
   const fee=estimateFee();
-  let km=null;
-  if(S.co.geo&&shop.geo) km=haversineKm(S.co.geo,shop.geo);
+  const myVillage=VILLAGES.find(v=>v.id===S.co.villageId);
+  const shopVillage=VILLAGES.find(v=>v.id===shop.villageId);
+  const km=villageDistanceKm(myVillage,shopVillage);
   const sub=cSub(), tot=sub+fee;
   return `<div class="card mb" style="padding:16px;overflow:hidden;position:relative">
     <div style="position:absolute;top:0;left:0;width:4px;height:100%;background:${sameVillage?'var(--ac)':'var(--warn)'}"></div>
