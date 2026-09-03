@@ -864,20 +864,21 @@ function playOrderAlert(){
   try{
     const ctx=new (window.AudioContext||window.webkitAudioContext)();
     const ring=startTime=>{
-      [660,880,1100].forEach((freq,i)=>{
+      [740,988,1319].forEach((freq,i)=>{
         const o=ctx.createOscillator(),g=ctx.createGain();
         o.connect(g);g.connect(ctx.destination);
         o.type='square';o.frequency.value=freq;
         const t0=startTime+i*.13;
         g.gain.setValueAtTime(.0001,t0);
-        g.gain.exponentialRampToValueAtTime(.3,t0+.02);
-        g.gain.exponentialRampToValueAtTime(.0001,t0+.16);
-        o.start(t0);o.stop(t0+.18);
+        g.gain.exponentialRampToValueAtTime(.7,t0+.02);
+        g.gain.exponentialRampToValueAtTime(.0001,t0+.2);
+        o.start(t0);o.stop(t0+.22);
       });
     };
     ring(ctx.currentTime);
-    ring(ctx.currentTime+.55);
-    if(navigator.vibrate) navigator.vibrate([180,80,180,80,180]);
+    ring(ctx.currentTime+.5);
+    ring(ctx.currentTime+1.0);
+    if(navigator.vibrate) navigator.vibrate([220,90,220,90,220,90,220]);
   }catch(e){}
 }
 function pushNotify(m){
@@ -1466,14 +1467,13 @@ function vTasks(){
           </div>`:''}
           <div class="tsteps">${STEPS.map((s,i)=>`<div class="tstep ${i<=idx?'on':''}"></div>`).join('')}</div>
           ${t.stage==='assigned'?
-            (!t._arrivedShop?
             `${t.shopGeo?`<button class="btn2 btn-o2" style="width:100%;margin-bottom:8px" onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${t.shopGeo.lat},${t.shopGeo.lng}','_blank')">🏪 افتح خرائط جوجل للمتجر${t.shopName?' — '+t.shopName:''}</button>`:''}
-             <button class="btn2 btn-p2" style="width:100%" onclick="markArrivedShop('${t.id}')">📍 وصلت المتجر</button>`:
-            `<div style="text-align:center;padding:14px;background:var(--ac-l);border-radius:12px">
+             ${!t._arrivedShop?`<button class="btn2 btn-o2" style="width:100%;margin-bottom:8px" onclick="markArrivedShop('${t.id}')">📍 وصلت المتجر</button>`:''}
+             <div style="text-align:center;padding:14px;background:var(--ac-l);border-radius:12px">
                <div class="tiny muted">قول الكود ده للتاجر عشان يأكّد استلامك</div>
                <div class="kufi num" id="pcode-${t.id}" style="font-size:32px;letter-spacing:8px;color:var(--ac-d);margin:6px 0">${pickupCode(t.id,0)}</div>
                <div class="tiny" style="color:var(--ac-d)">🔒 بيتجدد كل دقيقة تلقائيًا</div>
-             </div>`):
+             </div>`:
             t.stage==='delivering'?
             (!t._arrivedCustomer?
             `<button class="btn2 btn-p2" style="width:100%" onclick="markArrivedCustomer('${t.id}')">📍 وصلت العميل</button>`:
