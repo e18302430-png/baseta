@@ -654,7 +654,13 @@ async function finishSignup(){
   S.co.name=nm; S.co.lm=document.getElementById('lmInput').value;
   if(sb){
     const villageId=await resolveVillageId();
-    if(!villageId)return;
+    if(!villageId){
+      const sel=document.getElementById('villageInput');
+      sel.style.borderColor='var(--danger)'; sel.style.background='#FDE8E6';
+      if(sel.scrollIntoView) sel.scrollIntoView({behavior:'smooth',block:'center'});
+      setTimeout(()=>{ sel.style.borderColor=''; sel.style.background=''; },2500);
+      return;
+    }
     S.co.villageId=villageId;
     const {data,error}=await sb.from('customers').insert({name:nm,phone:S.co.ph,landmark:S.co.lm,village_id:villageId}).select().single();
     if(error){ console.error('basita: فشل إنشاء حسابك في قاعدة البيانات',error); toast('حصلت مشكلة في إنشاء حسابك — جرّب تاني'); return; }
