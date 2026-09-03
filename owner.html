@@ -304,10 +304,14 @@ async function ensureSupabaseReady(){
 }
 async function loadPendingFromDB(){
   if(!sb)return;
-  const {data:merchants}=await sb.from('merchants').select('*').eq('status','awaiting_approval');
-  (merchants||[]).forEach(m=>{
-    if(!S.merchants.some(x=>x.id===m.id)) S.merchants.unshift({id:m.id,name:m.name,type:BIZ_LABELS_O[m.biz_type]||m.biz_type,
-      icon:BIZ_ICONS_O[m.biz_type]||'🏪',phone:m.phone,status:'awaiting_approval',daysLeft:0,price:99,slaBreaches:0});
+  const {data:allMerchants}=await sb.from('merchants').select('*');
+  (allMerchants||[]).forEach(m=>{
+    const mapped={id:m.id,name:m.name,type:BIZ_LABELS_O[m.biz_type]||m.biz_type,
+      icon:BIZ_ICONS_O[m.biz_type]||'🏪',phone:m.phone,status:m.status,daysLeft:computeDaysLeftO(m),price:99,
+      slaBreaches:0,pendingAmount:m.pending_amount||99,pendingReceipt:m.pending_receipt_url||null};
+    const existing=S.merchants.find(x=>x.id===m.id);
+    if(existing) Object.assign(existing,mapped);
+    else S.merchants.unshift(mapped);
   });
   const {data:drivers}=await sb.from('drivers').select('*').eq('status','pending_review');
   (drivers||[]).forEach(d=>{
@@ -317,12 +321,20 @@ async function loadPendingFromDB(){
   });
   render();
 }
+function computeDaysLeftO(row){
+  const cycleStart=row.status==='active'?row.subscription_renews_at:row.trial_started_at;
+  if(!cycleStart)return 0;
+  const totalDays=row.status==='active'?30:14;
+  const elapsed=Math.floor((Date.now()-new Date(cycleStart).getTime())/86400000);
+  return Math.max(0,totalDays-elapsed);
+}
 const BIZ_LABELS_O={grocery:'بقالة',pharmacy:'صيدلية',restaurant:'مطعم',cafe:'كافيه',bakery:'مخبز',other:'نشاط عام'};
 const BIZ_ICONS_O={grocery:'🛒',pharmacy:'💊',restaurant:'🍔',cafe:'☕',bakery:'🥖',other:'🏪'};
 function subscribePendingDB(){
   if(!sb)return;
   sb.channel('owner-pending')
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'merchants'},()=>loadPendingFromDB())
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'merchants'},()=>loadPendingFromDB())
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'drivers'},()=>loadPendingFromDB())
     .subscribe();
 }
@@ -1034,7 +1046,7 @@ function vMembers(){
     body=!S.merchants.length?`<div class="alert info">🏪 لسه مفيش تجّار مسجّلين</div>`:
       `<div class="card">${S.merchants.map(m=>`<div class="row">
         <span class="av">${m.icon||'🏪'}</span><span style="flex:1"><span class="n">${m.name}</span>
-        <span class="s">${m.type||''}</span></span><span class="end"><b class="num" style="display:block">${M(m.salesTotal||0)} ج</b>
+        <span class="s" dir="ltr">${m.phone||''} ${m.type?'· '+m.type:''}</span></span><span class="end"><b class="num" style="display:block">${M(m.salesTotal||0)} ج</b>
         <button style="background:none;border:0;color:var(--danger);font-size:11px;margin-top:3px;cursor:pointer" onclick="deleteMerchant('${m.id}')">حذف</button></span></div>`).join('')}</div>`;
   } else {
     const drivers=S.driverApplications.filter(a=>a.status==='approved');
