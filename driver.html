@@ -698,7 +698,9 @@ async function finishDriverSignup(){
       const selfieBlob=await (await fetch(dDocs.selfie)).blob();
       const stamp=Date.now();
       const {error:e1}=await sb.storage.from('driver-ids').upload(stamp+'-id.jpg',idBlob,{upsert:true});
+      if(e1){ console.error('basita: فشل رفع صورة البطاقة',e1); toast('حصلت مشكلة في رفع صورة البطاقة — جرّب تاني'); document.getElementById('loginFlow').classList.add('show'); return; }
       const {error:e2}=await sb.storage.from('driver-selfies').upload(stamp+'-selfie.jpg',selfieBlob,{upsert:true});
+      if(e2){ console.error('basita: فشل رفع الصورة الشخصية',e2); toast('حصلت مشكلة في رفع صورتك الشخصية — جرّب تاني'); document.getElementById('loginFlow').classList.add('show'); return; }
       const idUrl=sb.storage.from('driver-ids').getPublicUrl(stamp+'-id.jpg').data.publicUrl;
       const selfieUrl=sb.storage.from('driver-selfies').getPublicUrl(stamp+'-selfie.jpg').data.publicUrl;
       const villageId=await resolveVillageId('dNewVillageName');
@@ -1583,6 +1585,19 @@ function subscribeMyTasks(){
         sb.from('drivers').update({is_available:false}).eq('id',S.driverId).then(()=>{});
         notify(hasActive?'🔗 طلب تاني من نفس المحل — ممكن تضيفه لنفس رحلتك':'مهمة جديدة وصلت من التاجر!',true);
         pendingAlertIds.add(payload.new.id); startAlertEscalation(); render();
+        return;
+      }
+      const t=S.tasks.find(x=>x.id===payload.new.id);
+      if(t&&payload.new.stage&&payload.new.stage!==t.stage){
+        if(payload.new.stage==='picked'){
+          // التاجر أكّد الاستلام — نتحرك للعميل على طول من غير خطوة يدوية زيادة
+          t.stage='delivering';
+          sb.from('orders').update({stage:'delivering'}).eq('id',payload.new.id).then(()=>{});
+          notify('✓ التاجر أكّد الاستلام — يلا اتحرك للعميل دلوقتي',true);
+        }else{
+          t.stage=payload.new.stage;
+        }
+        render();
       }
     })
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'tips',filter:'driver_id=eq.'+S.driverId},payload=>{
