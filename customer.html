@@ -434,6 +434,7 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
         <circle cx="36" cy="29" r="10" fill="none" stroke="#F5A623" stroke-width="2.6"/>
         <path d="M18 55c3-9 10-14 18-14s15 5 18 14" fill="none" stroke="#F5A623" stroke-width="2.6" stroke-linecap="round"/></svg>
       <h1 class="atitle">كمّل بياناتك</h1>
+      <div id="signupBanner" style="display:none"></div>
       <p class="asub">آخر خطوة وتقدر تبدأ تطلب</p>
       <div class="fld mt"><label>الاسم</label><input id="nmInput" placeholder="اسمك بالكامل"></div>
       <div class="fld"><label>قريتك</label><select id="villageInput" onchange="handleVillageChange()">
@@ -648,10 +649,22 @@ function villageDistanceKm(vA,vB){
   if(vB.is_markaz)return vA.distance_km;
   return (vA.distance_km||0)+(vB.distance_km||0);
 }
+function showSignupBanner(text,actionsHtml){
+  const el=document.getElementById('signupBanner');
+  el.style.display='block';
+  el.innerHTML=`<div class="card mt" style="padding:14px;background:#FDE8E6;border-color:#F5B5AE">
+    <b style="color:#C23327;font-size:13.5px;display:block">${text}</b>${actionsHtml||''}</div>`;
+  if(el.scrollIntoView) el.scrollIntoView({behavior:'smooth',block:'center'});
+}
+function clearSignupBanner(){
+  const el=document.getElementById('signupBanner');
+  if(el){ el.style.display='none'; el.innerHTML=''; }
+}
 async function finishSignup(){
   const nm=document.getElementById('nmInput').value.trim()||'صديقنا';
   document.getElementById('hiName').textContent=nm.split(' ')[0];
   S.co.name=nm; S.co.lm=document.getElementById('lmInput').value;
+  clearSignupBanner();
   if(sb){
     const villageId=await resolveVillageId();
     if(!villageId){
@@ -663,7 +676,17 @@ async function finishSignup(){
     }
     S.co.villageId=villageId;
     const {data,error}=await sb.from('customers').insert({name:nm,phone:S.co.ph,landmark:S.co.lm,village_id:villageId}).select().single();
-    if(error){ console.error('basita: فشل إنشاء حسابك في قاعدة البيانات',error); toast('حصلت مشكلة في إنشاء حسابك — جرّب تاني'); return; }
+    if(error){
+      console.error('basita: فشل إنشاء حسابك في قاعدة البيانات',error);
+      if(error.code==='23505'){
+        showSignupBanner('📱 الرقم ده مسجّل بحساب موجود بالفعل',
+          '<button class="btn btn-p" style="width:100%;margin-top:10px" onclick="clearSignupBanner();goAuth(\'phone\',\'login\')">سجّل دخول بدل كده</button>');
+      }else{
+        showSignupBanner('❌ حصلت مشكلة في إنشاء حسابك',
+          '<button class="btn btn-o" style="width:100%;margin-top:10px" onclick="clearSignupBanner()">حاول تاني</button>');
+      }
+      return;
+    }
     S.co.id=data.id;
   } else {
     S.co.id=S.co.id||('c_'+(S.co.ph||Math.random().toString(36).slice(2)));
