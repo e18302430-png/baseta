@@ -843,9 +843,18 @@ async function toggleShopOpen(){
   if(sb&&S.merchantId) await sb.from('merchants').update({is_open:S.isOpen}).eq('id',S.merchantId);
   toast(S.isOpen?'متجرك بقى ظاهر ومفتوح للعملاء':'متجرك اتقفل مؤقتًا — العملاء مش هيقدروا يطلبوا لحد ما تفتحه تاني');
 }
+/* ═══ سياق صوت واحد دائم — بيتفتح لحظة أول لمسة من التاجر على الشاشة (سياسة المتصفحات بتمنع الصوت التلقائي قبل كده) ═══ */
+let _audioCtx=null;
+function getAudioCtx(){
+  if(!_audioCtx){ try{ _audioCtx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return null; } }
+  if(_audioCtx.state==='suspended') _audioCtx.resume().catch(()=>{});
+  return _audioCtx;
+}
+['touchstart','mousedown','click','keydown'].forEach(evt=>
+  document.addEventListener(evt,()=>getAudioCtx(),{once:true,passive:true}));
 function playNotifySound(){
   try{
-    const ctx=new (window.AudioContext||window.webkitAudioContext)();
+    const ctx=getAudioCtx(); if(!ctx)return;
     const o=ctx.createOscillator(),g=ctx.createGain();
     o.connect(g);g.connect(ctx.destination);
     o.type='sine';o.frequency.value=880;
@@ -855,10 +864,10 @@ function playNotifySound(){
     o.start();o.stop(ctx.currentTime+.3);
   }catch(e){}
 }
-/* ═══ نغمة قوية ومميزة للطلب الجديد — مختلفة تمامًا عن التنبيه العادي، وبتتكرر مرتين عشان محدش يفوّتها ═══ */
+/* ═══ نغمة قوية ومميزة للطلب الجديد — مختلفة تمامًا عن التنبيه العادي، وبتتكرر ثلاث مرات عشان محدش يفوّتها ═══ */
 function playOrderAlert(){
   try{
-    const ctx=new (window.AudioContext||window.webkitAudioContext)();
+    const ctx=getAudioCtx(); if(!ctx){ console.warn('basita: الصوت متقفل لحد أول لمسة على الشاشة'); return; }
     const ring=startTime=>{
       [740,988,1319].forEach((freq,i)=>{
         const o=ctx.createOscillator(),g=ctx.createGain();
@@ -987,7 +996,13 @@ function subscribeMyOrders(){
     })
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'orders',filter:'merchant_id=eq.'+S.merchantId},payload=>{
       const o=S.orders.find(x=>x.id===payload.new.id);
-      if(o){ o.stage=payload.new.stage; o.driver=payload.new.driver_name||o.driver; o._flash=true; render(); }
+      if(!o)return;
+      const wasAssigned=!!o.driver, nowUnassigned=!payload.new.driver_id;
+      o.stage=payload.new.stage; o.driver=payload.new.driver_name||(nowUnassigned?null:o.driver); o._flash=true; render();
+      if(wasAssigned&&nowUnassigned&&payload.new.stage==='accepted'){
+        toast('⚠️ المندوب اعتذر عن الطلب — بندوّر على مندوب تاني تلقائيًا');
+        autoAssignDriver(o.id);
+      }
     })
     .subscribe();
   sb.channel('avail-drivers')
@@ -1013,7 +1028,9 @@ function subscribeMyReviews(){
 }
 async function refreshAvailableDrivers(){
   if(!sb)return;
-  const {data}=await sb.from('drivers').select('*').eq('status','approved').eq('is_available',true);
+  const staleBefore=new Date(Date.now()-2*60000).toISOString(); // أي مندوب آخر ظهور له أقدم من دقيقتين نعتبره قافل التطبيق فعليًا
+  const {data}=await sb.from('drivers').select('*').eq('status','approved').eq('is_available',true)
+    .or('last_seen_at.gte.'+staleBefore+',last_seen_at.is.null');
   S.availableDrivers={};
   (data||[]).forEach(d=>{ S.availableDrivers[d.id]={id:d.id,name:d.name,vehicle:d.vehicle,lat:d.current_lat,lng:d.current_lng}; });
   tryAssignWaitingOrders();
@@ -1532,7 +1549,13 @@ function tryAssignWaitingOrders(){
 }
 async function autoAssignDriver(id){
   const o=S.orders.find(x=>x.id===id); if(!o)return;
-  const candidates=Object.values(S.availableDrivers).filter(d=>!S.orders.some(x=>x.driver===d.name&&['assigned','picked','delivering'].includes(x.stage)));
+  let excludedIds=new Set();
+  if(sb){
+    const {data:rej}=await sb.from('order_rejections').select('driver_id').eq('order_id',id);
+    (rej||[]).forEach(r=>excludedIds.add(r.driver_id));
+  }
+  const candidates=Object.values(S.availableDrivers).filter(d=>
+    !excludedIds.has(d.id)&&!S.orders.some(x=>x.driver===d.name&&['assigned','picked','delivering'].includes(x.stage)));
   if(!candidates.length){
     o._waitingDriver=true; render();
     emit({to:['owner'],type:'order:no_driver_available',orderId:id,merchantName:BIZ().name});
