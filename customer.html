@@ -1103,10 +1103,13 @@ async function placeOrder(){
   const addr=`${c.lm} — بيت ${c.house}`;
   let order;
   if(sb&&c.id){
+    const netEarning=+(fee-commission).toFixed(2);
     const {data:orderRow,error}=await sb.from('orders').insert({
       merchant_id:shop.id, customer_id:c.id, customer_name:c.name, customer_phone:c.ph||'01015974104',
-      address:addr, delivery_lat:c.geo.lat, delivery_lng:c.geo.lng, delivery_fee:fee, delivery_km:km,
-      platform_commission:commission, total:cSub()+fee, stage:'placed', notes:S.cartNotes||null
+      address:addr, delivery_lat:c.geo.lat, delivery_lng:c.geo.lng, delivery_fee:fee,
+      origin_village_id:shop.villageId||null, dest_village_id:c.villageId||null,
+      platform_commission:commission, driver_net_earning:netEarning,
+      total:cSub()+fee, stage:'placed', is_recurring:false, feedback_submitted:false, notes:S.cartNotes||null
     }).select().single();
     if(error){ console.error('basita: فشل إرسال الطلب لقاعدة البيانات',error); toast('حصلت مشكلة في إرسال الطلب — جرّب تاني'); return; }
     const itemsPayload=items.map(({p,q})=>({order_id:orderRow.id,product_id:p.id,name:p.n,qty:q,unit_price:p.p,unit:p.u,sell_by:p.sellBy||'unit'}));
