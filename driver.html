@@ -841,7 +841,7 @@ function startShift(){
       document.getElementById('shiftStart').classList.remove('show');
       document.getElementById('mainApp').classList.add('show');
       render();
-      if(sb&&S.driverId){ sb.from('drivers').update({is_available:true}).eq('id',S.driverId).then(()=>{}); subscribeMyTasks(); subscribeMyTickets(); }
+      if(sb&&S.driverId){ sb.from('drivers').update({is_available:true,last_seen_at:new Date().toISOString()}).eq('id',S.driverId).then(()=>{}); subscribeMyTasks(); subscribeMyTickets(); startHeartbeat(); }
       else emit({to:['merchant','owner'],type:'driver:online',driverId:S.driverId,driverName:S.driverName||'كريم عبد الله',vehicle:S.vehicle||'🛵'});
       if('Notification' in window && Notification.permission==='default') Notification.requestPermission();
       if(S.avail) startLocBroadcast();
@@ -849,9 +849,18 @@ function startShift(){
     },400);
   },600);
 }
+/* ═══ سياق صوت واحد دائم — بيتفتح لحظة أول لمسة من المندوب على الشاشة (سياسة المتصفحات بتمنع الصوت التلقائي قبل كده) ═══ */
+let _audioCtx=null;
+function getAudioCtx(){
+  if(!_audioCtx){ try{ _audioCtx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return null; } }
+  if(_audioCtx.state==='suspended') _audioCtx.resume().catch(()=>{});
+  return _audioCtx;
+}
+['touchstart','mousedown','click','keydown'].forEach(evt=>
+  document.addEventListener(evt,()=>getAudioCtx(),{once:true,passive:true}));
 function playNotifySound(){
   try{
-    const ctx=new (window.AudioContext||window.webkitAudioContext)();
+    const ctx=getAudioCtx(); if(!ctx)return;
     const o=ctx.createOscillator(),g=ctx.createGain();
     o.connect(g);g.connect(ctx.destination);
     o.type='sine';o.frequency.value=880;
@@ -861,10 +870,10 @@ function playNotifySound(){
     o.start();o.stop(ctx.currentTime+.3);
   }catch(e){}
 }
-/* ═══ نغمة قوية ومميزة لمهمة جديدة — مختلفة تمامًا عن التنبيه العادي، وبتتكرر مرتين عشان محدش يفوّتها ═══ */
+/* ═══ نغمة قوية ومميزة لمهمة جديدة — مختلفة تمامًا عن التنبيه العادي، وبتتكرر ثلاث مرات عشان محدش يفوّتها ═══ */
 function playOrderAlert(){
   try{
-    const ctx=new (window.AudioContext||window.webkitAudioContext)();
+    const ctx=getAudioCtx(); if(!ctx){ console.warn('basita: الصوت متقفل لحد أول لمسة على الشاشة'); return; }
     const ring=startTime=>{
       [740,988,1319].forEach((freq,i)=>{
         const o=ctx.createOscillator(),g=ctx.createGain();
@@ -1162,6 +1171,23 @@ function openRouteMap(taskId){
   );
 }
 function acceptTask(id){const t=S.tasks.find(x=>x.id===id); t.accepted=true; pendingAlertIds.delete(id); render(); toast('اتقبلت المهمة');}
+function rejectTask(id){
+  if(!confirm('متأكد إنك عايز ترفض المهمة دي؟ هتتحول لمندوب تاني على طول'))return;
+  const t=S.tasks.find(x=>x.id===id); if(!t)return;
+  pendingAlertIds.delete(id);
+  S.tasks=S.tasks.filter(x=>x.id!==id);
+  if(!S.tasks.length){
+    S.avail=true;
+    if(sb&&S.driverId) sb.from('drivers').update({is_available:true}).eq('id',S.driverId).then(()=>{});
+  }
+  if(sb){
+    sb.from('orders').update({stage:'accepted',driver_id:null,driver_name:null}).eq('id',id).then(()=>{});
+    if(S.driverId) sb.from('order_rejections').insert({order_id:id,driver_id:S.driverId}).then(()=>{});
+  }else{
+    emit({to:['merchant'],type:'order:driver_rejected',orderId:id,driverId:S.driverId});
+  }
+  render(); toast('اترفضت المهمة — التاجر هيدوّر على مندوب تاني تلقائيًا');
+}
 
 /* ═══════ التصوير الإجباري قبل التسليم ═══════ */
 let photoStream=null, capturedPhoto=null, deliverOrderId=null;
@@ -1488,7 +1514,10 @@ function vTasks(){
         <span class="t">مهمة جديدة من ماركت أبو حمزة</span></span>
         <span class="bdg b-new">جديدة</span></div>
       <div class="tb"><div class="taddr"><span class="k">📍</span><span>${t.addr}</span></div>
-        <button class="btn2 btn-ok2 mt" onclick="acceptTask('${t.id}')">قبول المهمة</button></div></div>`).join('')}
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="btn2 btn-ok2" style="flex:1" onclick="acceptTask('${t.id}')">قبول المهمة</button>
+          <button class="btn2" style="flex:0 0 auto;background:#FDE8E6;color:#C23327" onclick="rejectTask('${t.id}')">رفض</button>
+        </div></div></div>`).join('')}
     <div style="height:12px"></div></div>`;
 }
 function vHistory(){
@@ -1542,6 +1571,19 @@ function vWallet(){
 const V={tasks:vTasks,history:vHistory,wallet:vWallet};
 const NAV=[['tasks','📋','المهام'],['wallet','🎁','الإكراميات'],['history','🗂️','السجل']];
 let locBroadcastT=null;
+/* ═══ نبض دوري — يثبت إن المندوب لسه فاتح التطبيق فعليًا، عشان التاجر ميعيّنش حد قفل التطبيق وحالته "متاح" غلط ═══ */
+let _heartbeatT=null;
+function startHeartbeat(){
+  clearInterval(_heartbeatT);
+  const beat=()=>{ if(sb&&S.driverId&&S.avail) sb.from('drivers').update({last_seen_at:new Date().toISOString()}).eq('id',S.driverId).then(()=>{}); };
+  beat();
+  _heartbeatT=setInterval(beat,45000);
+}
+function markOfflineNow(){
+  if(sb&&S.driverId) sb.from('drivers').update({is_available:false}).eq('id',S.driverId).then(()=>{});
+}
+window.addEventListener('pagehide',markOfflineNow);
+document.addEventListener('visibilitychange',()=>{ if(document.hidden) markOfflineNow(); else if(sb&&S.driverId&&S.avail){ sb.from('drivers').update({is_available:true,last_seen_at:new Date().toISOString()}).eq('id',S.driverId).then(()=>{}); } });
 function startLocBroadcast(){
   stopLocBroadcast();
   const tick=()=>{
