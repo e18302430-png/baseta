@@ -7,11 +7,11 @@
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <style>
 :root{
-  --bg:#F7F8FB;--surf:#FFFFFF;--surf2:#F0F2F6;--line:#E7EAF0;
-  --txt:#10141C;--txt2:#5B6472;--txt3:#98A0AE;
-  --ac:#00B67A;--ac-d:#00925F;--ac-l:#E3F9F1;
-  --warn:#F5A623;--danger:#EF4A3E;--r:18px;--nav:66px;
-  --sh:0 8px 24px -10px rgba(16,20,28,.10);--sh-lg:0 20px 50px -20px rgba(16,20,28,.20);
+  --bg:#F9F7F1;--surf:#FFFFFF;--surf2:#F3EFE4;--line:#EDE4CE;
+  --txt:#221A0E;--txt2:#6B5E45;--txt3:#A89A7B;
+  --ac:#F0A93B;--ac-d:#B87610;--ac-l:#FFF3DE;
+  --warn:#F5A623;--danger:#D9362B;--r:18px;--nav:66px;
+  --sh:0 8px 24px -10px rgba(34,26,14,.12);--sh-lg:0 20px 50px -20px rgba(34,26,14,.22);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%}
@@ -32,9 +32,9 @@ input,select{font-family:inherit;font-size:16px}
 #boot .mk{width:64px;height:64px;margin:0 auto 16px;animation:bootIn .8s cubic-bezier(.2,.8,.2,1)}
 @keyframes bootIn{from{opacity:0;transform:scale(.7) rotate(-10deg)}}
 #boot b{font-family:'Cairo';color:#fff;font-size:19px;letter-spacing:2px;display:block}
-#boot span{color:#5FE3B4;font-size:10.5px;letter-spacing:3px;font-weight:600}
+#boot span{color:#FFD98A;font-size:10.5px;letter-spacing:3px;font-weight:600}
 #boot .bar{width:130px;height:3px;background:rgba(255,255,255,.12);border-radius:9px;margin:20px auto 0;overflow:hidden}
-#boot .bar i{display:block;height:100%;width:0;background:#5FE3B4;animation:ld 1.3s ease forwards;border-radius:9px}
+#boot .bar i{display:block;height:100%;width:0;background:#FFD98A;animation:ld 1.3s ease forwards;border-radius:9px}
 @keyframes ld{to{width:100%}}
 #boot .mk path{stroke-dasharray:90;stroke-dashoffset:90;animation:drawPath 850ms cubic-bezier(.2,.8,.2,1) forwards}
 #boot .mk circle{opacity:0;transform:scale(.3);transform-box:fill-box;transform-origin:center;
@@ -66,45 +66,36 @@ input,select{font-family:inherit;font-size:16px}
 .hero-ill{width:100%;max-width:220px;height:170px;margin:6px auto 20px;position:relative}
 
 /* ═══════════ بانر قوة الشبكة — يظهر في صفحة "اطلب من محلات حيّك" قبل الدخول ═══════════ */
-.vhero{position:relative;overflow:hidden;border-radius:26px;margin:4px 0 18px;padding:20px 19px 18px;
-  isolation:isolate;background:linear-gradient(158deg,#0B1F17 0%,#0F2A20 55%,#0B1F17 100%);
-  box-shadow:0 28px 60px -26px rgba(0,182,122,.45),0 1px 0 rgba(255,255,255,.06) inset}
-.vhero::before,.vhero::after{content:"";position:absolute;border-radius:50%;z-index:0;filter:blur(2px)}
-.vhero::before{width:180px;height:180px;inset:-70px -50px auto auto;
-  background:radial-gradient(circle,rgba(0,227,155,.55),transparent 70%);animation:vFloat1 7s ease-in-out infinite}
-.vhero::after{width:150px;height:150px;inset:auto auto -60px -40px;
-  background:radial-gradient(circle,rgba(245,166,35,.35),transparent 70%);animation:vFloat2 8.5s ease-in-out infinite}
-@keyframes vFloat1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-12px,10px) scale(1.08)}}
-@keyframes vFloat2{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(10px,-10px) scale(1.1)}}
-.vhero-grid{position:absolute;inset:0;z-index:0;opacity:.5;
-  background-image:radial-gradient(rgba(95,227,180,.16) 1px,transparent 1.4px);
-  background-size:16px 16px;mask-image:radial-gradient(ellipse 100% 80% at 50% 20%,#000 40%,transparent 90%)}
-.vhero-shine{position:absolute;inset:0;z-index:1;pointer-events:none;mix-blend-mode:overlay;
-  background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,.5) 50%,transparent 60%);
-  background-size:260% 260%;background-position:160% 160%;animation:vShine 5.5s ease-in-out infinite}
-@keyframes vShine{0%,60%{background-position:160% 160%}100%{background-position:-40% -40%}}
+#st-welcome{background:linear-gradient(180deg,#F5C542 0%,#F0A93B 100%);margin:0 -24px;padding:calc(26px + env(safe-area-inset-top)) 24px calc(20px + env(safe-area-inset-bottom));width:calc(100% + 48px)}
+.vhero{position:relative;overflow:hidden;border-radius:0;margin:4px 0 18px;padding:0;isolation:isolate;background:none;box-shadow:none}
+.vhero-foodIll{width:100%;max-width:290px;height:150px;margin:6px auto 18px;position:relative}
+.vhero-foodIll .center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:78px;z-index:3;
+  filter:drop-shadow(0 18px 22px rgba(80,50,10,.4));animation:foodFloat 3.5s ease-in-out infinite}
+.vhero-foodIll .orb{position:absolute;width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,.55);
+  display:grid;place-items:center;font-size:28px;box-shadow:0 10px 20px -8px rgba(80,50,10,.35);backdrop-filter:blur(2px)}
+.vhero-foodIll .o1{top:2px;right:8%;animation:foodFloat 3s ease-in-out .2s infinite}
+.vhero-foodIll .o2{bottom:6px;right:2%;animation:foodFloat 3.4s ease-in-out .6s infinite}
+.vhero-foodIll .o3{top:8px;left:4%;animation:foodFloat 3.2s ease-in-out .4s infinite}
+.vhero-foodIll .o4{bottom:0;left:10%;animation:foodFloat 3.6s ease-in-out .8s infinite}
+@keyframes foodFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.vhero-foodIll .o1,.vhero-foodIll .o2,.vhero-foodIll .o3,.vhero-foodIll .o4{transform-origin:center}
 .vhero-in{position:relative;z-index:2}
-.vhero-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:13px}
-.vhero-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.1);
-  border:1px solid rgba(95,227,180,.4);color:#8FF0CC;font-size:10px;font-weight:700;
-  padding:5px 10px;border-radius:999px;white-space:nowrap}
-.vhero-live{display:flex;align-items:center;gap:5px;font-size:9.5px;color:#B7C4BE;font-weight:600;white-space:nowrap}
-.vhero-live i{width:6px;height:6px;border-radius:50%;background:#00E39B;display:block;box-shadow:0 0 0 0 rgba(0,227,155,.6);animation:vPulse 2s infinite}
-@keyframes vPulse{0%{box-shadow:0 0 0 0 rgba(0,227,155,.55)}70%{box-shadow:0 0 0 7px rgba(0,227,155,0)}100%{box-shadow:0 0 0 0 rgba(0,227,155,0)}}
-.vhero h2{font-family:'Cairo';font-weight:900;font-size:19px;line-height:1.42;color:#fff;letter-spacing:-.2px}
-.vhero h2 b{color:#5FE3B4}
-.vhero .vh-sub{font-size:12px;color:#AEC2BB;margin-top:8px;line-height:1.75}
-.vhero-stats{display:flex;gap:7px;margin-top:16px}
-.vhero-stat{flex:1;text-align:center;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);
-  border-radius:14px;padding:9px 3px 8px;backdrop-filter:blur(8px);opacity:0;transform:translateY(8px);
-  animation:vPop .5s cubic-bezier(.2,.8,.2,1) forwards}
-.vhero-stat:nth-child(1){animation-delay:.15s}.vhero-stat:nth-child(2){animation-delay:.3s}.vhero-stat:nth-child(3){animation-delay:.45s}
-@keyframes vPop{to{opacity:1;transform:none}}
-.vhero-stat b{display:block;font-family:'Cairo';font-weight:800;font-size:14px;color:#5FE3B4;font-variant-numeric:tabular-nums}
-.vhero-stat span{display:block;font-size:9px;color:#93A69D;margin-top:2px;line-height:1.4}
-.vhero-trust{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
-.vhero-trust span{font-size:9.5px;color:#C7D6CF;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
-  padding:4px 9px;border-radius:999px}
+.vhero-top{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:6px}
+.vhero-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(0,0,0,.12);
+  border:1px solid rgba(0,0,0,.18);color:#3A2A0A;font-size:10.5px;font-weight:800;
+  padding:6px 12px;border-radius:999px;white-space:nowrap}
+.vhero-live{display:none}
+.vhero h2{font-family:'Cairo';font-weight:900;font-size:24px;line-height:1.4;color:#241A05;letter-spacing:-.2px;text-align:center}
+.vhero h2 b{color:#fff;-webkit-text-stroke:1px #241A05}
+.vhero .vh-sub{font-size:12.5px;color:#4A3410;text-align:center;margin-top:10px;line-height:1.8;opacity:.85}
+.vhero-stats{display:flex;gap:7px;margin-top:18px}
+.vhero-stat{flex:1;text-align:center;background:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.5);
+  border-radius:14px;padding:9px 3px 8px;backdrop-filter:blur(4px)}
+.vhero-stat b{display:block;font-family:'Cairo';font-weight:800;font-size:14px;color:#241A05;font-variant-numeric:tabular-nums}
+.vhero-stat span{display:block;font-size:9px;color:#5C4212;margin-top:2px;line-height:1.4}
+.vhero-trust{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:14px}
+.vhero-trust span{font-size:9.5px;color:#241A05;font-weight:700;background:rgba(255,255,255,.45);border:1px solid rgba(255,255,255,.5);
+  padding:5px 10px;border-radius:999px}
 .wmark{width:72px;height:72px;margin:0 auto 22px}
 h1.atitle{font-size:24px;text-align:center;line-height:1.4}
 p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-height:1.7}
@@ -127,12 +118,12 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
 .resend{text-align:center;font-size:13px;color:var(--txt2);margin-top:14px}
 .resend b{color:var(--ac);font-weight:700}
 .demo-hint{background:var(--ac-l);color:var(--ac-d);border-radius:12px;padding:11px 14px;font-size:12.5px;
-  text-align:center;margin-top:14px;border:1px dashed rgba(0,182,122,.35)}
+  text-align:center;margin-top:14px;border:1px dashed rgba(240,169,59,.35)}
 
 .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:16px;
   border-radius:15px;font-family:'Cairo';font-weight:700;font-size:15px;transition:.15s}
 .btn:active{transform:scale(.98)}
-.btn-p{background:var(--ac);color:#fff;box-shadow:0 10px 26px -10px rgba(0,182,122,.55)}
+.btn-p{background:var(--ac);color:#fff;box-shadow:0 10px 26px -10px rgba(240,169,59,.55)}
 .btn-o{background:var(--surf);border:1.5px solid var(--line);color:var(--txt)}
 .btn:disabled{opacity:.4;pointer-events:none}
 
@@ -150,7 +141,7 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
 .brand span{font-size:9px;color:var(--ac-d);letter-spacing:1.6px;font-weight:600}
 .live{margin-inline-start:auto;display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--txt3)}
 .live i{width:6px;height:6px;border-radius:50%;background:var(--ac);animation:pu 2s infinite;display:block}
-@keyframes pu{0%,100%{box-shadow:0 0 0 0 rgba(0,182,122,.5)}50%{box-shadow:0 0 0 5px rgba(0,182,122,0)}}
+@keyframes pu{0%,100%{box-shadow:0 0 0 0 rgba(240,169,59,.5)}50%{box-shadow:0 0 0 5px rgba(240,169,59,0)}}
 .loc{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--txt2);margin-top:10px}
 .loc b{color:var(--txt);font-weight:600}
 .hi{margin-inline-start:auto;font-size:12px;color:var(--txt2)}
@@ -161,7 +152,7 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
 .pad{padding:0 16px}
 
 .hero{margin:14px 16px 0;border-radius:20px;padding:18px;position:relative;overflow:hidden;
-  background:linear-gradient(135deg,var(--ac-l),#fff);border:1px solid rgba(0,182,122,.18)}
+  background:linear-gradient(135deg,var(--ac-l),#fff);border:1px solid rgba(240,169,59,.18)}
 .hero .e{font-size:13px;color:var(--ac-d);font-weight:600}
 .hero h2{font-size:19px;margin-top:5px;color:var(--txt)}
 .hero p{font-size:12.5px;color:var(--txt2);margin:5px 0 0}
@@ -174,13 +165,13 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
   background:var(--surf);margin-bottom:9px;transition:.2s;box-shadow:var(--sh);position:relative;overflow:hidden}
 .prod:active{transform:scale(.98)}
 .prod .ph{width:54px;height:54px;border-radius:14px;background:linear-gradient(150deg,var(--ac-l),#fff);
-  display:grid;place-items:center;font-size:25px;flex:0 0 auto;box-shadow:inset 0 0 0 1px rgba(0,182,122,.12)}
+  display:grid;place-items:center;font-size:25px;flex:0 0 auto;box-shadow:inset 0 0 0 1px rgba(240,169,59,.12)}
 .prod .n{font-weight:700;font-size:13.5px;color:var(--txt)}
 .prod .u{font-size:10.5px;color:var(--ac-d);font-weight:700;background:var(--ac-l);padding:2px 8px;border-radius:999px;display:inline-block;margin-top:3px}
 .prod .pr{font-family:'Cairo';font-weight:800;font-size:15.5px;color:var(--ac-d);margin-top:3px;letter-spacing:-.2px}
 .prod .act{margin-inline-start:auto}
 .add{width:36px;height:36px;border-radius:12px;background:var(--ac);color:#fff;font-size:20px;
-  display:grid;place-items:center;font-weight:700;transition:.15s;box-shadow:0 6px 14px -6px rgba(0,182,122,.55)}
+  display:grid;place-items:center;font-weight:700;transition:.15s;box-shadow:0 6px 14px -6px rgba(240,169,59,.55)}
 .add:active{transform:scale(.85)}
 .stp{display:flex;align-items:center;background:var(--ac);border-radius:11px;padding:2px}
 .stp button{width:28px;height:28px;color:#fff;font-size:17px;border-radius:8px;display:grid;place-items:center;font-weight:700}
@@ -188,7 +179,7 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
 
 .cartbar{position:absolute;inset-inline:12px;bottom:calc(var(--nav) + env(safe-area-inset-bottom) + 10px);z-index:30;
   background:var(--ac);color:#fff;border-radius:16px;padding:13px 16px;display:flex;align-items:center;gap:11px;
-  box-shadow:0 16px 36px -10px rgba(0,182,122,.5);transform:translateY(160%);
+  box-shadow:0 16px 36px -10px rgba(240,169,59,.5);transform:translateY(160%);
   transition:transform .4s cubic-bezier(.2,.8,.2,1)}
 .cartbar.show{transform:none}
 .cartbar .c{background:rgba(255,255,255,.22);width:26px;height:26px;border-radius:9px;display:grid;place-items:center;font-weight:800;font-size:12px}
@@ -227,8 +218,8 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
 .b-w{background:#FFF3DE;color:#B87610}
 .b-d{background:#FDE8E6;color:#C23327}
 .brandbanner{display:flex;align-items:center;gap:11px;margin-top:18px;padding:13px 14px;border-radius:15px;
-  background:linear-gradient(120deg,#0B0F14,#152920 60%,#0B0F14);color:#fff;position:relative;overflow:hidden}
-.brandbanner::before{content:"";position:absolute;inset:0;background:linear-gradient(120deg,transparent,rgba(0,214,143,.14),transparent);
+  background:linear-gradient(120deg,#1A1206,#241A05 60%,#1A1206);color:#fff;position:relative;overflow:hidden}
+.brandbanner::before{content:"";position:absolute;inset:0;background:linear-gradient(120deg,transparent,rgba(255,199,92,.14),transparent);
   background-size:200% 100%;animation:sheen 4s linear infinite}
 .brandbanner .bb-ic{font-size:20px;position:relative;z-index:1}
 .brandbanner b{color:var(--ac);font-family:'Cairo';font-size:13px;position:relative;z-index:1}
@@ -248,7 +239,7 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
 .tip-btn.on{background:var(--ac);border-color:var(--ac);color:#fff}
 .float-support{position:absolute;bottom:calc(var(--nav) + env(safe-area-inset-bottom) + 14px);inset-inline-start:14px;z-index:35;
   height:44px;padding:0 16px 0 14px;border-radius:999px;background:var(--ac);color:#fff;font-size:13.5px;font-weight:700;border:0;
-  display:flex;align-items:center;gap:7px;font-family:'Cairo',inherit;box-shadow:0 12px 26px -8px rgba(0,182,122,.55)}
+  display:flex;align-items:center;gap:7px;font-family:'Cairo',inherit;box-shadow:0 12px 26px -8px rgba(240,169,59,.55)}
 .float-support i{font-style:normal;font-size:19px}
 .float-support:active{transform:scale(.92)}
 .float-assist{position:absolute;bottom:calc(var(--nav) + env(safe-area-inset-bottom) + 66px);inset-inline-end:14px;z-index:35;display:none;
@@ -269,7 +260,7 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
 .guide-d{color:#B8E8D4;font-size:14px;line-height:1.9;max-width:290px}
 .guideDots{display:flex;justify-content:center;gap:7px;margin-bottom:22px}
 .guideDots i{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.25);font-style:normal;transition:.3s}
-.guideDots i.on{background:#00E39B;width:20px;border-radius:4px}
+.guideDots i.on{background:#F0A93B;width:20px;border-radius:4px}
 .fta-tip{display:flex;gap:10px;align-items:flex-start;background:var(--ac-l);border-radius:14px;padding:12px 14px;margin-bottom:14px;position:relative}
 .fta-tip b{font-size:13px;line-height:1.7;display:block}
 .fta-tip .x{position:absolute;top:8px;left:8px;width:22px;height:22px;border-radius:8px;background:rgba(0,0,0,.06);display:grid;place-items:center;font-size:11px}
@@ -310,10 +301,45 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
 .toast.show{transform:none;opacity:1}
 .mt{margin-top:12px}.mb{margin-bottom:12px}.muted{color:var(--txt2)}.tiny{font-size:11.5px}
 
+.searchBar{display:flex;align-items:center;gap:10px;margin:14px 16px 0;padding:13px 16px;border-radius:16px;
+  background:var(--surf);border:1.5px solid var(--line);box-shadow:var(--sh)}
+.searchBar input{flex:1;border:0;background:none;outline:0;font-size:13.5px;color:var(--txt)}
+.searchBar input::placeholder{color:var(--txt3)}
+.searchBar .ic{font-size:17px;color:var(--txt3)}
+.promoHero{margin:14px 16px 0;border-radius:20px;padding:18px;position:relative;overflow:hidden;
+  background:linear-gradient(120deg,#1A1206 0%,#241A05 55%,#1A1206 100%);color:#fff;box-shadow:0 16px 34px -14px rgba(0,0,0,.45)}
+.promoHero::before{content:"";position:absolute;inset:0;background:linear-gradient(120deg,transparent,rgba(255,199,92,.18),transparent);
+  background-size:200% 100%;animation:sheen 4s linear infinite}
+.promoHero-in{position:relative;z-index:1;display:flex;align-items:center;gap:12px}
+.promoHero .ic{font-size:30px}
+.promoHero b{font-family:'Cairo';font-size:14px;display:block}
+.promoHero span{font-size:11px;color:#B7E6D2;display:block;margin-top:3px;line-height:1.6}
+.featRow{display:flex;gap:12px;overflow-x:auto;padding:2px 16px 10px;margin:0 -16px;scrollbar-width:none}
+.featRow::-webkit-scrollbar{display:none}
+.featCard{flex:0 0 auto;width:168px;text-align:right;background:var(--surf);border:1px solid var(--line);
+  border-radius:18px;overflow:hidden;box-shadow:var(--sh-lg)}
+.featCard:active{transform:scale(.97)}
+.featCard-ph{position:relative;width:100%;height:100px;background:linear-gradient(135deg,var(--ac-l),#fff)}
+.featCard-ph img{width:100%;height:100%;object-fit:cover;display:block}
+.featCard-ph .ic{width:100%;height:100%;display:grid;place-items:center;font-size:34px}
+.featCard-badge{position:absolute;top:7px;inset-inline-start:7px;background:#F5A623;color:#fff;font-size:9px;
+  font-weight:800;padding:3px 8px;border-radius:7px}
+.featCard-info{padding:10px 11px}
+.featCard-info b{font-size:12.5px;display:block;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.featCard-info .r{font-size:10.5px;color:#B87610;font-weight:800;margin-top:4px;display:flex;align-items:center;gap:3px}
+.catsRow{display:flex;gap:9px;overflow-x:auto;padding:11px 16px 4px;margin:0 -16px;scrollbar-width:none}
+.catsRow::-webkit-scrollbar{display:none}
+.catPill{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:6px;background:none;
+  border:0;padding:2px 6px;min-width:60px;transition:.2s}
+.catPill .e{width:52px;height:52px;border-radius:16px;display:grid;place-items:center;font-size:24px;
+  background:var(--cat-c,var(--surf2));transition:.2s;box-shadow:var(--sh)}
+.catPill.on-cat .e{box-shadow:0 0 0 2.5px var(--ac),var(--sh)}
+.catPill .n{font-size:10.5px;font-weight:700;color:var(--txt2)}
+.catPill.on-cat .n{color:var(--ac-d)}
 .qrentry{display:flex;align-items:center;gap:11px;margin:14px 16px 0;padding:14px;border-radius:18px;
-  background:linear-gradient(120deg,#0B0F14,#1B222B 55%,#0B0F14);color:#fff;position:relative;overflow:hidden;
+  background:linear-gradient(120deg,#1A1206,#241A05 55%,#1A1206);color:#fff;position:relative;overflow:hidden;
   box-shadow:0 12px 28px -14px rgba(0,0,0,.5)}
-.qrentry::before{content:"";position:absolute;inset:0;background:linear-gradient(120deg,transparent,rgba(0,214,143,.16),transparent);
+.qrentry::before{content:"";position:absolute;inset:0;background:linear-gradient(120deg,transparent,rgba(255,199,92,.16),transparent);
   background-size:200% 100%;animation:sheen 3.5s linear infinite}
 @keyframes sheen{to{background-position:-200% 0}}
 .qrentry .ic{width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.1);display:grid;place-items:center;
@@ -321,30 +347,35 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
 .qrentry b{font-size:13.5px;display:block;position:relative;z-index:1}
 .qrentry span{font-size:11px;color:#B7BFC9;position:relative;z-index:1}
 .qrentry button{margin-inline-start:auto;background:var(--ac);color:#fff;font-family:'Cairo';font-weight:700;
-  font-size:12.5px;padding:9px 14px;border-radius:10px;position:relative;z-index:1;box-shadow:0 6px 16px -6px rgba(0,182,122,.6)}
+  font-size:12.5px;padding:9px 14px;border-radius:10px;position:relative;z-index:1;box-shadow:0 6px 16px -6px rgba(240,169,59,.6)}
 .cats{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:11px}
 .cat{background:var(--surf);border:1px solid var(--line);border-radius:14px;padding:13px 6px;text-align:center;transition:.2s}
 .cat:active{transform:scale(.95)}
 .cat.on-cat{background:var(--ac-l);border-color:var(--ac)}
 .cat .e{font-size:22px;line-height:1.2}
 .cat .n{font-size:11px;font-weight:600;margin-top:4px;color:var(--txt)}
-.shopcard2{display:flex;gap:12px;align-items:center;width:100%;text-align:right;background:var(--surf);
-  border:1px solid var(--line);border-radius:18px;padding:10px;margin-bottom:10px;box-shadow:var(--sh);transition:.2s}
+.shopcard2{display:block;width:100%;text-align:right;background:var(--surf);
+  border:1px solid var(--line);border-radius:20px;overflow:hidden;margin-bottom:16px;box-shadow:var(--sh-lg);transition:.2s}
 .shopcard2:active{transform:scale(.98)}
-.shopcard2-closed{opacity:.6}
-.shopcard2-ph{position:relative;width:64px;height:64px;border-radius:14px;overflow:hidden;flex:0 0 auto;
+.shopcard2-closed{opacity:.65}
+.shopcard2-ph{position:relative;width:100%;height:128px;overflow:hidden;
   background:linear-gradient(135deg,var(--ac-l),#fff)}
 .shopcard2-ph img{width:100%;height:100%;object-fit:cover;display:block}
-.shopcard2-ic{width:100%;height:100%;display:grid;place-items:center;font-size:28px}
-.shopcard2-status{position:absolute;bottom:3px;right:3px;left:3px;text-align:center;font-size:8.5px;font-weight:800;
-  background:var(--ac);color:#fff;border-radius:6px;padding:2px 0}
+.shopcard2-ic{width:100%;height:100%;display:grid;place-items:center;font-size:44px}
+.shopcard2-status{position:absolute;top:10px;inset-inline-start:10px;font-size:10.5px;font-weight:800;
+  background:var(--ac);color:#fff;border-radius:8px;padding:4px 10px;box-shadow:0 4px 10px -3px rgba(0,0,0,.3)}
 .shopcard2-status.is-closed{background:var(--danger)}
-.shopcard2-info{flex:1;min-width:0}
-.shopcard2-info b{font-size:14px;display:block;color:var(--txt)}
-.shopcard2-meta{font-size:11.5px;color:var(--txt3);display:block;margin-top:2px}
-.shopcard2-tags{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.shopcard2-timebadge{position:absolute;top:10px;inset-inline-end:10px;font-size:10.5px;font-weight:800;
+  background:rgba(16,20,28,.72);color:#fff;border-radius:8px;padding:4px 10px;backdrop-filter:blur(4px)}
+.shopcard2-info{flex:1;min-width:0;padding:13px 14px}
+.shopcard2-info b{font-size:15.5px;display:block;color:var(--txt);font-family:'Cairo'}
+.shopcard2-meta{font-size:11.5px;color:var(--txt3);display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:wrap}
+.shopcard2-rating{display:inline-flex;align-items:center;gap:3px;font-weight:800;color:#B87610}
+.shopcard2-rating .star{color:#F5A623}
+.shopcard2-tags{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
 .shopcard-village{font-size:10px;font-weight:700;background:var(--surf2);color:var(--txt2);padding:3px 8px;border-radius:999px}
 .shopcard-dist{font-size:10px;font-weight:700;background:var(--ac-l);color:var(--ac-d);padding:3px 8px;border-radius:999px}
+.shopcard-time{font-size:10px;font-weight:700;background:#FFF3DE;color:#B87610;padding:3px 8px;border-radius:999px}
 .shopcard{display:flex;gap:11px;align-items:center;width:100%;text-align:right;background:var(--surf);
   border:1px solid var(--line);border-radius:15px;padding:11px;margin-bottom:9px;box-shadow:var(--sh)}
 .shopcard:active{transform:scale(.985)}
@@ -370,8 +401,8 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
 <div class="app" id="app">
 
   <div id="boot"><div class="in">
-    <svg class="mk" viewBox="0 0 64 64"><rect width="64" height="64" rx="19" fill="#0F241F"/>
-      <path d="M16 46 L26 46 L26 36 L38 36 L38 25 L49 25" fill="none" stroke="#00E39B" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+    <svg class="mk" viewBox="0 0 64 64"><rect width="64" height="64" rx="19" fill="#241A05"/>
+      <path d="M16 46 L26 46 L26 36 L38 36 L38 25 L49 25" fill="none" stroke="#F0A93B" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
       <circle cx="49" cy="25" r="4.6" fill="#F5A623"/></svg>
     <b>بسيطة</b><span>تطبيق العميل</span><div class="bar"><i></i></div></div></div>
 
@@ -379,35 +410,37 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
     <div class="astage on" id="st-welcome">
       <div class="spacer" style="flex:.12"></div>
       <div class="vhero">
-        <span class="vhero-grid"></span><span class="vhero-shine"></span>
         <div class="vhero-in">
           <div class="vhero-top">
-            <span class="vhero-badge">🇪🇬 شبكة بسيطة لقرى مصر</span>
-            <span class="vhero-live"><i></i> الشبكة شغّالة الآن</span>
+            <span class="vhero-badge">⏱️ التزام بالوقت أو تعويض فوري</span>
           </div>
-          <h2>اطلب من <b>محلات حيّك</b><br>في ثواني معدودة</h2>
-          <p class="vh-sub">بقالة، مخبز، خضار وأكتر — بضغطة واحدة أو حتى بصوتك، ويوصلك لباب البيت من غير ما تتحرك</p>
+          <div class="vhero-foodIll">
+            <span class="orb o1">💊</span><span class="orb o2">🛒</span>
+            <span class="orb o3">☕</span><span class="orb o4">🥖</span>
+            <span class="center">🍔</span>
+          </div>
+          <h2>طلبك يوصلك <b>في معاده بالظبط</b><br>وإلا بنعوّضك تلقائيًا</h2>
+          <p class="vh-sub">من بقالة، مخبز، أو صيدلية حيّك — نلتزم بميعاد التوصيل المتوقع، ولو اتأخرنا عليك، كوبون خصم بيتحط لك على طول من غير ما تتصل بحد</p>
           <div class="vhero-stats">
             <div class="vhero-stat"><b class="num">+٢٥٠</b><span>قرية متصلة</span></div>
             <div class="vhero-stat"><b class="num">+٤٠٠٠</b><span>طلب يوميًا</span></div>
             <div class="vhero-stat"><b class="num">١٥ د</b><span>متوسط التوصيل</span></div>
           </div>
           <div class="vhero-trust">
-            <span>✅ مناديب موثّقين</span><span>🔒 دفع آمن</span><span>📍 تتبع لحظي</span>
+            <span>✅ مناديب موثّقين</span><span>🔒 دفع آمن</span><span>⏱️ التزام بالوقت</span>
           </div>
         </div>
       </div>
-      <p class="asub" style="margin-top:0">مش عارف تبدأ منين؟ هنمسكلك إيدك خطوة بخطوة من غير تعقيد</p>
       <div class="spacer"></div>
-      <button class="btn btn-p" onclick="goAuth('phone','signup')">إنشاء حساب جديد</button>
-      <button class="btn btn-o mt" onclick="goAuth('phone','login')">عندي حساب بالفعل</button>
+      <button class="btn" style="background:#241A05;color:#fff;box-shadow:0 12px 26px -10px rgba(36,26,5,.5)" onclick="goAuth('phone','signup')">إنشاء حساب جديد</button>
+      <button class="btn mt" style="background:rgba(255,255,255,.5);border:1.5px solid rgba(36,26,5,.25);color:#241A05" onclick="goAuth('phone','login')">عندي حساب بالفعل</button>
     </div>
 
     <div class="astage" id="st-phone">
       <button class="aback" onclick="goAuth('welcome')">→</button>
       <div class="aprog"><i class="on"></i><i></i><i></i></div>
-      <svg class="wmark" viewBox="0 0 72 72"><circle cx="36" cy="36" r="36" fill="#E3F9F1"/>
-        <path d="M24 20h13l4 10-5 4c2 5 6 9 11 11l4-5 10 4v13c-20 1-37-16-37-37Z" fill="none" stroke="#00B67A" stroke-width="2.6" stroke-linejoin="round"/></svg>
+      <svg class="wmark" viewBox="0 0 72 72"><circle cx="36" cy="36" r="36" fill="#FFF3DE"/>
+        <path d="M24 20h13l4 10-5 4c2 5 6 9 11 11l4-5 10 4v13c-20 1-37-16-37-37Z" fill="none" stroke="#F0A93B" stroke-width="2.6" stroke-linejoin="round"/></svg>
       <h1 class="atitle">رقم موبايلك</h1>
       <p class="asub">هنبعتلك كود تحقق سريع عليه</p>
       <div class="fld mt"><label>رقم الموبايل</label>
@@ -454,8 +487,8 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
   <div id="mainApp">
     <div class="top">
       <div class="top-r">
-        <svg class="mark" viewBox="0 0 32 32"><rect width="32" height="32" rx="10" fill="#0F241F"/>
-          <path d="M8 23 L14 23 L14 17 L20 17 L20 11 L25 11" fill="none" stroke="#00B67A" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <svg class="mark" viewBox="0 0 32 32"><rect width="32" height="32" rx="10" fill="#241A05"/>
+          <path d="M8 23 L14 23 L14 17 L20 17 L20 11 L25 11" fill="none" stroke="#F0A93B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
           <circle cx="25" cy="11" r="3" fill="#F5A623"/></svg>
         <div class="brand"><b>بسيطة</b><span>تطبيق العميل</span></div>
         <div class="live"><i></i> متصل</div>
@@ -710,6 +743,7 @@ function mapRowToOrder(o,items){
     geo:(o.delivery_lat!=null)?{lat:o.delivery_lat,lng:o.delivery_lng}:null,
     fee:+o.delivery_fee, total:+o.total, stage:o.stage, driver:o.driver_name||null, driverId:o.driver_id||null,
     recurring:o.is_recurring, feedbackSubmitted:o.feedback_submitted, deliveryPhoto:o.delivery_photo_url||null, notes:o.notes||'',
+    placedAt:o.placed_at||new Date().toISOString(),
     items:(items||[]).map(i=>({n:i.name,q:+i.qty,p:+i.unit_price,u:i.unit,sellBy:i.sell_by}))
   };
 }
@@ -791,6 +825,16 @@ function computeDeliveryFee(km,sameVillage){
   if(km<=15) return 25;
   return Math.round(25+(km-15)*1.5);
 }
+/* ═══ الوقت المتوقع للتوصيل — تعهّد واضح للعميل، مبني على نفس شرائح المسافة بالظبط
+   عشان يفضل ثابت ومحسوب من رسوم التوصيل نفسها (متاحة دايمًا من غير أي عمود إضافي في القاعدة) ═══ */
+function etaMinutesFromFee(fee){
+  if(fee<=10) return 20;
+  if(fee<=12) return 25;
+  if(fee<=15) return 35;
+  if(fee<=20) return 45;
+  if(fee<=25) return 55;
+  return 55+Math.round((fee-25)/1.5*3);
+}
 /* ═══ عمولة المنصة على كل توصيلة — ١.٥٠ جنيه أساسي جوه نفس القرية،
    وبتزيد تدريجيًا مع المسافة للطلبات بين القرى (نفس منطق تسعير التوصيل بالظبط،
    لأن كل ما المشوار يطول، جهد المنصة في التنسيق والإسناد بين القرى بيزيد). ═══ */
@@ -803,8 +847,8 @@ function computePlatformCommission(km,sameVillage){
   return 4.00;
 }
 const CATS=[
-  {k:'grocery',n:'بقالات',i:'🛒'},{k:'pharmacy',n:'صيدليات',i:'💊'},
-  {k:'restaurant',n:'مطاعم',i:'🍔'},{k:'cafe',n:'كافيهات',i:'☕'},{k:'bakery',n:'مخابز',i:'🥖'},
+  {k:'grocery',n:'بقالات',i:'🛒',c:'#E3F9F1'},{k:'pharmacy',n:'صيدليات',i:'💊',c:'#E8EEFE'},
+  {k:'restaurant',n:'مطاعم',i:'🍔',c:'#FDE8E6'},{k:'cafe',n:'كافيهات',i:'☕',c:'#FBEEDC'},{k:'bakery',n:'مخابز',i:'🥖',c:'#FFF3DE'},
 ];
 function mapProductRow(p){
   return {id:p.id,n:p.name,br:p.brand||'',i:p.icon||'🛒',p:+p.price,u:p.unit,sellBy:p.sell_by,s:+p.stock};
@@ -816,11 +860,19 @@ async function loadShops(){
     if(e1){console.error('basita: فشل تحميل المحلات',e1);return}
     const {data:products,error:e2}=await sb.from('products').select('*');
     if(e2){console.error('basita: فشل تحميل المنتجات',e2);return}
+    const {data:reviews}=await sb.from('reviews').select('merchant_id,merchant_rating');
+    const ratingsByShop={};
+    (reviews||[]).forEach(r=>{
+      const a=ratingsByShop[r.merchant_id]=ratingsByShop[r.merchant_id]||{sum:0,n:0};
+      a.sum+=+r.merchant_rating; a.n++;
+    });
     const fresh={};
     (merchants||[]).forEach(m=>{
+      const rt=ratingsByShop[m.id];
       fresh[m.id]={id:m.id,name:m.name,type:BIZ_LABELS[m.biz_type]||m.biz_type,typeKey:m.biz_type,
         icon:BIZ_ICONS[m.biz_type]||'🏪',photo:m.shop_photo_url||'',bio:'',isOpen:m.is_open!==false,
-        villageId:m.village_id||null,geo:(m.shop_lat!=null)?{lat:m.shop_lat,lng:m.shop_lng}:null,products:[]};
+        villageId:m.village_id||null,geo:(m.shop_lat!=null)?{lat:m.shop_lat,lng:m.shop_lng}:null,products:[],
+        rating:rt?+(rt.sum/rt.n).toFixed(1):null,reviewCount:rt?rt.n:0};
     });
     (products||[]).forEach(p=>{ if(fresh[p.merchant_id]) fresh[p.merchant_id].products.push(mapProductRow(p)); });
     SHOPS=fresh;
@@ -841,7 +893,7 @@ const SLABEL={placed:'تم استلام طلبك',accepted:'المحل قبل ا
   picked:'المندوب استلم طلبك من المحل',delivering:'في الطريق إليك دلوقتي',delivered:'وصلك الطلب 🎉'};
 
 let S={view:'home',cart:{},cartShop:null,orders:[],oid:null,activeShop:null,catFilter:null,
-  co:{name:'منى',ph:'',lm:LM[0],house:'12',geo:null,villageId:null},pin:'1234',cartNotes:'',
+  co:{name:'منى',ph:'',lm:LM[0],house:'12',geo:null,villageId:null},pin:'1234',cartNotes:'',searchQuery:'',
   fta:{dismissed:false,seenShopTip:false,seenCheckoutTip:false}};
 /* ═══ حفظ دائم للطلبات (فيها صور إثبات التسليم ومحادثات وأرقام) عشان ماتضيعش لو الصفحة اتحدّثت ═══ */
 const STATE_KEY='basita_state_'+ROLE;
@@ -942,7 +994,7 @@ function openFtaSheet(){
     <p style="color:var(--txt2);font-size:13.5px;line-height:1.8;margin:0 0 16px">
       دي أول مرة ليك هنا، فهمساعدك خطوة بخطوة عشان تعمل أول طلب في أقل من دقيقة.</p>
     <div class="fld" style="display:flex;flex-direction:column;gap:10px">
-      <button class="btn" style="background:linear-gradient(120deg,#00B67A,#00925F);color:#fff" onclick="closeSheet();openGuideTour()">🧭 وريني إزاي أطلب — خطوة بخطوة</button>
+      <button class="btn" style="background:linear-gradient(120deg,#F0A93B,#D98D1E);color:#fff" onclick="closeSheet();openGuideTour()">🧭 وريني إزاي أطلب — خطوة بخطوة</button>
       <button class="btn btn-o" onclick="ftaGo('browse')">🏪 عارف اللي عايزه — دوّر بنفسك</button>
     </div>
     <div class="sec-t" style="margin-top:18px"><h3>أسئلة شائعة</h3></div>
@@ -1081,12 +1133,31 @@ function updBar(){const c=cCount();
   $('#cartbar').classList.toggle('show',c>0&&!['cart','checkout','track'].includes(S.view));
   $('#cartCount').textContent=c;$('#cartTotal').textContent=M(cSub())+' ج'}
 
+function showCrossVillageConfirm(shop){
+  const myVillage=VILLAGES.find(v=>v.id===S.co.villageId);
+  const shopVillage=VILLAGES.find(v=>v.id===shop.villageId);
+  const km=villageDistanceKm(myVillage,shopVillage);
+  openSheet('⚠️ الطلب ده من قرية تانية',`
+    <div style="text-align:center;padding:6px 0 14px">
+      <div style="font-size:40px">🚴</div>
+      <b style="color:#C23327;font-size:15.5px;display:block;margin-top:8px">${shop.name} في ${shopVillage?shopVillage.name:'قرية تانية'}، مش في قريتك</b>
+      <p class="tiny muted mt" style="line-height:1.8">المسافة حوالي <b style="color:#C23327">${km!=null?km.toFixed(1)+' كم':'أبعد من المعتاد'}</b> —
+        التوصيل ممكن ياخد وقت أطول من المعتاد عشان كده، ورسوم التوصيل هتكون أعلى شوية زي ما هو موضّح.</p>
+    </div>
+    <button class="btn btn-p" style="width:100%" onclick="S._crossVillageConfirmed=true;closeSheet();placeOrder()">تمام، موافق — كمّل الطلب</button>
+    <button class="btn btn-o mt" style="width:100%" onclick="closeSheet()">لأ، رجّعني</button>`);
+}
 async function placeOrder(){
   const c=S.co;
   if(!c.house.trim()){toast('اكتب رقم البيت');return}
   if(!c.geo){toast('لازم تفعّل موقعك الأول');return}
   const shop=SHOPS[S.activeShop];
   if(!shop){toast('اختار محل الأول');return}
+  const crossVillage=!!(shop.villageId&&S.co.villageId&&shop.villageId!==S.co.villageId);
+  if(crossVillage&&!S._crossVillageConfirmed){
+    showCrossVillageConfirm(shop);
+    return;
+  }
   if(sb){
     const {data:fresh}=await sb.from('merchants').select('is_open,status').eq('id',shop.id).maybeSingle();
     if(fresh&&(fresh.is_open===false||!['trial','active','payment_review'].includes(fresh.status))){
@@ -1118,7 +1189,7 @@ async function placeOrder(){
   }else{
     const id='B'+Math.floor(1000+Math.random()*9000);
     order={id,merchantId:shop.id,shopName:shop.name,customerId:c.id,name:c.name,ph:c.ph||'01015974104',
-      addr,geo:c.geo,items:items.map(({p,q})=>({n:p.n,q,p:p.p,u:p.u,sellBy:p.sellBy})),fee,total:cSub()+fee,stage:'placed',driver:null,recurring:false};
+      addr,geo:c.geo,items:items.map(({p,q})=>({n:p.n,q,p:p.p,u:p.u,sellBy:p.sellBy})),fee,total:cSub()+fee,stage:'placed',driver:null,recurring:false,placedAt:new Date().toISOString()};
   }
   S.orders.unshift(order); S.cart={}; S.cartShop=null; S.cartNotes='';
   if(!sb) emit({to:['merchant'],type:'order:new',order});
@@ -1194,22 +1265,47 @@ onBus(d=>{
   if(S.view==='track'&&S.oid===o.id) notify('تحديث جديد على طلبك');
 });
 
+function handleSearchInput(el){
+  S.searchQuery=el.value;
+  const pos=el.selectionStart;
+  render();
+  const fresh=document.getElementById('shopSearchInput');
+  if(fresh){ fresh.focus(); fresh.setSelectionRange(pos,pos); }
+}
 function shopCardHtml(s,opts){
   opts=opts||{};
+  const fee=opts.sameVillage?10:computeDeliveryFee(opts.distKm,false);
+  const eta=etaMinutesFromFee(fee);
   const distTxt=opts.distKm!=null?`<span class="shopcard-dist">📍 ${opts.distKm<1?Math.round(opts.distKm*1000)+' م':opts.distKm.toFixed(1)+' كم'}</span>`:'';
   const villageTxt=opts.villageName?`<span class="shopcard-village">${opts.villageName}</span>`:'';
+  const ratingTxt=s.rating!=null?`<span class="shopcard2-rating"><span class="star">★</span>${s.rating}<span style="color:var(--txt3);font-weight:500">(${s.reviewCount})</span></span>`:
+    `<span class="shopcard2-rating" style="color:var(--ac-d)">🆕 جديد</span>`;
   return `<button class="shopcard2 ${s.isOpen?'':'shopcard2-closed'}" onclick="openShop('${s.id}')">
     <div class="shopcard2-ph">${s.photo?`<img src="${s.photo}">`:`<span class="shopcard2-ic">${s.icon}</span>`}
-      <span class="shopcard2-status ${s.isOpen?'':'is-closed'}">${s.isOpen?'مفتوح':'مقفول'}</span></div>
+      <span class="shopcard2-status ${s.isOpen?'':'is-closed'}">${s.isOpen?'● مفتوح':'مقفول'}</span>
+      <span class="shopcard2-timebadge">⏱️ ${eta} د</span></div>
     <div class="shopcard2-info">
       <b>${s.name}</b>
-      <span class="shopcard2-meta">${s.type} · <span class="num">${s.products.length}</span> صنف</span>
+      <span class="shopcard2-meta">${ratingTxt} <span style="opacity:.5">·</span> ${s.type} <span style="opacity:.5">·</span> <span class="num">${s.products.length}</span> صنف</span>
       <span class="shopcard2-tags">${villageTxt}${distTxt}</span>
     </div></button>`;
 }
+function featCardHtml(s){
+  const ratingTxt=s.rating!=null?`<span class="star">★</span>${s.rating}`:'🆕 جديد';
+  return `<button class="featCard" onclick="openShop('${s.id}')">
+    <div class="featCard-ph">${s.photo?`<img src="${s.photo}">`:`<span class="ic">${s.icon}</span>`}
+      ${s.rating!=null&&s.rating>=4.5?`<span class="featCard-badge">⭐ الأفضل</span>`:''}</div>
+    <div class="featCard-info"><b>${s.name}</b><span class="r">${ratingTxt} <span style="color:var(--txt3);font-weight:500">· ${s.type}</span></span></div>
+  </button>`;
+}
 function vHome(){
   const shops=Object.values(SHOPS);
-  const applyFilter=arr=>S.catFilter?arr.filter(s=>s.typeKey===S.catFilter):arr;
+  const q=(S.searchQuery||'').trim().toLowerCase();
+  const applyFilter=arr=>{
+    let r=S.catFilter?arr.filter(s=>s.typeKey===S.catFilter):arr;
+    if(q) r=r.filter(s=>s.name.toLowerCase().includes(q)||s.products.some(p=>p.n.toLowerCase().includes(q)));
+    return r;
+  };
   const myVillage=VILLAGES.find(v=>v.id===S.co.villageId);
   let mine=applyFilter(shops.filter(s=>s.villageId&&s.villageId===S.co.villageId));
   let others=applyFilter(shops.filter(s=>!s.villageId||s.villageId!==S.co.villageId));
@@ -1218,22 +1314,32 @@ function vHome(){
       .sort((a,b)=>(a._dist??999)-(b._dist??999));
   }
   const total=mine.length+others.length;
-  return `<div class="pad">
+  return `<div class="searchBar"><span class="ic">🔍</span>
+      <input id="shopSearchInput" placeholder="دوّر على محل أو صنف..." value="${S.searchQuery||''}" oninput="handleSearchInput(this)"></div>
+    <div class="promoHero"><div class="promoHero-in"><span class="ic">⏱️</span>
+      <span><b>التزام بسيطة: توصيلك في معاده</b>
+      <span>لو اتأخرنا عليك، بنعوّضك تلقائيًا — من غير ما تتصل بحد</span></span></div></div>
+    <div class="catsRow">
+      <button class="catPill ${!S.catFilter?'on-cat':''}" onclick="S.catFilter=null;render()">
+        <span class="e" style="--cat-c:var(--surf2)">🏪</span><span class="n">الكل</span></button>
+      ${CATS.map(c=>`<button class="catPill ${S.catFilter===c.k?'on-cat':''}" onclick="S.catFilter='${c.k}';render()">
+        <span class="e" style="--cat-c:${c.c}">${c.i}</span><span class="n">${c.n}</span></button>`).join('')}
+    </div>
+    ${(!q&&!S.catFilter&&[...mine,...others].filter(s=>s.isOpen).length>1)?(()=>{
+      const featured=[...mine,...others].filter(s=>s.isOpen)
+        .sort((a,b)=>(b.rating||0)-(a.rating||0)).slice(0,8);
+      return `<div class="sec-t" style="margin:14px 16px 6px"><h3>⭐ الأعلى تقييمًا عندك</h3></div>
+        <div class="featRow">${featured.map(featCardHtml).join('')}</div>`;
+    })():''}
+    <div class="pad">
     <div class="qrentry"><span class="ic">🔗</span>
       <span><b>عندك كود محل؟</b><span>امسحه وادخل متجره على طول</span></span>
       <button onclick="startScan()">امسح QR</button></div>
-    <div class="sec-t" style="margin-top:16px"><h3>الأقسام</h3></div>
-    <div class="cats">
-      <button class="cat ${!S.catFilter?'on-cat':''}" onclick="S.catFilter=null;render()">
-        <span class="e">🏪</span><span class="n">الكل</span></button>
-      ${CATS.map(c=>`<button class="cat ${S.catFilter===c.k?'on-cat':''}" onclick="S.catFilter='${c.k}';render()">
-        <span class="e">${c.i}</span><span class="n">${c.n}</span></button>`).join('')}
-    </div>
-    ${!total?`<div class="empty"><div class="e">🏪</div><h4>لسه مفيش محلات فاتحة</h4>
-      <p class="tiny">أول ما تاجر يسجّل ويفتح متجره، هيظهر هنا فورًا من غير ما تعمل حاجة</p></div>`:`
-      ${mine.length?`<div class="sec-t"><h3>🏘️ محلات في قريتك${myVillage?' — '+myVillage.name:''}</h3><span class="num">${mine.length}</span></div>
-        ${mine.map(s=>shopCardHtml(s)).join('')}`:
-        `<div class="alert info mt">🏘️ لسه مفيش محلات فاتحة في قريتك — بس شايفلك خيارات من قرى جنبك تحت 👇</div>`}
+    ${!total?`<div class="empty"><div class="e">🏪</div><h4>${q?'مفيش نتايج مطابقة':'لسه مفيش محلات فاتحة'}</h4>
+      <p class="tiny">${q?'جرّب كلمة تانية':'أول ما تاجر يسجّل ويفتح متجره، هيظهر هنا فورًا من غير ما تعمل حاجة'}</p></div>`:`
+      ${mine.length?`<div class="sec-t" style="margin-top:16px"><h3>🏘️ محلات في قريتك${myVillage?' — '+myVillage.name:''}</h3><span class="num">${mine.length}</span></div>
+        ${mine.map(s=>shopCardHtml(s,{sameVillage:true})).join('')}`:
+        (S.catFilter||q?'':`<div class="alert info mt">🏘️ لسه مفيش محلات فاتحة في قريتك — بس شايفلك خيارات من قرى جنبك تحت 👇</div>`)}
       ${others.length?`<div class="sec-t"><h3>🚴 محلات من قرى قريبة</h3><span class="num">${others.length}</span></div>
         <p class="tiny muted" style="margin:-6px 0 10px">رسوم التوصيل منها بتتحسب على حسب المسافة الفعلية</p>
         ${others.map(s=>{
@@ -1261,21 +1367,34 @@ function openAboutBasita(){
     </p>`);
 }
 function openShop(id){
-  S.activeShop=id; PRODS=SHOPS[id].products;
+  S.activeShop=id; PRODS=SHOPS[id].products; S._crossVillageConfirmed=false;
   go('shop');
 }
 function backHome(){ go('home'); }
 function vShop(){
   const s=SHOPS[S.activeShop];
   if(!s)return vHome();
+  const sameVillage=!!(s.villageId&&s.villageId===S.co.villageId);
+  const myVillage=VILLAGES.find(v=>v.id===S.co.villageId);
+  const shopVillage=VILLAGES.find(v=>v.id===s.villageId);
+  const km=villageDistanceKm(myVillage,shopVillage);
+  const fee=sameVillage?10:computeDeliveryFee(km,false);
+  const eta=etaMinutesFromFee(fee);
   return `<div class="pad">
     <button class="back" style="margin-top:14px" onclick="backHome()">→</button>
     ${s.photo?`<div style="margin-top:12px;border-radius:16px;overflow:hidden;box-shadow:var(--sh)">
-      <img src="${s.photo}" style="width:100%;height:140px;object-fit:cover;display:block"></div>`:''}
+      <img src="${s.photo}" style="width:100%;height:150px;object-fit:cover;display:block"></div>`:''}
     <div class="hero" style="${s.photo?'border-radius:0 0 16px 16px;margin-top:0':''}">
       <div class="e">${s.type}</div><h2>${s.name}</h2>
-      <p>توصيل ١٥-٢٥ دقيقة · رسوم التوصيل من ${estimateFee()} ج</p>
-      ${s.bio?`<p style="margin-top:6px;color:var(--txt);opacity:.85;line-height:1.7">${s.bio}</p>`:''}</div>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:6px">
+        ${s.rating!=null?`<span style="font-weight:800;color:#B87610;display:flex;align-items:center;gap:3px"><span style="color:#F5A623">★</span>${s.rating} <span style="color:var(--txt3);font-weight:500">(${s.reviewCount} تقييم)</span></span>`:
+          `<span style="font-weight:700;color:var(--ac-d)">🆕 محل جديد</span>`}
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+        <span class="shopcard-time" style="font-size:11px">⏱️ التوصيل خلال ${eta} دقيقة تقريبًا</span>
+        <span class="shopcard-dist" style="font-size:11px">💵 رسوم التوصيل ${fee} ج</span>
+      </div>
+      ${s.bio?`<p style="margin-top:8px;color:var(--txt);opacity:.85;line-height:1.7">${s.bio}</p>`:''}</div>
     ${!s.isOpen?`<div class="card mt" style="padding:14px;background:#FDE8E6;border-color:#F5B5AE;text-align:center">
       <div style="font-size:22px">🔒</div><b style="display:block;margin-top:6px;color:#C23327">المحل مقفول دلوقتي</b>
       <div class="tiny muted mt">التاجر قفل استقبال الطلبات مؤقتًا — جرّب تاني بعدين</div></div>`:''}
@@ -1389,13 +1508,60 @@ function requestLocation(thenPlace){
     {timeout:8000}
   );
 }
+/* ═══ عداد وقت التوصيل — تعهّد واضح للعميل، ونظام تعويض تلقائي لو اتأخرنا ═══ */
+function compensationKey(orderId){ return 'basita_comp_'+orderId; }
+function grantLateCompensation(orderId){
+  const key=compensationKey(orderId);
+  if(localStorage.getItem(key))return JSON.parse(localStorage.getItem(key));
+  const code='SORRY'+Math.floor(1000+Math.random()*9000);
+  const comp={code,pct:10,at:new Date().toISOString()};
+  try{ localStorage.setItem(key,JSON.stringify(comp)); }catch(e){}
+  return comp;
+}
+function etaBannerHtml(o){
+  if(o.stage==='delivered')return '';
+  const eta=etaMinutesFromFee(o.fee);
+  const deadline=new Date(o.placedAt).getTime()+eta*60000;
+  const remainMs=deadline-Date.now();
+  if(remainMs>0){
+    const mm=Math.floor(remainMs/60000), ss=Math.floor((remainMs%60000)/1000);
+    return `<div class="card mb" style="padding:16px;text-align:center;background:linear-gradient(135deg,var(--ac-l),#fff)">
+      <div class="tiny muted">⏱️ موعد وصولك المتوقع خلال</div>
+      <div class="kufi num" style="font-size:30px;color:var(--ac-d);margin:4px 0" id="etaCountdown">${mm}:${String(ss).padStart(2,'0')}</div>
+      <div class="tiny" style="color:var(--ac-d)">التزام بسيطة: لو اتأخرنا، بنعوّضك تلقائيًا 🤝</div></div>`;
+  }
+  const comp=grantLateCompensation(o.id);
+  return `<div class="card mb" style="padding:16px;text-align:center;background:#FDE8E6;border-color:#F5B5AE">
+    <div style="font-size:24px">🙏</div>
+    <b style="color:#C23327;display:block;margin-top:4px">معلش، اتأخرنا عليك الوقت المتوقع</b>
+    <div class="tiny muted mt">اتصرفلك كوبون خصم ١٠٪ تلقائيًا على طلبك الجاي — عذرًا منّا</div>
+    <div class="kufi num" style="font-size:20px;letter-spacing:3px;color:#C23327;margin-top:8px;background:#fff;border-radius:10px;padding:8px">${comp.code}</div></div>`;
+}
+let etaTickT=null;
+function startEtaTick(){
+  clearInterval(etaTickT);
+  etaTickT=setInterval(()=>{
+    if(S.view!=='track'){ clearInterval(etaTickT); return; }
+    const o=S.orders.find(x=>x.id===S.oid);
+    if(!o||o.stage==='delivered'){ clearInterval(etaTickT); return; }
+    const el=document.getElementById('etaCountdown');
+    if(!el){ render(); return; }
+    const eta=etaMinutesFromFee(o.fee);
+    const remainMs=(new Date(o.placedAt).getTime()+eta*60000)-Date.now();
+    if(remainMs<=0){ render(); return; }
+    const mm=Math.floor(remainMs/60000), ss=Math.floor((remainMs%60000)/1000);
+    el.textContent=mm+':'+String(ss).padStart(2,'0');
+  },1000);
+}
 function vTrack(){
   const o=S.orders.find(x=>x.id===S.oid); if(!o)return vOrders();
   const cur=STAGES.indexOf(o.stage);
+  startEtaTick();
   return `<div class="pad" style="padding-top:14px">
     <div class="card mb" style="padding:15px;text-align:center">
       <div class="tiny muted">رقم الطلب</div><div class="kufi" style="font-size:20px">${o.id}</div>
       ${o.driver?`<div class="bdg b-ac mt">المندوب: ${o.driver}</div>`:''}</div>
+    ${etaBannerHtml(o)}
     <div class="card" style="padding:16px 14px">${STAGES.map((s,i)=>`
       <div class="tl-i ${i<cur?'done':i===cur?'now done':''}"><span class="tl-d">${i<=cur?'✓':''}</span>
       <span><span class="tl-t">${SLABEL[s]}</span>${i===cur?'<span class="tl-s">دلوقتي</span>':''}</span></div>`).join('')}</div>
