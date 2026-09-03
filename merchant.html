@@ -491,6 +491,7 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
     <div id="settleBanner"></div>
     <div class="kpis" id="kpis"></div>
     <div class="body" id="screen"></div>
+    <div id="alertBanner"></div>
     <button class="float-support" onclick="openSupportSheet()" aria-label="الدعم الفني"><i>🆘</i><span>الدعم الفني</span></button>
     <div class="nav" id="nav"></div>
     <div class="toast" id="toast"></div>
@@ -949,6 +950,29 @@ async function loadMyOrders(){
   S.orders=(orders||[]).map(o=>mapOrderRow(o,items.filter(i=>i.order_id===o.id)));
   render();
 }
+/* ═══ تصعيد التنبيه — يفضل يتكرر لحد ما التاجر يشوف الطلب فعليًا، مش نغمة وحدة وخلاص ═══ */
+const pendingAlertIds=new Set();
+let alertEscalationT=null;
+function startAlertEscalation(){
+  if(alertEscalationT)return;
+  alertEscalationT=setInterval(()=>{
+    if(!pendingAlertIds.size){ clearInterval(alertEscalationT); alertEscalationT=null; return; }
+    playOrderAlert();
+  },12000);
+}
+function acknowledgePendingAlerts(){
+  if(!pendingAlertIds.size)return;
+  pendingAlertIds.clear();
+  clearInterval(alertEscalationT); alertEscalationT=null;
+}
+function pendingAlertBannerHtml(){
+  if(!pendingAlertIds.size)return '';
+  return `<button onclick="S.view='list';acknowledgePendingAlerts();render()" style="position:absolute;bottom:calc(var(--nav) + 14px);inset-inline:14px;z-index:45;
+    background:var(--danger);color:#fff;border:0;border-radius:16px;padding:13px 16px;display:flex;align-items:center;gap:10px;
+    font-family:'Cairo';font-weight:700;font-size:13.5px;box-shadow:0 14px 30px -8px rgba(239,74,62,.55);width:calc(100% - 28px);
+    animation:pn 1.6s infinite">
+    <span style="font-size:20px">🔔</span><span>عندك ${pendingAlertIds.size} طلب جديد لسه ما شفتهوش — دوس هنا</span></button>`;
+}
 function subscribeMyOrders(){
   if(!sb||!S.merchantId)return;
   loadMyOrders();
@@ -958,6 +982,7 @@ function subscribeMyOrders(){
       const o=mapOrderRow(payload.new,items);
       const key=o.ph||o.name; S.customerStats[key]=(S.customerStats[key]||0)+1; o.loyal=S.customerStats[key]>=5;
       S.orders.unshift(o); notify('طلب جديد وصل من العميل ✓',true);
+      pendingAlertIds.add(o.id); startAlertEscalation(); render();
     })
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'orders',filter:'merchant_id=eq.'+S.merchantId},payload=>{
       const o=S.orders.find(x=>x.id===payload.new.id);
@@ -1522,6 +1547,7 @@ function autoAssignDriver(id){
 function accept(id){
   if(S.sub.status==='expired'){toast('🔴 اشتراكك خلص — جدده الأول عشان تقدر تقبل طلبات');return}
   const o=S.orders.find(x=>x.id===id); o.stage='accepted';
+  pendingAlertIds.delete(id);
   if(sb) sb.from('orders').update({stage:'accepted'}).eq('id',id).then(()=>{});
   else emit({to:['customer'],type:'order:accept',orderId:id});
   render(); toast('اتبعت موافقة للعميل — جاري تعيين أقرب مندوب تلقائيًا 🤖');
@@ -1568,6 +1594,7 @@ function oCard(o){
     </div></div>`;
 }
 function rejectO(id){
+  pendingAlertIds.delete(id);
   if(sb) sb.from('orders').update({stage:'rejected'}).eq('id',id).then(()=>{});
   else emit({to:['customer'],type:'order:status',orderId:id,status:'rejected'});
   S.orders=S.orders.filter(x=>x.id!==id); render(); toast('اتبعت اعتذار للعميل');}
@@ -1740,6 +1767,7 @@ function render(){
     return `<button aria-pressed="${(S.view||'list')===v}" onclick="S.view='${v}';render()">
       ${bn}<span class="i">${i}</span><span>${n}</span></button>`}).join('');
   renderSubBanner();
+  const ab=document.getElementById('alertBanner'); if(ab) ab.innerHTML=pendingAlertBannerHtml();
   if((S.view||'list')==='qr') setTimeout(drawShopQR,30);
   setTimeout(()=>S.orders.forEach(o=>o._flash=false),900);
 }
