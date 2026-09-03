@@ -158,6 +158,25 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
 .hero h2{font-size:19px;margin-top:5px;color:var(--txt)}
 .hero p{font-size:12.5px;color:var(--txt2);margin:5px 0 0}
 
+.shopHero{position:relative;margin:14px 16px 0;height:0;padding-bottom:52%;border-radius:22px;
+  overflow:hidden;box-shadow:var(--sh-lg);background:var(--surf2)}
+.shopHero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.shopHero-scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(20,14,4,0) 40%,rgba(18,12,4,.82) 100%)}
+.shopHero-back{position:absolute;top:12px;inset-inline-start:12px;width:34px;height:34px;border:0;
+  border-radius:11px;background:rgba(255,255,255,.94);backdrop-filter:blur(6px);display:grid;
+  place-items:center;font-size:16px;box-shadow:var(--sh);z-index:1}
+.shopHero-badge{position:absolute;top:12px;inset-inline-end:12px;background:rgba(255,255,255,.94);
+  color:var(--ac-d);font-size:11px;font-weight:700;padding:6px 13px;border-radius:999px;
+  backdrop-filter:blur(6px);z-index:1}
+.shopHero-info{position:absolute;inset-inline:0;bottom:0;padding:16px 16px 16px}
+.shopHero-info h2{color:#fff;font-size:19px;margin:0 0 6px;text-shadow:0 2px 12px rgba(0,0,0,.4)}
+.shopHero-meta{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.shopHero-meta span{font-size:11.5px;color:#fff;background:rgba(255,255,255,.18);
+  backdrop-filter:blur(4px);padding:5px 11px;border-radius:999px;font-weight:600;
+  display:inline-flex;align-items:center;gap:3px}
+.shopHero-meta .star{color:#FFD166;font-style:normal}
+.shopHero-meta i{opacity:.75;font-style:normal}
+
 .sec-t{display:flex;align-items:center;justify-content:space-between;margin:20px 0 11px}
 .sec-t h3{font-size:14.5px}
 .sec-t span{font-size:11px;color:var(--txt3)}
@@ -655,6 +674,19 @@ function logout(){
 async function tryRestoreSession(){
   const s=loadSession();
   if(!s||!s.id)return false;
+  if(sb&&typeof s.id==='string'&&!s.id.startsWith('c_')){
+    try{
+      const {data,error}=await sb.from('customers').select('*').eq('id',s.id).maybeSingle();
+      if(error){ console.error('basita: تعذّر التأكد من صلاحية الجلسة',error); }
+      else if(!data){
+        console.warn('basita: حساب العميل ده مش موجود في القاعدة (اتمسح على الأغلب) — هنرجّعه لتسجيل الدخول');
+        clearSession();
+        return false;
+      } else {
+        s.id=data.id; s.name=data.name; s.lm=data.landmark||s.lm; s.villageId=data.village_id||s.villageId;
+      }
+    }catch(err){ console.error('basita: خطأ غير متوقع أثناء التأكد من الجلسة',err); }
+  }
   S.co={...S.co,...s};
   document.getElementById('hiName').textContent=(s.name||'').split(' ')[0]||'صديقنا';
   mountApp();
@@ -1202,7 +1234,17 @@ async function placeOrder(){
       platform_commission:commission, driver_net_earning:netEarning,
       total:cSub()+fee, stage:'placed', is_recurring:false, feedback_submitted:false, notes:S.cartNotes||null
     }).select().single();
-    if(error){ console.error('basita: فشل إرسال الطلب لقاعدة البيانات',error); toast('حصلت مشكلة في إرسال الطلب — جرّب تاني'); return; }
+    if(error){
+      console.error('basita: فشل إرسال الطلب لقاعدة البيانات',error);
+      if(error.code==='23503'&&(error.details||'').includes('customers')){
+        toast('حسابك محتاج تسجيل دخول جديد — هنرجّعك للشاشة الرئيسية');
+        clearSession();
+        setTimeout(()=>location.reload(),1400);
+      } else {
+        toast('حصلت مشكلة في إرسال الطلب — جرّب تاني');
+      }
+      return;
+    }
     const itemsPayload=items.map(({p,q})=>({order_id:orderRow.id,product_id:p.id,name:p.n,qty:q,unit_price:p.p,unit:p.u,sell_by:p.sellBy||'unit'}));
     await sb.from('order_items').insert(itemsPayload);
     order=mapRowToOrder(orderRow,itemsPayload);
@@ -1407,10 +1449,24 @@ function vShop(){
   const fee=sameVillage?10:computeDeliveryFee(km,false);
   const eta=etaMinutesFromFee(fee);
   return `<div class="pad">
-    <button class="back" style="margin-top:14px" onclick="backHome()">→</button>
-    ${s.photo?`<div style="margin-top:12px;border-radius:16px;overflow:hidden;box-shadow:var(--sh)">
-      <img src="${s.photo}" style="width:100%;height:150px;object-fit:cover;display:block"></div>`:''}
-    <div class="hero" style="${s.photo?'border-radius:0 0 16px 16px;margin-top:0':''}">
+    ${s.photo?`<div class="shopHero">
+      <img src="${s.photo}" alt="${s.name}">
+      <div class="shopHero-scrim"></div>
+      <button class="shopHero-back" onclick="backHome()">→</button>
+      <span class="shopHero-badge">${s.type}</span>
+      <div class="shopHero-info">
+        <h2>${s.name}</h2>
+        <div class="shopHero-meta">
+          ${s.rating!=null?`<span><b class="star">★</b> ${s.rating} <i>(${s.reviewCount})</i></span>`:`<span>🆕 محل جديد</span>`}
+          <span>⏱️ ${eta} د</span>
+          <span>💵 ${fee} ج</span>
+        </div>
+      </div>
+    </div>
+    ${s.bio?`<div class="hero" style="border-radius:0 0 18px 18px;margin-top:-14px;padding-top:22px">
+      <p style="margin:0;color:var(--txt);opacity:.85;line-height:1.7">${s.bio}</p>
+    </div>`:''}`:`<button class="back" style="margin-top:14px" onclick="backHome()">→</button>
+    <div class="hero">
       <div class="e">${s.type}</div><h2>${s.name}</h2>
       <div style="display:flex;align-items:center;gap:6px;margin-top:6px">
         ${s.rating!=null?`<span style="font-weight:800;color:#B87610;display:flex;align-items:center;gap:3px"><span style="color:#F5A623">★</span>${s.rating} <span style="color:var(--txt3);font-weight:500">(${s.reviewCount} تقييم)</span></span>`:
@@ -1420,7 +1476,7 @@ function vShop(){
         <span class="shopcard-time" style="font-size:11px">⏱️ التوصيل خلال ${eta} دقيقة تقريبًا</span>
         <span class="shopcard-dist" style="font-size:11px">💵 رسوم التوصيل ${fee} ج</span>
       </div>
-      ${s.bio?`<p style="margin-top:8px;color:var(--txt);opacity:.85;line-height:1.7">${s.bio}</p>`:''}</div>
+      ${s.bio?`<p style="margin-top:8px;color:var(--txt);opacity:.85;line-height:1.7">${s.bio}</p>`:''}</div>`}
     ${!s.isOpen?`<div class="card mt" style="padding:14px;background:#FDE8E6;border-color:#F5B5AE;text-align:center">
       <div style="font-size:22px">🔒</div><b style="display:block;margin-top:6px;color:#C23327">المحل مقفول دلوقتي</b>
       <div class="tiny muted mt">التاجر قفل استقبال الطلبات مؤقتًا — جرّب تاني بعدين</div></div>`:''}
