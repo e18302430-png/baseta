@@ -860,20 +860,21 @@ function playOrderAlert(){
   try{
     const ctx=new (window.AudioContext||window.webkitAudioContext)();
     const ring=startTime=>{
-      [660,880,1100].forEach((freq,i)=>{
+      [740,988,1319].forEach((freq,i)=>{
         const o=ctx.createOscillator(),g=ctx.createGain();
         o.connect(g);g.connect(ctx.destination);
         o.type='square';o.frequency.value=freq;
         const t0=startTime+i*.13;
         g.gain.setValueAtTime(.0001,t0);
-        g.gain.exponentialRampToValueAtTime(.3,t0+.02);
-        g.gain.exponentialRampToValueAtTime(.0001,t0+.16);
-        o.start(t0);o.stop(t0+.18);
+        g.gain.exponentialRampToValueAtTime(.7,t0+.02);
+        g.gain.exponentialRampToValueAtTime(.0001,t0+.2);
+        o.start(t0);o.stop(t0+.22);
       });
     };
     ring(ctx.currentTime);
-    ring(ctx.currentTime+.55);
-    if(navigator.vibrate) navigator.vibrate([180,80,180,80,180]);
+    ring(ctx.currentTime+.5);
+    ring(ctx.currentTime+1.0);
+    if(navigator.vibrate) navigator.vibrate([220,90,220,90,220,90,220]);
   }catch(e){}
 }
 function pushNotify(m){
@@ -1529,20 +1530,41 @@ function nearestAvailableDriver(){
 function tryAssignWaitingOrders(){
   S.orders.filter(o=>o.stage==='accepted'&&o._waitingDriver).forEach(o=>autoAssignDriver(o.id));
 }
-function autoAssignDriver(id){
+async function autoAssignDriver(id){
   const o=S.orders.find(x=>x.id===id); if(!o)return;
-  const nearest=nearestAvailableDriver();
-  if(!nearest){
+  const candidates=Object.values(S.availableDrivers).filter(d=>!S.orders.some(x=>x.driver===d.name&&['assigned','picked','delivering'].includes(x.stage)));
+  if(!candidates.length){
     o._waitingDriver=true; render();
     emit({to:['owner'],type:'order:no_driver_available',orderId:id,merchantName:BIZ().name});
     return;
   }
-  o._waitingDriver=false; o.stage='assigned'; o.driver=nearest.name;
-  const dist=(S.shopGeo&&nearest.lat!=null)?haversineKm(S.shopGeo,nearest).toFixed(1):null;
-  if(sb) sb.from('orders').update({stage:'assigned',driver_id:nearest.id,driver_name:nearest.name}).eq('id',id).then(()=>{});
-  else emit({to:['customer','driver'],type:'order:assign',orderId:id,driverName:nearest.name,targetDriverId:nearest.id,order:o});
+  const sorted=S.shopGeo?
+    [...candidates].sort((a,b)=>{
+      const da=a.lat!=null?haversineKm(S.shopGeo,a):Infinity, db=b.lat!=null?haversineKm(S.shopGeo,b):Infinity;
+      return da-db;
+    }):candidates;
+  let claimed=null;
+  if(sb){
+    // نحاول نحجز كل مندوب بالترتيب فعليًا من قاعدة البيانات — لو حد سبقنا بيه (سباق توقيت)، ننتقل للتالي تلقائيًا
+    for(const cand of sorted){
+      const {data}=await sb.from('drivers').update({is_available:false}).eq('id',cand.id).eq('is_available',true).select().maybeSingle();
+      if(data){ claimed=cand; break; }
+    }
+  }else{
+    claimed=sorted[0];
+  }
+  if(!claimed){
+    o._waitingDriver=true; render();
+    emit({to:['owner'],type:'order:no_driver_available',orderId:id,merchantName:BIZ().name});
+    refreshAvailableDrivers();
+    return;
+  }
+  o._waitingDriver=false; o.stage='assigned'; o.driver=claimed.name;
+  const dist=(S.shopGeo&&claimed.lat!=null)?haversineKm(S.shopGeo,claimed).toFixed(1):null;
+  if(sb) sb.from('orders').update({stage:'assigned',driver_id:claimed.id,driver_name:claimed.name}).eq('id',id).then(()=>{});
+  else emit({to:['customer','driver'],type:'order:assign',orderId:id,driverName:claimed.name,targetDriverId:claimed.id,order:o});
   render();
-  toast('🤖 اتعيّن '+nearest.name+' تلقائيًا — أقرب مندوب متاح'+(dist?' ('+dist+' كم)':''));
+  toast('🤖 اتعيّن '+claimed.name+' تلقائيًا — أقرب مندوب متاح'+(dist?' ('+dist+' كم)':''));
 }
 function accept(id){
   if(S.sub.status==='expired'){toast('🔴 اشتراكك خلص — جدده الأول عشان تقدر تقبل طلبات');return}
