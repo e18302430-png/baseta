@@ -493,6 +493,7 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
     </div>
     <div id="settleTop"></div>
     <div class="body" id="screen"></div>
+    <div id="alertBanner"></div>
     <button class="float-support" onclick="openSupportSheet()" aria-label="الدعم الفني"><i>🆘</i><span>الدعم الفني</span></button>
     <div class="nav" id="nav"></div>
     <div class="toast" id="toast"></div>
@@ -910,6 +911,29 @@ function notify(text,urgent){
   if(urgent){ playOrderAlert(); pushNotify(text); const t=document.getElementById('toast');if(t){t.textContent=text;t.classList.add('show');clearTimeout(window._tT);window._tT=setTimeout(()=>t.classList.remove('show'),3200);} }
   else toast(text);
 }
+/* ═══ تصعيد التنبيه — يفضل يتكرر لحد ما المندوب يشوف المهمة فعليًا ═══ */
+const pendingAlertIds=new Set();
+let alertEscalationT=null;
+function startAlertEscalation(){
+  if(alertEscalationT)return;
+  alertEscalationT=setInterval(()=>{
+    if(!pendingAlertIds.size){ clearInterval(alertEscalationT); alertEscalationT=null; return; }
+    playOrderAlert();
+  },12000);
+}
+function acknowledgePendingAlerts(){
+  if(!pendingAlertIds.size)return;
+  pendingAlertIds.clear();
+  clearInterval(alertEscalationT); alertEscalationT=null;
+}
+function pendingAlertBannerHtml(){
+  if(!pendingAlertIds.size)return '';
+  return `<button onclick="acknowledgePendingAlerts();render()" style="position:absolute;bottom:calc(var(--nav) + 14px);inset-inline:14px;z-index:45;
+    background:var(--danger);color:#fff;border:0;border-radius:16px;padding:13px 16px;display:flex;align-items:center;gap:10px;
+    font-family:'Cairo';font-weight:700;font-size:13.5px;box-shadow:0 14px 30px -8px rgba(239,74,62,.55);width:calc(100% - 28px);
+    animation:pn 1.6s infinite">
+    <span style="font-size:20px">🔔</span><span>عندك ${pendingAlertIds.size} مهمة جديدة لسه ما شفتهاش — دوس هنا</span></button>`;
+}
 function renderBell(){
   const n=S.inbox.filter(x=>!x.read).length; const b=document.getElementById('bellBadge'); if(!b)return;
   b.style.display=n?'flex':'none'; b.textContent=n>9?'9+':n;
@@ -1134,7 +1158,7 @@ function openRouteMap(taskId){
     {timeout:6000}
   );
 }
-function acceptTask(id){const t=S.tasks.find(x=>x.id===id); t.accepted=true; render(); toast('اتقبلت المهمة');}
+function acceptTask(id){const t=S.tasks.find(x=>x.id===id); t.accepted=true; pendingAlertIds.delete(id); render(); toast('اتقبلت المهمة');}
 
 /* ═══════ التصوير الإجباري قبل التسليم ═══════ */
 let photoStream=null, capturedPhoto=null, deliverOrderId=null;
@@ -1197,7 +1221,11 @@ async function confirmDeliveryPhoto(){
   S.commissionOwed=(S.commissionOwed||0)+(t.commission||1.5);
   S.deliveryEarnings=(S.deliveryEarnings||0)+(t.deliveryFee||0);
   delete t.addr; delete t.ph; t.closedAt=new Date().toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'});
-  S.history.unshift(t); S.tasks=S.tasks.filter(x=>x.id!==id); S.avail=true;
+  S.history.unshift(t); S.tasks=S.tasks.filter(x=>x.id!==id);
+  if(!S.tasks.length){
+    S.avail=true;
+    if(sb&&S.driverId) sb.from('drivers').update({is_available:true}).eq('id',S.driverId).then(()=>{});
+  }
   emit({to:['owner'],type:'ticket:closed',orderId:id});
   emit({to:['owner'],type:'driver:delivery_completed',driverId:S.driverId,driverName:S.driverName||'كريم عبد الله',amount:t.total||0});
   toast('✓ اتسلّم الطلب بالصورة — 🔒 والتذكرة اتقفلت تلقائيًا');
@@ -1366,8 +1394,23 @@ function advance(id){
   const next=seq[seq.indexOf(t.stage)+1];
   if(!next)return;
   t.stage=next;
-  emit({to:['customer','merchant'],type:'order:status',orderId:id,status:next});
+  if(sb) sb.from('orders').update({stage:next}).eq('id',id).then(()=>{});
+  else emit({to:['customer','merchant'],type:'order:status',orderId:id,status:next});
   toast('اتبعت تحديث للعميل والتاجر فورًا');
+  render();
+}
+function markArrivedShop(id){
+  const t=S.tasks.find(x=>x.id===id); if(!t)return;
+  t._arrivedShop=true;
+  toast('✓ اتسجّل وصولك للمتجر');
+  render();
+}
+function markArrivedCustomer(id){
+  const t=S.tasks.find(x=>x.id===id); if(!t)return;
+  t._arrivedCustomer=true;
+  if(sb) sb.from('driver_customer_messages').insert({order_id:id,from_role:'driver',from_name:S.driverName||'المندوب',message:'📍 وصلت عندك — طلبك تحت 🎉'}).then(()=>{});
+  else emit({to:['customer'],type:'driver:message',orderId:id,message:'📍 وصلت عندك — طلبك تحت 🎉',driverName:S.driverName||'المندوب'});
+  toast('✓ اتبعت رسالة وصول للعميل');
   render();
 }
 function vTasks(){
@@ -1414,7 +1457,7 @@ function vTasks(){
               style="display:flex;align-items:center;gap:8px;width:100%;text-align:right;border:0;cursor:pointer;background:var(--ac-l);color:var(--ac-d);
               padding:9px 12px;border-radius:11px;font-size:12.5px;font-weight:700;margin:6px 0;font-family:inherit">
               🗺️ افتح مسار دقيق من موقعك الحالي
-              <span class="tiny" style="margin-inline-start:auto;font-weight:500;color:var(--txt2)">≈ ${distanceKm(SHOP_GEO,t.geo)} كم من المحل</span></button>`:
+              <span class="tiny" style="margin-inline-start:auto;font-weight:500;color:var(--txt2)">≈ ${distanceKm(t.shopGeo||SHOP_GEO,t.geo)} كم من المحل</span></button>`:
             `<div class="tiny muted" style="padding:6px 0">📍 العميل ماكانش فعّل موقعه وقت الطلب</div>`}
           <div class="taddr"><span class="k">📞</span><span class="num" dir="ltr">${maskPhone(t.ph)}</span>
             <button class="btn2 btn-o2" style="flex:0 0 auto;padding:6px 12px;font-size:11px;margin-inline-start:8px" onclick="openContactSheet('${t.id}')">💬 راسله</button></div>
@@ -1423,13 +1466,18 @@ function vTasks(){
           </div>`:''}
           <div class="tsteps">${STEPS.map((s,i)=>`<div class="tstep ${i<=idx?'on':''}"></div>`).join('')}</div>
           ${t.stage==='assigned'?
+            (!t._arrivedShop?
+            `${t.shopGeo?`<button class="btn2 btn-o2" style="width:100%;margin-bottom:8px" onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${t.shopGeo.lat},${t.shopGeo.lng}','_blank')">🏪 افتح خرائط جوجل للمتجر${t.shopName?' — '+t.shopName:''}</button>`:''}
+             <button class="btn2 btn-p2" style="width:100%" onclick="markArrivedShop('${t.id}')">📍 وصلت المتجر</button>`:
             `<div style="text-align:center;padding:14px;background:var(--ac-l);border-radius:12px">
                <div class="tiny muted">قول الكود ده للتاجر عشان يأكّد استلامك</div>
                <div class="kufi num" id="pcode-${t.id}" style="font-size:32px;letter-spacing:8px;color:var(--ac-d);margin:6px 0">${pickupCode(t.id,0)}</div>
                <div class="tiny" style="color:var(--ac-d)">🔒 بيتجدد كل دقيقة تلقائيًا</div>
-             </div>`:
+             </div>`):
             t.stage==='delivering'?
-            `<button class="btn2 btn-p2" onclick="openDeliveryCam('${t.id}')">📸 صوّر الطلب وأكّد التسليم</button>`:
+            (!t._arrivedCustomer?
+            `<button class="btn2 btn-p2" style="width:100%" onclick="markArrivedCustomer('${t.id}')">📍 وصلت العميل</button>`:
+            `<button class="btn2 btn-p2" onclick="openDeliveryCam('${t.id}')">📸 صوّر الطلب وأكّد التسليم</button>`):
             nextLabel?`<button class="btn2 btn-p2" onclick="advance('${t.id}')">${nextLabel}</button>`:''}
         </div></div>`}).join('')}
     ${pending.map(t=>`<div class="tcard">
@@ -1524,11 +1572,17 @@ function subscribeMyTasks(){
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'orders',filter:'driver_id=eq.'+S.driverId},async payload=>{
       if(payload.new.stage==='assigned'&&!S.tasks.some(t=>t.id===payload.new.id)){
         const {data:items}=await sb.from('order_items').select('*').eq('order_id',payload.new.id);
+        const {data:merchantRow}=await sb.from('merchants').select('shop_lat,shop_lng,name').eq('id',payload.new.merchant_id).maybeSingle();
         const hasActive=S.tasks.some(x=>x.accepted);
-        S.tasks.push({...mapTaskRow(payload.new,items),batchHint:hasActive});
+        const task=mapTaskRow(payload.new,items);
+        if(merchantRow&&merchantRow.shop_lat!=null) task.shopGeo={lat:merchantRow.shop_lat,lng:merchantRow.shop_lng};
+        task.shopName=merchantRow?merchantRow.name:'';
+        S.tasks.push({...task,batchHint:hasActive});
         subscribeTaskChat(payload.new.id);
         S.avail=false;
+        sb.from('drivers').update({is_available:false}).eq('id',S.driverId).then(()=>{});
         notify(hasActive?'🔗 طلب تاني من نفس المحل — ممكن تضيفه لنفس رحلتك':'مهمة جديدة وصلت من التاجر!',true);
+        pendingAlertIds.add(payload.new.id); startAlertEscalation(); render();
       }
     })
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'tips',filter:'driver_id=eq.'+S.driverId},payload=>{
@@ -1566,6 +1620,7 @@ function render(){
     return `<button aria-pressed="${S.view===v}" onclick="S.view='${v}';render()">
       ${bn}<span class="i">${i}</span><span>${n}</span></button>`}).join('');
   renderSettleTop();
+  const ab=document.getElementById('alertBanner'); if(ab) ab.innerHTML=pendingAlertBannerHtml();
 }
 </script>
 </body></html>
