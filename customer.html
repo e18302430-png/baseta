@@ -309,6 +309,10 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
 .toast.show{transform:none;opacity:1}
 .mt{margin-top:12px}.mb{margin-bottom:12px}.muted{color:var(--txt2)}.tiny{font-size:11.5px}
 
+.callUsBar{display:flex;align-items:center;justify-content:center;gap:7px;width:calc(100% - 32px);margin:9px 16px 0;
+  padding:10px;border-radius:12px;background:#E8F8EE;color:#1F7A45;border:1px dashed #8FCFA8;
+  font-size:12px;font-weight:700}
+.callUsBar .ic{font-size:14px}
 .searchBar{display:flex;align-items:center;gap:10px;margin:14px 16px 0;padding:13px 16px;border-radius:16px;
   background:var(--surf);border:1.5px solid var(--line);box-shadow:var(--sh)}
 .searchBar input{flex:1;border:0;background:none;outline:0;font-size:13.5px;color:var(--txt)}
@@ -703,6 +707,7 @@ async function installAppNow(){
 setTimeout(renderInstallBanner,600); // لو الحدث اتأخر أو مدعومش، نتأكد لسه من عرض بانر الآيفون لو محتاج
 
 const PENDING_TRACK_ID=new URLSearchParams(location.search).get('track');
+const PENDING_REF_PHONE=new URLSearchParams(location.search).get('ref');
 setTimeout(()=>document.getElementById('boot').classList.add('gone'),1300);
 (async()=>{
   try{
@@ -850,6 +855,11 @@ async function finishSignup(){
       return;
     }
     S.co.id=data.id;
+    if(PENDING_REF_PHONE&&PENDING_REF_PHONE!==S.co.ph){
+      try{ await sb.from('referrals').insert({referrer_phone:PENDING_REF_PHONE,new_customer_id:data.id}); }catch(e){}
+      const myComp=generateGenericCoupon('basita_referral_welcome_'+data.id,'AHLAN',10);
+      S._welcomeCoupon=myComp;
+    }
   } else {
     S.co.id=S.co.id||('c_'+(S.co.ph||Math.random().toString(36).slice(2)));
   }
@@ -864,8 +874,13 @@ function mountApp(){
     if(sb&&S.co.id){
       await loadMyOrders();
       subscribeMyOrders(); subscribeMyTickets();
+      checkPendingReferralReward();
     }
     if('Notification' in window && Notification.permission==='default') Notification.requestPermission();
+    if(S._welcomeCoupon){
+      const c=S._welcomeCoupon; S._welcomeCoupon=null;
+      setTimeout(()=>toast('🎁 أهلًا! كوبون خصم '+c.pct+'٪ من صاحبك على أول طلب ليك: '+c.code),1200);
+    }
     if(PENDING_TRACK_ID&&S.orders.some(o=>o.id===PENDING_TRACK_ID)){
       go('track',PENDING_TRACK_ID); // جاي من رابط تتبع واتساب — نوديه على طول لطلبه من غير أي مقاطعة
     }else if(isFirstTimer()&&!S.fta.seenAutoGuide){
@@ -884,7 +899,7 @@ function mapRowToOrder(o,items){
     fee:+o.delivery_fee, total:+o.total, stage:o.stage, driver:o.driver_name||null, driverId:o.driver_id||null,
     recurring:o.is_recurring, feedbackSubmitted:o.feedback_submitted, deliveryPhoto:o.delivery_photo_url||null, notes:o.notes||'',
     placedAt:o.placed_at||new Date().toISOString(),
-    items:(items||[]).map(i=>({n:i.name,q:+i.qty,p:+i.unit_price,u:i.unit,sellBy:i.sell_by}))
+    items:(items||[]).map(i=>({n:i.name,q:+i.qty,p:+i.unit_price,u:i.unit,sellBy:i.sell_by,pid:i.product_id}))
   };
 }
 async function loadMyOrders(){
@@ -1324,6 +1339,8 @@ async function placeOrder(){
   const fee=computeDeliveryFee(km,sameVillage);
   const commission=computePlatformCommission(km,sameVillage);
   const addr=`${c.lm} — بيت ${c.house}`;
+  const changeNote=S.changeAmount&&+S.changeAmount>0?`💵 معاه فكة من ${Math.round(+S.changeAmount)} ج`:'';
+  const fullNotes=[S.cartNotes,changeNote].filter(Boolean).join(' — ')||null;
   let order;
   if(sb&&c.id){
     const netEarning=+(fee-commission).toFixed(2);
@@ -1332,7 +1349,7 @@ async function placeOrder(){
       address:addr, delivery_lat:c.geo.lat, delivery_lng:c.geo.lng, delivery_fee:fee,
       origin_village_id:shop.villageId||null, dest_village_id:c.villageId||null,
       platform_commission:commission, driver_net_earning:netEarning,
-      total:cSub()+fee, stage:'placed', is_recurring:false, feedback_submitted:false, notes:S.cartNotes||null
+      total:cSub()+fee, stage:'placed', is_recurring:false, feedback_submitted:false, notes:fullNotes
     }).select().single();
     if(error){ console.error('basita: فشل إرسال الطلب لقاعدة البيانات',error); toast('حصلت مشكلة في إرسال الطلب — جرّب تاني'); return; }
     const itemsPayload=items.map(({p,q})=>({order_id:orderRow.id,product_id:p.id,name:p.n,qty:q,unit_price:p.p,unit:p.u,sell_by:p.sellBy||'unit'}));
@@ -1343,7 +1360,7 @@ async function placeOrder(){
     order={id,merchantId:shop.id,shopName:shop.name,customerId:c.id,name:c.name,ph:c.ph||'01015974104',
       addr,geo:c.geo,items:items.map(({p,q})=>({n:p.n,q,p:p.p,u:p.u,sellBy:p.sellBy})),fee,total:cSub()+fee,stage:'placed',driver:null,recurring:false,placedAt:new Date().toISOString()};
   }
-  S.orders.unshift(order); S.cart={}; S.cartShop=null; S.cartNotes='';
+  S.orders.unshift(order); S.cart={}; S.cartShop=null; S.cartNotes=''; S.changeAmount='';
   if(!sb) emit({to:['merchant'],type:'order:new',order});
   S.fta.dismissed=true;
   go('track',order.id);
@@ -1495,6 +1512,8 @@ function vHome(){
   const total=mine.length+others.length;
   return `<div class="searchBar"><span class="ic">🔍</span>
       <input id="shopSearchInput" placeholder="دوّر على محل أو صنف..." value="${S.searchQuery||''}" oninput="handleSearchInput(this)"></div>
+    <button class="callUsBar" onclick="window.open('https://wa.me/201015974104?text='+encodeURIComponent('عايز أطلب بس مش عارف أستخدم التطبيق'),'_blank')">
+      <span class="ic">📞</span> مش عارف تطلب؟ اتصل بينا نطلبلك احنا</button>
     <div class="promoHero"><div class="promoHero-in"><span class="ic">⏱️</span>
       <span><b>التزام بسيطة: توصيلك في معاده</b>
       <span>لو اتأخرنا عليك، بنعوّضك تلقائيًا — من غير ما تتصل بحد</span></span></div></div>
@@ -1514,7 +1533,7 @@ function vHome(){
       const catLabel=(CATS.find(c=>c.k===S.catFilter)||{}).n||'';
       const openShops=[...mine,...others].filter(s=>s.isOpen);
       const allProds=[];
-      openShops.forEach(s=>s.products.forEach(p=>allProds.push({...p,shopId:s.id,shopName:s.name})));
+      openShops.forEach(s=>s.products.forEach(p=>{ if(p.s>0) allProds.push({...p,shopId:s.id,shopName:s.name}); }));
       if(!allProds.length)return '';
       return `<div class="pad" style="padding-top:14px">
         <div class="sec-t" style="margin-top:0"><h3>🛒 أصناف ${catLabel} المتاحة عندك دلوقتي</h3><span class="num">${allProds.length}</span></div>
@@ -1597,10 +1616,10 @@ function vShop(){
       <div class="tiny muted mt">التاجر قفل استقبال الطلبات مؤقتًا — جرّب تاني بعدين</div></div>`:''}
     ${ftaShopTipHtml()}
     <div class="sec-t"><h3>الأصناف</h3><span class="num">${s.products.length} صنف</span></div>
-    ${s.products.length?s.products.map(p=>`<div class="prod"><span class="ph">${p.i}</span>
+    ${s.products.length?s.products.map(p=>`<div class="prod" style="${p.s<=0?'opacity:.5':''}"><span class="ph">${p.i}</span>
       <span style="flex:1"><span class="n">${p.n}${p.br?` <span class="muted tiny">${p.br}</span>`:''}</span>
-      <span class="u">${p.sellBy==='weight'?'سعر الكيلو':p.u}</span><span class="pr num">${M(p.p)} ج</span></span>
-      <span class="act">${!s.isOpen?'':p.sellBy==='weight'?
+      <span class="u">${p.s<=0?'نفدت الكمية':(p.sellBy==='weight'?'سعر الكيلو':p.u)}</span><span class="pr num">${M(p.p)} ج</span></span>
+      <span class="act">${(!s.isOpen||p.s<=0)?'':p.sellBy==='weight'?
         (S.cart[p.id]?`<button class="add" style="width:auto;padding:0 10px;font-size:12px;font-family:'Cairo'" onclick="openWeightPicker('${p.id}')">${weightLabel(S.cart[p.id])}</button>`:
         `<button class="add" style="width:auto;padding:0 10px;font-size:18px" onclick="openWeightPicker('${p.id}')">⚖️</button>`):
         (S.cart[p.id]?`<span class="stp"><button onclick="qty('${p.id}',1)">+</button>
@@ -1687,6 +1706,9 @@ function vCheckout(){
     <div class="fld"><label>أقرب معلم</label><select onchange="S.co.lm=this.value">
       ${LM.map(l=>`<option ${c.lm===l?'selected':''}>${l}</option>`).join('')}</select></div>
     <div class="fld"><label>رقم البيت</label><input value="${c.house}" placeholder="بيت ١٢" oninput="S.co.house=this.value"></div>
+    <div class="fld"><label>معاك فكة قد إيه؟ (اختياري)</label>
+      <input value="${S.changeAmount||''}" type="number" placeholder="مثلاً 100" oninput="S.changeAmount=this.value">
+      <span class="tiny muted" style="display:block;margin-top:5px">بنقولها للمندوب عشان يجهّز الباقي معاه من الأول</span></div>
     ${feeBreakdownHtml()}
     <button class="btn btn-p mt" onclick="${hasGeo?'placeOrder()':'requestLocation(true)'}">
       ${hasGeo?'أرسل الطلب':'فعّل الموقع وابعت الطلب'}</button>
@@ -1714,6 +1736,34 @@ function grantLateCompensation(orderId){
   const comp={code,pct:10,at:new Date().toISOString()};
   try{ localStorage.setItem(key,JSON.stringify(comp)); }catch(e){}
   return comp;
+}
+/* ═══ ادعُ صديقك — الاتنين ياخدوا خصم لما الصاحب يعمل حساب من رابط الدعوة ═══ */
+function generateGenericCoupon(localKey,prefix,pct){
+  if(localStorage.getItem(localKey))return JSON.parse(localStorage.getItem(localKey));
+  const code=prefix+Math.floor(1000+Math.random()*9000);
+  const comp={code,pct,at:new Date().toISOString()};
+  try{ localStorage.setItem(localKey,JSON.stringify(comp)); }catch(e){}
+  return comp;
+}
+function referralLink(){
+  return location.origin+location.pathname+'?ref='+encodeURIComponent(S.co.ph||'');
+}
+function shareReferralLink(){
+  if(!S.co.ph){toast('محتاج رقمك الأول');return}
+  const link=referralLink();
+  const msg=encodeURIComponent('جرّب تطبيق بسيطة — بيوصلك طلبك من محلات قريتك لباب البيت! سجّل من الرابط ده وهناخد الاتنين خصم على أول طلب 🎁\n'+link);
+  window.open('https://wa.me/?text='+msg,'_blank');
+}
+async function checkPendingReferralReward(){
+  if(!sb||!S.co.ph)return;
+  try{
+    const {data}=await sb.from('referrals').select('id').eq('referrer_phone',S.co.ph).eq('rewarded',false);
+    if(data&&data.length){
+      const comp=generateGenericCoupon('basita_referral_reward_'+S.co.ph,'DAWA',10);
+      await sb.from('referrals').update({rewarded:true}).eq('referrer_phone',S.co.ph).eq('rewarded',false);
+      notify('🎁 صاحبك سجّل من دعوتك! كوبون خصم '+comp.pct+'٪ اتضاف لحسابك: '+comp.code);
+    }
+  }catch(e){ console.error('basita: خطأ في فحص مكافأة الدعوة',e); }
 }
 function etaBannerHtml(o){
   if(o.stage==='delivered')return '';
@@ -1868,15 +1918,39 @@ async function submitFeedback(orderId){
   ratingShop=0; ratingDriver=0; tipAmount=0;
   render(); toast(hadTip?'شكرًا لتقييمك وإكراميتك 🎁':'شكرًا لتقييمك 🙏');
 }
+function repeatOrder(orderId){
+  const o=S.orders.find(x=>x.id===orderId); if(!o)return;
+  const shop=SHOPS[o.merchantId];
+  if(!shop||!shop.isOpen){ toast('المحل ده مقفول دلوقتي — جرّب تاني بعدين'); return; }
+  if(Object.keys(S.cart).length&&S.cartShop!==o.merchantId){
+    if(!confirm('عندك أصناف من محل تاني في السلة. تفضيها وتبدأ من المحل ده؟'))return;
+    S.cart={};
+  }
+  let added=0, missing=0;
+  o.items.forEach(it=>{
+    const p=shop.products.find(x=>x.id===it.pid);
+    if(!p){ missing++; return; }
+    S.cartShop=o.merchantId;
+    S.cart[p.id]=it.sellBy==='weight'?it.q:(S.cart[p.id]||0)+it.q;
+    added++;
+  });
+  if(!added){ toast('للأسف كل أصناف الطلب ده بقت مش متاحة'); return; }
+  render();
+  toast(missing?`✓ اتضاف ${added} صنف — و${missing} صنف مش متاح دلوقتي`:'✓ اتضاف الطلب كامل للسلة');
+  go('cart');
+}
 function vOrders(){
   if(!S.orders.length)return `<div class="empty"><div class="e">📦</div><h4>مفيش طلبات لسه</h4>
     <p class="tiny">أول ما تطلب هتلاقيه هنا</p></div>`;
   return `<div class="pad" style="padding-top:14px">${S.orders.map(o=>{
-    return `<button class="card mb" style="width:100%;text-align:right;padding:13px" onclick="go('track','${o.id}')">
+    return `<div class="card mb" style="padding:13px">
+    <button style="width:100%;text-align:right;background:none;border:0;padding:0;cursor:pointer" onclick="go('track','${o.id}')">
     <div class="row"><b class="kufi">${o.id}</b>
       <span class="bdg ${o.stage==='delivered'?'b-ac':'b-w'}">${SLABEL[o.stage]}</span></div>
     <div class="tiny muted mt">${o.items.length} أصناف · <span class="num">${M(o.total)}</span> ج
-      ${o.recurring?' · 🔁 متكرر أسبوعيًا':''}</div></button>`}).join('')}
+      ${o.recurring?' · 🔁 متكرر أسبوعيًا':''}</div></button>
+    <button class="btn2 btn-o2" style="width:100%;margin-top:9px" onclick="event.stopPropagation();repeatOrder('${o.id}')">🔁 كرر الطلب ده</button>
+    </div>`}).join('')}
     <div style="height:14px"></div></div>`;
 }
 function vAccount(){
@@ -1898,6 +1972,7 @@ function vAccount(){
       <button class="row" style="width:100%;text-align:right" onclick="openMemorialSheet()">
         <span class="av">🕊️</span><span class="n">صدقة جارية</span><span class="end muted">‹</span></button>
     </div>
+    <button class="btn mt" style="width:100%;background:#25D366;color:#fff" onclick="shareReferralLink()">🎁 ادعُ صديقك — وخدوا خصم الاتنين</button>
     <button class="btn" style="width:100%;margin-top:14px;background:#FDE8E6;color:#C23327" onclick="logout()">🚪 تسجيل خروج</button>
     <button onclick="openAboutBasita()" style="width:100%;text-align:center;margin-top:20px">
       <p class="tiny muted">بسيطة · بنرقمن مصر قرية ورا قرية 🇪🇬</p></button>
