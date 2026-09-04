@@ -327,6 +327,22 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
 .memorialCard-in{position:relative;z-index:1;text-align:center;margin-top:13px}
 .memorialCard-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(212,184,110,.15);
   border:1px solid rgba(212,184,110,.4);color:#D4B86E;font-size:11px;font-weight:800;padding:5px 13px;border-radius:999px}
+.installBanner{display:flex;align-items:center;gap:10px;background:#241A05;color:#fff;
+  border-radius:16px;padding:13px 14px;margin:0 0 14px;box-shadow:0 12px 26px -10px rgba(36,26,5,.5)}
+.installBanner .ic{font-size:24px;flex:0 0 auto}
+.installBanner b{font-size:13px;display:block}
+.installBanner span{font-size:10.5px;color:#D4B86E;display:block;margin-top:2px;line-height:1.6}
+.installBanner button{margin-inline-start:auto;background:#F0A93B;color:#241A05;font-family:'Cairo';
+  font-weight:800;font-size:12px;padding:9px 14px;border-radius:10px;flex:0 0 auto;white-space:nowrap}
+.howItWorks{display:flex;align-items:center;justify-content:center;gap:6px;margin:16px 0 0;padding:0 2px}
+.hiw-step{flex:1;text-align:center;background:rgba(255,255,255,.55);border:1px solid rgba(36,26,5,.12);
+  border-radius:14px;padding:11px 4px 9px;position:relative}
+.hiw-step .n{position:absolute;top:-8px;right:50%;transform:translateX(50%);width:19px;height:19px;
+  border-radius:50%;background:#241A05;color:#F0A93B;font-family:'Cairo';font-weight:800;font-size:10.5px;
+  display:grid;place-items:center}
+.hiw-step .e{font-size:22px;display:block;margin-top:3px}
+.hiw-step b{font-size:10px;display:block;margin-top:5px;color:#241A05;line-height:1.4}
+.hiw-arrow{font-size:15px;color:#7A5C1F;flex:0 0 auto}
 .memorialRibbon{display:flex;align-items:center;gap:9px;background:rgba(36,26,5,.9);color:#F3ECD8;
   border-radius:14px;padding:11px 13px;margin:14px 0 0;cursor:pointer;border:1px solid rgba(212,184,110,.35);
   box-shadow:0 10px 22px -10px rgba(0,0,0,.4);transition:.15s}
@@ -449,6 +465,7 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
 
   <div id="authFlow">
     <div class="astage on" id="st-welcome">
+      <div id="installBannerWrap"></div>
       <div class="spacer" style="flex:.12"></div>
       <div class="vhero">
         <div class="vhero-in">
@@ -477,6 +494,13 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
             <span class="arrow">›</span>
           </div>
         </div>
+      </div>
+      <div class="howItWorks">
+        <div class="hiw-step"><span class="n">١</span><span class="e">🏪</span><b>اختار محلك</b></div>
+        <div class="hiw-arrow">←</div>
+        <div class="hiw-step"><span class="n">٢</span><span class="e">🛒</span><b>اطلب اللي عايزه</b></div>
+        <div class="hiw-arrow">←</div>
+        <div class="hiw-step"><span class="n">٣</span><span class="e">🛵</span><b>يوصلك لباب البيت</b></div>
       </div>
       <div class="spacer"></div>
       <button class="btn" style="background:#241A05;color:#fff;box-shadow:0 12px 26px -10px rgba(36,26,5,.5)" onclick="goAuth('phone','signup')">إنشاء حساب جديد</button>
@@ -650,6 +674,38 @@ function onBus(fn){
     try{const d=JSON.parse(e.newValue); if(d.from!==ROLE) wrapped(d)}catch(_){} }});
 }
 
+/* ═══ اقتراح تثبيت التطبيق على الشاشة الرئيسية — أول حاجة العميل يشوفها ═══ */
+let _deferredInstallPrompt=null;
+const _isStandalone=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;
+const _isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent);
+window.addEventListener('beforeinstallprompt',e=>{
+  e.preventDefault();
+  _deferredInstallPrompt=e;
+  renderInstallBanner();
+});
+function renderInstallBanner(){
+  const wrap=document.getElementById('installBannerWrap'); if(!wrap||_isStandalone)return;
+  if(_deferredInstallPrompt){
+    wrap.innerHTML=`<div class="installBanner">
+      <span class="ic">📲</span>
+      <span><b>ثبّت بسيطة كتطبيق</b><span>يفتح بسرعة من شاشتك الرئيسية زي أي تطبيق تاني</span></span>
+      <button onclick="installAppNow()">تثبيت</button></div>`;
+  }else if(_isIOS){
+    wrap.innerHTML=`<div class="installBanner">
+      <span class="ic">📲</span>
+      <span><b>ثبّت بسيطة كتطبيق</b><span>دوس على زر المشاركة ⬆️ تحت، واختار "إضافة إلى الشاشة الرئيسية"</span></span></div>`;
+  }
+}
+async function installAppNow(){
+  if(!_deferredInstallPrompt)return;
+  _deferredInstallPrompt.prompt();
+  await _deferredInstallPrompt.userChoice;
+  _deferredInstallPrompt=null;
+  const wrap=document.getElementById('installBannerWrap'); if(wrap)wrap.innerHTML='';
+}
+setTimeout(renderInstallBanner,600); // لو الحدث اتأخر أو مدعومش، نتأكد لسه من عرض بانر الآيفون لو محتاج
+
+const PENDING_TRACK_ID=new URLSearchParams(location.search).get('track');
 setTimeout(()=>document.getElementById('boot').classList.add('gone'),1300);
 (async()=>{
   try{
@@ -687,7 +743,14 @@ function saveSession(){
   try{ localStorage.setItem(SESSION_KEY, JSON.stringify({id:S.co.id,name:S.co.name,ph:S.co.ph,villageId:S.co.villageId,lm:S.co.lm})); }catch(e){}
 }
 function loadSession(){ try{ return JSON.parse(localStorage.getItem(SESSION_KEY)||'null'); }catch(e){ return null; } }
-function clearSession(){ try{ localStorage.removeItem(SESSION_KEY); }catch(e){} }
+function clearSession(){
+  try{
+    localStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem(INBOX_KEY); // نمسح الإشعارات القديمة كمان — مش هي بتاعة الحساب الجديد
+    localStorage.removeItem(STATE_KEY);
+    S.inbox=[]; S.orders=[];
+  }catch(e){}
+}
 function logout(){
   if(!confirm('متأكد إنك عايز تسجّل خروج؟'))return;
   clearSession(); location.reload();
@@ -762,6 +825,7 @@ function clearSignupBanner(){
   if(el){ el.style.display='none'; el.innerHTML=''; }
 }
 async function finishSignup(){
+  S.inbox=[]; try{localStorage.removeItem(INBOX_KEY);}catch(e){} // حساب جديد يبدأ بصفحة نظيفة، مش وارث إشعارات حساب قديم على نفس الجهاز
   const nm=document.getElementById('nmInput').value.trim()||'صديقنا';
   document.getElementById('hiName').textContent=nm.split(' ')[0];
   S.co.name=nm; S.co.lm=document.getElementById('lmInput').value;
@@ -798,11 +862,16 @@ async function finishSignup(){
 }
 function mountApp(){
   document.getElementById('authFlow').classList.remove('show');
-  setTimeout(()=>{
+  setTimeout(async()=>{
     document.getElementById('mainApp').classList.add('show');render();
-    if(sb&&S.co.id){ loadMyOrders(); subscribeMyOrders(); subscribeMyTickets(); }
+    if(sb&&S.co.id){
+      await loadMyOrders();
+      subscribeMyOrders(); subscribeMyTickets();
+    }
     if('Notification' in window && Notification.permission==='default') Notification.requestPermission();
-    if(isFirstTimer()&&!S.fta.seenAutoGuide){
+    if(PENDING_TRACK_ID&&S.orders.some(o=>o.id===PENDING_TRACK_ID)){
+      go('track',PENDING_TRACK_ID); // جاي من رابط تتبع واتساب — نوديه على طول لطلبه من غير أي مقاطعة
+    }else if(isFirstTimer()&&!S.fta.seenAutoGuide){
       S.fta.seenAutoGuide=true; saveState();
       setTimeout(()=>openMemorialSheet(true),700);
     }else{
@@ -1684,6 +1753,14 @@ function startEtaTick(){
     el.textContent=mm+':'+String(ss).padStart(2,'0');
   },1000);
 }
+function trackingLink(orderId){
+  return location.origin+location.pathname+'?track='+orderId;
+}
+function shareTrackOnWhatsapp(orderId){
+  const link=trackingLink(orderId);
+  const msg=encodeURIComponent('📦 تقدر تتابع طلبك من بسيطة من هنا:\n'+link);
+  window.open('https://wa.me/?text='+msg,'_blank');
+}
 function vTrack(){
   const o=S.orders.find(x=>x.id===S.oid); if(!o)return vOrders();
   const cur=STAGES.indexOf(o.stage);
@@ -1691,7 +1768,9 @@ function vTrack(){
   return `<div class="pad" style="padding-top:14px">
     <div class="card mb" style="padding:15px;text-align:center">
       <div class="tiny muted">رقم الطلب</div><div class="kufi" style="font-size:20px">${o.id}</div>
-      ${o.driver?`<div class="bdg b-ac mt">المندوب: ${o.driver}</div>`:''}</div>
+      ${o.driver?`<div class="bdg b-ac mt">المندوب: ${o.driver}</div>`:''}
+      <button class="btn2" style="width:100%;margin-top:11px;background:#25D366;color:#fff;justify-content:center;display:flex;gap:7px;align-items:center;padding:10px;border-radius:11px;font-family:'Cairo';font-weight:700" onclick="shareTrackOnWhatsapp('${o.id}')">
+        <span style="font-size:16px">💬</span> ابعت رابط التتبع على واتساب</button></div>
     ${etaBannerHtml(o)}
     <div class="card" style="padding:16px 14px">${STAGES.map((s,i)=>`
       <div class="tl-i ${i<cur?'done':i===cur?'now done':''}"><span class="tl-d">${i<=cur?'✓':''}</span>
@@ -1864,11 +1943,14 @@ function subscribeOrderChat(orderId){
 }
 function openSupportSheet(){
   openSheet('تواصل مع الدعم الفني',`
+    <button class="btn2" style="width:100%;margin-bottom:16px;background:#25D366;color:#fff;justify-content:center;display:flex;gap:8px;align-items:center;padding:13px;border-radius:13px;font-family:'Cairo';font-weight:800;font-size:14px" onclick="window.open('https://wa.me/201015974104','_blank')">
+      <span style="font-size:19px">💬</span> كلّمنا مباشرة على واتساب</button>
+    <div class="tiny muted" style="text-align:center;margin-bottom:14px">أو ابعتلنا تذكرة وهنرد عليك</div>
     <div class="fld"><label>نوع المشكلة</label><select id="supCat">
       <option>مشكلة في طلب</option><option>مشكلة في الدفع</option><option>مشكلة تقنية</option><option>اقتراح</option><option>تانى</option></select></div>
     <div class="fld" style="margin-bottom:10px"><label>اكتب مشكلتك</label>
       <textarea id="supMsg" rows="4" class="sup-fld"></textarea></div>
-    <button class="btn btn-p" onclick="submitTicket()">إرسال للدعم الفني</button>`);
+    <button class="btn btn-o" onclick="submitTicket()">إرسال تذكرة للدعم الفني</button>`);
 }
 async function submitTicket(){
   const cat=document.getElementById('supCat').value;
