@@ -649,6 +649,7 @@ function mVerifyOtp(){
   mGoAuth('details');
 }
 function finishMerchantSignup(){
+  S.orders=[]; S.expenses=[]; S.purchases=[]; S.customerStats={}; S.products=[]; // متجر جديد يبدأ بصفحة نظيفة، مش وارث بيانات متجر قديم على نفس الجهاز
   const name=document.getElementById('mStoreName').value.trim();
   const type=document.getElementById('mStoreType').value;
   const pass=document.getElementById('mNewPass').value;
