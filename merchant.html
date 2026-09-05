@@ -18,7 +18,7 @@
 .installBanner .ic{font-size:24px;flex:0 0 auto}
 .installBanner b{font-size:13px;display:block}
 .installBanner span{font-size:10.5px;color:#D4B86E;display:block;margin-top:2px;line-height:1.6}
-.installBanner button{margin-inline-start:auto;background:#F0A93B;color:#241A05;font-family:'Cairo';
+.installBanner button{margin-inline-start:auto;background:#F0A93B;color:#241A05;font-family:'Cairo','Segoe UI','Tahoma',sans-serif;
   font-weight:800;font-size:12px;padding:9px 14px;border-radius:10px;flex:0 0 auto;white-space:nowrap}
 
 :root{
@@ -32,7 +32,7 @@
 html,body{margin:0;height:100%}
 body{background:var(--bg);color:var(--txt);font-family:'IBM Plex Sans Arabic',sans-serif;font-size:14.5px;
   display:flex;justify-content:center;-webkit-font-smoothing:antialiased}
-h1,h2,h3,.kufi{font-family:'Cairo';font-weight:800;margin:0;letter-spacing:-.3px}
+h1,h2,h3,.kufi{font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-weight:800;margin:0;letter-spacing:-.3px}
 .num{font-variant-numeric:tabular-nums}
 button{font-family:inherit;cursor:pointer;border:0;background:none;color:inherit}
 input{font-family:inherit;font-size:16px}
@@ -46,7 +46,7 @@ input{font-family:inherit;font-size:16px}
 #boot .in{text-align:center}
 #boot .mk{width:64px;height:64px;margin:0 auto 16px;animation:bootIn .8s cubic-bezier(.2,.8,.2,1)}
 @keyframes bootIn{from{opacity:0;transform:scale(.7) rotate(-10deg)}}
-#boot b{font-family:'Cairo';color:#fff;font-size:19px;letter-spacing:2px;display:block}
+#boot b{font-family:'Cairo','Segoe UI','Tahoma',sans-serif;color:#fff;font-size:19px;letter-spacing:2px;display:block}
 #boot span{color:#F5C067;font-size:10.5px;letter-spacing:3px;font-weight:600}
 #boot .bar{width:130px;height:3px;background:rgba(255,255,255,.14);border-radius:9px;margin:20px auto 0;overflow:hidden}
 #boot .bar i{display:block;height:100%;width:0;background:#F5C067;animation:ld 1.3s ease forwards;border-radius:9px}
@@ -84,7 +84,7 @@ p.lsub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
 .fld select:focus{border-color:var(--ac);background:var(--surf)}
 .fld select option{background:#fff}
 .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:16px;
-  border-radius:15px;font-family:'Cairo';font-weight:700;font-size:15px;transition:.15s}
+  border-radius:15px;font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-weight:700;font-size:15px;transition:.15s}
 .btn:active{transform:scale(.98)}
 .btn-p{background:var(--ac);color:#211602;box-shadow:0 10px 26px -10px rgba(231,154,30,.55)}
 .btn-o{background:var(--surf);border:1.5px solid var(--line);color:var(--txt)}
@@ -125,7 +125,7 @@ p.lsub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
 .vhero-live{display:flex;align-items:center;gap:5px;font-size:9.5px;color:#CFC3AC;font-weight:600;white-space:nowrap}
 .vhero-live i{width:6px;height:6px;border-radius:50%;background:#F0A93B;display:block;box-shadow:0 0 0 0 rgba(240,169,59,.6);animation:vPulse 2s infinite}
 @keyframes vPulse{0%{box-shadow:0 0 0 0 rgba(240,169,59,.55)}70%{box-shadow:0 0 0 7px rgba(240,169,59,0)}100%{box-shadow:0 0 0 0 rgba(240,169,59,0)}}
-.vhero h2{font-family:'Cairo';font-weight:900;font-size:19px;line-height:1.42;color:#fff;letter-spacing:-.2px}
+.vhero h2{font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-weight:900;font-size:19px;line-height:1.42;color:#fff;letter-spacing:-.2px}
 .vhero h2 b{color:#F5C067}
 .vhero .vh-sub{font-size:12px;color:#CBBFA6;margin-top:8px;line-height:1.75}
 .vhero-stats{display:flex;gap:7px;margin-top:16px}
@@ -134,7 +134,7 @@ p.lsub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
   animation:vPop .5s cubic-bezier(.2,.8,.2,1) forwards}
 .vhero-stat:nth-child(1){animation-delay:.15s}.vhero-stat:nth-child(2){animation-delay:.3s}.vhero-stat:nth-child(3){animation-delay:.45s}
 @keyframes vPop{to{opacity:1;transform:none}}
-.vhero-stat b{display:block;font-family:'Cairo';font-weight:800;font-size:14px;color:#F5C067;font-variant-numeric:tabular-nums}
+.vhero-stat b{display:block;font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-weight:800;font-size:14px;color:#F5C067;font-variant-numeric:tabular-nums}
 .vhero-stat span{display:block;font-size:9px;color:#A99B7E;margin-top:2px;line-height:1.4}
 .vhero-trust{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
 .vhero-trust span{font-size:9.5px;color:#DCD0B8;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
@@ -144,9 +144,9 @@ h1.atitle{font-size:23px;text-align:center;line-height:1.4}
 p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-height:1.7}
 .confirmPhoneIc{width:88px;height:88px;border-radius:50%;background:var(--ac-l);display:grid;place-items:center;
   font-size:38px;margin:6px auto 8px}
-.phoneBig{font-family:'Cairo';font-weight:800;font-size:28px;text-align:center;letter-spacing:1px;color:var(--ac-d);margin:6px 0}
+.phoneBig{font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-weight:800;font-size:28px;text-align:center;letter-spacing:1px;color:var(--ac-d);margin:6px 0}
 .otp-row{display:flex;gap:10px;justify-content:center;margin:8px 0 6px}
-.otp-row input{width:52px;height:60px;text-align:center;font-size:24px;font-weight:800;font-family:'Cairo';
+.otp-row input{width:52px;height:60px;text-align:center;font-size:24px;font-weight:800;font-family:'Cairo','Segoe UI','Tahoma',sans-serif;
   border:1.5px solid var(--line);border-radius:15px;background:var(--surf2)}
 .otp-row input:focus{border-color:var(--ac);background:var(--surf)}
 .resend{text-align:center;font-size:13px;color:var(--txt2);margin-top:14px}
@@ -175,7 +175,7 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
   background:rgba(249,247,244,.92);backdrop-filter:blur(14px)}
 .top-r{display:flex;align-items:center;gap:10px}
 .mark{width:30px;height:30px;flex:0 0 auto}
-.brand b{font-family:'Cairo';font-size:15px;display:block;line-height:1.1}
+.brand b{font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-size:15px;display:block;line-height:1.1}
 .brand span{font-size:9px;color:var(--ac-d);letter-spacing:1.6px;font-weight:600}
 .live{margin-inline-start:auto;display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--txt3)}
 .live i{width:6px;height:6px;border-radius:50%;background:var(--ac);animation:pu 2s infinite;display:block}
@@ -191,14 +191,14 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
 .kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin:14px 16px 0}
 .kpi{background:var(--surf);border:1px solid var(--line);border-radius:14px;padding:12px;box-shadow:var(--sh)}
 .kpi .l{font-size:11px;color:var(--txt2)}
-.kpi .v{font-family:'Cairo';font-size:21px;margin-top:1px}
+.kpi .v{font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-size:21px;margin-top:1px}
 .kpi .v.warn{color:var(--ac-d)}
 
 .subbanner{display:flex;align-items:center;gap:10px;margin:14px 16px 0;padding:12px 14px;border-radius:14px;font-size:12.5px}
 .subbanner.trial{background:#EAF3DE;color:#3B6D11}
 .subbanner.grace{background:#FDF3DF;color:#8A5E10}
 .subbanner.pending{background:#EEF0FE;color:#3B4BA8}
-.sb-btn{margin-inline-start:auto;background:var(--ac);color:#211602;font-family:'Cairo';font-weight:700;
+.sb-btn{margin-inline-start:auto;background:var(--ac);color:#211602;font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-weight:700;
   font-size:12px;padding:8px 12px;border-radius:10px;white-space:nowrap}
 .pickupqr{display:flex;align-items:center;gap:10px;margin-top:10px;padding:10px;border-radius:12px;background:var(--surf2)}
 .pickupqr img{border-radius:8px;background:#fff;flex:0 0 auto}
@@ -224,7 +224,7 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
 @keyframes flash{0%,100%{box-shadow:var(--sh)}30%{box-shadow:0 0 0 3px rgba(231,154,30,.4)}}
 .oh{display:flex;align-items:center;gap:10px;padding:12px 13px;border-bottom:1px solid var(--line)}
 .oh .av{width:34px;height:34px;border-radius:11px;background:var(--ac-l);color:var(--ac-d);
-  display:grid;place-items:center;font-family:'Cairo';font-size:13px;flex:0 0 auto}
+  display:grid;place-items:center;font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-size:13px;flex:0 0 auto}
 .oh .n{font-weight:700;font-size:13.5px}
 .oh .t{font-size:11px;color:var(--txt3)}
 .ob{padding:11px 13px}
@@ -239,7 +239,7 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
 .b-ok{background:#E3F9F1;color:#00925F}
 
 .btn2{display:flex;align-items:center;justify-content:center;gap:7px;flex:1;padding:12px;
-  border-radius:12px;font-family:'Cairo';font-weight:700;font-size:13px;transition:.15s}
+  border-radius:12px;font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-weight:700;font-size:13px;transition:.15s}
 .btn2:active{transform:scale(.97)}
 .btn-p2{background:var(--ac);color:#211602}
 .btn-o2{background:var(--surf2);border:1px solid var(--line);color:var(--txt)}
@@ -264,7 +264,7 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
 .brandbanner::before{content:"";position:absolute;inset:0;background:linear-gradient(120deg,transparent,rgba(240,169,59,.16),transparent);
   background-size:200% 100%;animation:sheen 4s linear infinite}
 .brandbanner .bb-ic{font-size:20px;position:relative;z-index:1}
-.brandbanner b{color:var(--ac);font-family:'Cairo';font-size:13px;position:relative;z-index:1}
+.brandbanner b{color:var(--ac);font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-size:13px;position:relative;z-index:1}
 .brandbanner span{display:block;font-size:11px;color:#C9BB9C;margin-top:2px;position:relative;z-index:1}
 @keyframes sheen{to{background-position:-200% 0}}
 
@@ -347,12 +347,12 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
       <h1 class="atitle">دخول التجّار</h1>
       <p class="asub">سجّل دخولك عشان تدخل متجرك وتشوف طلباتك</p>
       <div class="fld mt"><label>رقم الموبايل</label>
-        <input id="mPhone" type="tel" dir="ltr" placeholder="01xxxxxxxxx" style="text-align:center;font-family:'Cairo'"></div>
+        <input id="mPhone" type="tel" dir="ltr" placeholder="01xxxxxxxxx" style="text-align:center;font-family:'Cairo','Segoe UI','Tahoma',sans-serif"></div>
       <div class="fld"><label>كلمة المرور</label>
         <input id="mPass" type="password" placeholder="••••••••" style="text-align:center"></div>
       <div class="spacer"></div>
       <button class="btn btn-p" onclick="doLogin()">دخول المتجر</button>
-      <button style="margin-top:14px;background:none;border:0;color:var(--ac-d);font-family:'Cairo';font-weight:700;
+      <button style="margin-top:14px;background:none;border:0;color:var(--ac-d);font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-weight:700;
         font-size:12.5px;text-decoration:underline;cursor:pointer" onclick="openForgotPass()">نسيت كلمة المرور؟</button>
     </div>
 
@@ -362,7 +362,7 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
       <h1 class="atitle">استرجاع كلمة المرور</h1>
       <p class="asub">اكتب رقم موبايل متجرك المسجّل</p>
       <div class="fld mt"><label>رقم الموبايل</label>
-        <input id="fpPhone" type="tel" dir="ltr" placeholder="01xxxxxxxxx" style="text-align:center;font-family:'Cairo'"></div>
+        <input id="fpPhone" type="tel" dir="ltr" placeholder="01xxxxxxxxx" style="text-align:center;font-family:'Cairo','Segoe UI','Tahoma',sans-serif"></div>
       <div class="spacer"></div>
       <button class="btn btn-p" onclick="startForgotPass()">التالي</button>
     </div>
@@ -395,7 +395,7 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
       <h1 class="atitle">رقم موبايلك</h1>
       <p class="asub">هنبعتلك كود تحقق سريع عليه</p>
       <div class="fld mt"><label>رقم الموبايل</label>
-        <input id="mSignupPhone" type="tel" dir="ltr" placeholder="01xxxxxxxxx" style="text-align:center;font-family:'Cairo';letter-spacing:1px"></div>
+        <input id="mSignupPhone" type="tel" dir="ltr" placeholder="01xxxxxxxxx" style="text-align:center;font-family:'Cairo','Segoe UI','Tahoma',sans-serif;letter-spacing:1px"></div>
       <div class="spacer"></div>
       <button class="btn btn-p" onclick="mSendOtp()">متابعة</button>
     </div>
@@ -1011,7 +1011,7 @@ function pendingAlertBannerHtml(){
   if(!pendingAlertIds.size)return '';
   return `<button onclick="S.view='list';acknowledgePendingAlerts();render()" style="position:absolute;bottom:calc(var(--nav) + 14px);inset-inline:14px;z-index:45;
     background:var(--danger);color:#fff;border:0;border-radius:16px;padding:13px 16px;display:flex;align-items:center;gap:10px;
-    font-family:'Cairo';font-weight:700;font-size:13.5px;box-shadow:0 14px 30px -8px rgba(239,74,62,.55);width:calc(100% - 28px);
+    font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-weight:700;font-size:13.5px;box-shadow:0 14px 30px -8px rgba(239,74,62,.55);width:calc(100% - 28px);
     animation:pn 1.6s infinite">
     <span style="font-size:20px">🔔</span><span>عندك ${pendingAlertIds.size} طلب جديد لسه ما شفتهوش — دوس هنا</span></button>`;
 }
@@ -1698,7 +1698,7 @@ function oCard(o){
          <span class="tiny muted">اطلب من <b style="color:var(--txt)">${o.driver}</b> يقولك الكود الظاهر عنده، واكتبه هنا:</span>
          <div style="display:flex;gap:8px">
            <input id="pcIn-${o.id}" maxlength="4" inputmode="numeric" placeholder="كود ٤ أرقام"
-             style="flex:1;padding:10px;border:1px solid var(--line);border-radius:10px;text-align:center;font-family:'Cairo';font-size:17px;letter-spacing:4px;background:#fff">
+             style="flex:1;padding:10px;border:1px solid var(--line);border-radius:10px;text-align:center;font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-size:17px;letter-spacing:4px;background:#fff">
            <button class="btn2 btn-p2" onclick="confirmPickup('${o.id}')">تأكيد</button>
          </div>
          <span class="tiny" style="color:var(--ac-d)">🔒 الكود بيتغيّر كل دقيقة تلقائيًا لحماية بيانات العميل</span>
