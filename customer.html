@@ -899,6 +899,7 @@ function mountApp(){
       await loadMyOrders();
       subscribeMyOrders(); subscribeMyTickets();
       checkPendingReferralReward();
+      loadMyCustomRequests(); subscribeMyCustomRequests();
     }
     if('Notification' in window && Notification.permission==='default') Notification.requestPermission();
     if(S._welcomeCoupon){
@@ -2004,10 +2005,21 @@ function repeatOrder(orderId){
   toast(missing?`✓ اتضاف ${added} صنف — و${missing} صنف مش متاح دلوقتي`:'✓ اتضاف الطلب كامل للسلة');
   go('cart');
 }
+const CR_STAGE_LABEL={placed:'⏳ مستني مندوب يقبل الطلب',assigned:'🛵 المندوب رايح يجيبهالك',delivering:'📦 في الطريق ليك',delivered:'✅ اتسلّم'};
 function vOrders(){
-  if(!S.orders.length)return `<div class="empty"><div class="e">📦</div><h4>مفيش طلبات لسه</h4>
+  const hasCustom=(S.customRequests||[]).length>0;
+  if(!S.orders.length&&!hasCustom)return `<div class="empty"><div class="e">📦</div><h4>مفيش طلبات لسه</h4>
     <p class="tiny">أول ما تطلب هتلاقيه هنا</p></div>`;
-  return `<div class="pad" style="padding-top:14px">${S.orders.map(o=>{
+  return `<div class="pad" style="padding-top:14px">
+    ${hasCustom?`<div class="sec-t" style="margin-top:0"><h3>📦 طلباتك المخصّصة</h3></div>
+    ${S.customRequests.map(r=>`<div class="card mb" style="padding:13px;border-color:#F0A93B">
+      <div class="row"><b style="font-size:13px">${r.description}</b>
+        <span class="bdg ${r.stage==='delivered'?'b-ac':'b-w'}">${CR_STAGE_LABEL[r.stage]||r.stage}</span></div>
+      <div class="tiny muted mt">رسوم التوصيل <span class="num">${M(r.delivery_fee)}</span> ج
+        ${r.driver_name?' · المندوب: '+r.driver_name:''}</div>
+    </div>`).join('')}`:''}
+    ${S.orders.length?`<div class="sec-t"><h3>طلباتك من المحلات</h3></div>`:''}
+    ${S.orders.map(o=>{
     return `<div class="card mb" style="padding:13px">
     <button style="width:100%;text-align:right;background:none;border:0;padding:0;cursor:pointer" onclick="go('track','${o.id}')">
     <div class="row"><b class="kufi">${o.id}</b>
@@ -2082,6 +2094,27 @@ function subscribeOrderChat(orderId){
     }).subscribe();
 }
 /* ═══ اطلب أي حاجة — طلب مخصّص مش مربوط بمحل معيّن، بيوصل مباشرة لأقرب مندوب ═══ */
+/* ═══ عمولة عادلة للطلبات المخصّصة — المندوب بياخد ٨٥٪ من رسوم التوصيل (١٧ من ٢٠ج) عشان بيتعب أكتر في الجلب بنفسه ═══ */
+const CUSTOM_REQUEST_FEE=20;
+const CUSTOM_REQUEST_COMMISSION=3;
+async function loadMyCustomRequests(){
+  if(!sb||!S.co.id)return;
+  const {data}=await sb.from('custom_requests').select('*').eq('customer_id',S.co.id).order('created_at',{ascending:false});
+  S.customRequests=data||[];
+  render();
+}
+function subscribeMyCustomRequests(){
+  if(!sb||!S.co.id)return;
+  sb.channel('customer-custom-requests-'+S.co.id)
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'custom_requests',filter:'customer_id=eq.'+S.co.id},payload=>{
+      const r=(S.customRequests||[]).find(x=>x.id===payload.new.id);
+      if(r){ Object.assign(r,payload.new); render();
+        if(payload.new.stage==='assigned') notify('🛵 '+payload.new.driver_name+' قبل طلبك ورايح يجيبهولك!',true);
+        else if(payload.new.stage==='delivered') notify('✅ طلبك المخصّص وصلك',true);
+      }
+    })
+    .subscribe();
+}
 function openCustomRequestSheet(){
   if(!S.co.geo){ toast('محتاج نفعّل موقعك الأول عشان نقدر نوصّلك'); requestLocation(true); return; }
   openSheet('📦 اطلب أي حاجة',`
@@ -2092,7 +2125,7 @@ function openCustomRequestSheet(){
       <input id="anyBudget" type="number" placeholder="مثلاً 50"></div>
     <div class="fld"><label>عنوانك</label>
       <textarea id="anyAddr" rows="2" placeholder="نفس عنوانك المعتاد">${S.co.addr||''}</textarea></div>
-    <div class="alert info" style="margin-top:4px">رسوم التوصيل ١٥ ج + تكلفة الحاجة نفسها كاش وقت الاستلام</div>
+    <div class="alert info" style="margin-top:4px">رسوم التوصيل <span class="num">${CUSTOM_REQUEST_FEE}</span> ج + تكلفة الحاجة نفسها كاش وقت الاستلام</div>
     <button class="btn btn-p mt" onclick="submitCustomRequest()">ابعت الطلب</button>`);
 }
 async function submitCustomRequest(){
@@ -2104,7 +2137,9 @@ async function submitCustomRequest(){
   closeSheet();
   const row={customer_id:S.co.id,customer_name:S.co.name,customer_phone:S.co.ph||'01015974104',
     description:desc,budget_estimate:budget,address:addr,delivery_lat:S.co.geo.lat,delivery_lng:S.co.geo.lng,
-    delivery_fee:15,village_id:S.co.villageId,stage:'placed'};
+    delivery_fee:CUSTOM_REQUEST_FEE,platform_commission:CUSTOM_REQUEST_COMMISSION,
+    driver_net_earning:CUSTOM_REQUEST_FEE-CUSTOM_REQUEST_COMMISSION,
+    village_id:S.co.villageId,stage:'placed'};
   if(sb){
     const {data,error}=await sb.from('custom_requests').insert(row).select().single();
     if(error){ console.error('basita: فشل إرسال الطلب المخصّص',error); toast('حصلت مشكلة — جرّب تاني'); return; }
