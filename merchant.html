@@ -847,14 +847,18 @@ async function toggleShopOpen(){
 let _audioCtx=null;
 function getAudioCtx(){
   if(!_audioCtx){ try{ _audioCtx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return null; } }
-  if(_audioCtx.state==='suspended') _audioCtx.resume().catch(()=>{});
   return _audioCtx;
+}
+async function ensureAudioCtxRunning(){
+  const ctx=getAudioCtx(); if(!ctx)return null;
+  if(ctx.state==='suspended'){ try{ await ctx.resume(); }catch(e){} }
+  return ctx;
 }
 ['touchstart','mousedown','click','keydown'].forEach(evt=>
   document.addEventListener(evt,()=>getAudioCtx(),{once:true,passive:true}));
-function playNotifySound(){
+async function playNotifySound(){
   try{
-    const ctx=getAudioCtx(); if(!ctx)return;
+    const ctx=await ensureAudioCtxRunning(); if(!ctx)return;
     const o=ctx.createOscillator(),g=ctx.createGain();
     o.connect(g);g.connect(ctx.destination);
     o.type='sine';o.frequency.value=880;
@@ -865,9 +869,9 @@ function playNotifySound(){
   }catch(e){}
 }
 /* ═══ نغمة قوية ومميزة للطلب الجديد — مختلفة تمامًا عن التنبيه العادي، وبتتكرر ثلاث مرات عشان محدش يفوّتها ═══ */
-function playOrderAlert(){
+async function playOrderAlert(){
   try{
-    const ctx=getAudioCtx(); if(!ctx){ console.warn('basita: الصوت متقفل لحد أول لمسة على الشاشة'); return; }
+    const ctx=await ensureAudioCtxRunning(); if(!ctx){ console.warn('basita: الصوت متقفل لحد أول لمسة على الشاشة'); return; }
     const ring=startTime=>{
       [740,988,1319].forEach((freq,i)=>{
         const o=ctx.createOscillator(),g=ctx.createGain();
@@ -1240,15 +1244,29 @@ async function deleteProduct(id){
   S.products=S.products.filter(x=>x.id!==id);
   closeSheet(); render(); toast('اتحذف المنتج');
 }
+async function toggleOutOfStock(id){
+  const p=S.products.find(x=>x.id===id); if(!p)return;
+  if(p.s>0){
+    p._prevStock=p.s; p.s=0;
+    if(sb) await sb.from('products').update({stock:0}).eq('id',id);
+    toast('✓ '+p.n+' بقى مش متاح دلوقتي للعميل');
+  }else{
+    p.s=p._prevStock||10;
+    if(sb) await sb.from('products').update({stock:p.s}).eq('id',id);
+    toast('✓ '+p.n+' رجع متاح تاني');
+  }
+  render();
+}
 function vProducts(){
   return `<div class="pad" style="padding-top:14px">
     <button class="btn btn-p mb" style="width:100%" onclick="openProductForm()">+ ضيف منتج جديد</button>
-    <div class="card">${S.products.map(p=>`<div class="row">
+    <div class="card">${S.products.map(p=>`<div class="row" style="${p.s<=0?'opacity:.55':''}">
       <span class="av">${p.i||BIZ().icon}</span>
       <span style="flex:1;min-width:0"><span class="n">${p.n}</span>
         <span class="s">${p.u} · مخزون <span class="num">${p.s}</span>
         ${p.expiry?` · صلاحية <span class="num">${p.expiry}</span>`:''}
-        ${p.s<10?'<span class="bdg b-new" style="margin-inline-start:6px">قليل</span>':''}</span></span>
+        ${p.s<=0?'<span class="bdg b-d" style="margin-inline-start:6px">نفدت الكمية</span>':p.s<10?'<span class="bdg b-new" style="margin-inline-start:6px">قليل</span>':''}</span></span>
+      <button class="btn2" style="flex:0 0 auto;background:${p.s<=0?'var(--ac-l)':'#FDE8E6'};color:${p.s<=0?'var(--ac-d)':'#C23327'};font-size:11px;padding:8px 10px" onclick="toggleOutOfStock('${p.id}')">${p.s<=0?'رجّعه متاح':'نفدت الكمية'}</button>
       <button class="btn2 btn-o2" style="flex:0 0 auto" onclick="openProductForm('${p.id}')">
         <span class="num">${M(p.p)}</span> ج ✎</button></div>`).join('')}</div>
     <div style="height:12px"></div></div>`;
@@ -1549,13 +1567,18 @@ function tryAssignWaitingOrders(){
 }
 async function autoAssignDriver(id){
   const o=S.orders.find(x=>x.id===id); if(!o)return;
+  const MAX_CONCURRENT_TASKS=3; // حد أقصى منطقي — مندوب واحد يقدر يشيل أكتر من طلب، بس مش أكتر من كده عشان الجودة
   let excludedIds=new Set();
+  let loadCounts={};
   if(sb){
     const {data:rej}=await sb.from('order_rejections').select('driver_id').eq('order_id',id);
     (rej||[]).forEach(r=>excludedIds.add(r.driver_id));
+    // نحسب العبء الحقيقي لكل مندوب عبر كل التجار — مش بس طلبات المتجر ده
+    const {data:activeOrders}=await sb.from('orders').select('driver_id').in('stage',['assigned','picked','delivering']).not('driver_id','is',null);
+    (activeOrders||[]).forEach(r=>{ loadCounts[r.driver_id]=(loadCounts[r.driver_id]||0)+1; });
   }
   const candidates=Object.values(S.availableDrivers).filter(d=>
-    !excludedIds.has(d.id)&&!S.orders.some(x=>x.driver===d.name&&['assigned','picked','delivering'].includes(x.stage)));
+    !excludedIds.has(d.id)&&(loadCounts[d.id]||0)<MAX_CONCURRENT_TASKS);
   if(!candidates.length){
     o._waitingDriver=true; render();
     emit({to:['owner'],type:'order:no_driver_available',orderId:id,merchantName:BIZ().name});
@@ -1568,9 +1591,10 @@ async function autoAssignDriver(id){
     }):candidates;
   let claimed=null;
   if(sb){
-    // نحاول نحجز كل مندوب بالترتيب فعليًا من قاعدة البيانات — لو حد سبقنا بيه (سباق توقيت)، ننتقل للتالي تلقائيًا
+    // نتأكد إن المندوب لسه متاح فعليًا وقت التنفيذ بالظبط (سباق توقيت)، من غير ما نقفله بالكامل —
+    // ممكن يشيل أكتر من طلب لحد السقف الأقصى، فمنسيبوش "مش متاح" إلا لو المهمة دي هتوصله للسقف
     for(const cand of sorted){
-      const {data}=await sb.from('drivers').update({is_available:false}).eq('id',cand.id).eq('is_available',true).select().maybeSingle();
+      const {data}=await sb.from('drivers').update({last_seen_at:new Date().toISOString()}).eq('id',cand.id).eq('is_available',true).select().maybeSingle();
       if(data){ claimed=cand; break; }
     }
   }else{
