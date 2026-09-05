@@ -305,10 +305,13 @@ async function ensureSupabaseReady(){
 async function loadPendingFromDB(){
   if(!sb)return;
   const {data:allMerchants}=await sb.from('merchants').select('*');
+  const {data:villages}=await sb.from('villages').select('id,name');
+  const villageMap={}; (villages||[]).forEach(v=>villageMap[v.id]=v.name);
   (allMerchants||[]).forEach(m=>{
     const mapped={id:m.id,name:m.name,type:BIZ_LABELS_O[m.biz_type]||m.biz_type,
       icon:BIZ_ICONS_O[m.biz_type]||'🏪',phone:m.phone,status:m.status,daysLeft:computeDaysLeftO(m),price:99,
-      slaBreaches:0,pendingAmount:m.pending_amount||99,pendingReceipt:m.pending_receipt_url||null};
+      slaBreaches:0,pendingAmount:m.pending_amount||99,pendingReceipt:m.pending_receipt_url||null,
+      villageName:villageMap[m.village_id]||'—',openTime:m.open_time,closeTime:m.close_time};
     const existing=S.merchants.find(x=>x.id===m.id);
     if(existing) Object.assign(existing,mapped);
     else S.merchants.unshift(mapped);
@@ -924,6 +927,18 @@ function subscribeTipsDB(){
   sb.channel('owner-tips')
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'tips'},()=>loadTipsFromDB())
     .subscribe();
+  sb.channel('owner-reviews')
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'reviews'},payload=>{
+      if(!payload.new.complaint)return;
+      const urgent=payload.new.is_driver_complaint;
+      S.events.unshift({t:(urgent?'🚨 شكوى عاجلة على مندوب: ':'⚠️ شكوى: ')+payload.new.complaint,at:'الآن',urgent});
+      render();
+      toast(urgent?'🚨 شكوى عاجلة على مندوب — يستاهل تراجعها فورًا':'⚠️ شكوى جديدة من عميل');
+      if(urgent&&'Notification' in window&&Notification.permission==='granted'){
+        new Notification('🚨 شكوى عاجلة على مندوب',{body:payload.new.complaint});
+      }
+    })
+    .subscribe();
 }
 function vWallets(){
   const ids=[...new Set(S.tips.map(t=>t.driverId||t.driverName))];
@@ -1011,9 +1026,13 @@ async function loadCustomersFromDB(){
   if(!sb)return;
   const {data}=await sb.from('customers').select('*').order('created_at',{ascending:false});
   const {data:orders}=await sb.from('orders').select('customer_id,total');
+  const {data:villages}=await sb.from('villages').select('id,name');
+  const villageMap={}; (villages||[]).forEach(v=>villageMap[v.id]=v.name);
   S.customers=(data||[]).map(c=>{
     const mine=(orders||[]).filter(o=>o.customer_id===c.id);
-    return {id:c.id,name:c.name,phone:c.phone,landmark:c.landmark,orders:mine.length,spent:mine.reduce((s,o)=>s+ +o.total,0)};
+    return {id:c.id,name:c.name,phone:c.phone,villageName:villageMap[c.village_id]||'—',
+      createdAt:c.created_at?new Date(c.created_at).toLocaleDateString('ar-EG'):'—',
+      orders:mine.length,spent:mine.reduce((s,o)=>s+ +o.total,0)};
   });
   render();
 }
@@ -1026,6 +1045,63 @@ function subscribeCustomersDB(){
     .subscribe();
 }
 function switchMembersTab(t){ S.membersTab=t; render(); }
+function openDetailSheet(title,rowsHtml){
+  const el=document.createElement('div'); el.id='ownerDetailWrap';
+  el.innerHTML=`<div style="position:absolute;inset:0;background:rgba(0,0,0,.45);z-index:80" onclick="closeDetailSheet()"></div>
+  <div style="position:absolute;inset-inline:0;bottom:0;background:#fff;border-radius:20px 20px 0 0;z-index:81;
+    max-height:85%;overflow-y:auto;padding:20px 18px 26px;box-shadow:0 -10px 40px rgba(0,0,0,.25)">
+    <div style="display:flex;align-items:center;margin-bottom:14px">
+      <h3 style="font-family:Cairo;font-size:16px">${title}</h3>
+      <button style="margin-inline-start:auto;width:32px;height:32px;border-radius:10px;background:var(--surf2);font-size:16px" onclick="closeDetailSheet()">✕</button></div>
+    ${rowsHtml}
+  </div>`;
+  document.getElementById('app').appendChild(el);
+}
+function closeDetailSheet(){ document.getElementById('ownerDetailWrap')?.remove(); }
+function detailRow(label,value){
+  return `<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line);font-size:13px">
+    <span style="color:var(--txt2)">${label}</span><span style="font-weight:700;text-align:left" dir="auto">${value||'—'}</span></div>`;
+}
+function openCustomerDetail(id){
+  const c=S.customers.find(x=>x.id===id); if(!c)return;
+  openDetailSheet('بيانات العميل الكاملة',`
+    ${detailRow('الاسم',c.name)}
+    ${detailRow('رقم الموبايل',c.phone)}
+    ${detailRow('القرية',c.villageName||'—')}
+    ${detailRow('عدد الطلبات',c.orders||0)}
+    ${detailRow('إجمالي الإنفاق',M(c.spent||0)+' ج')}
+    ${detailRow('تاريخ التسجيل',c.createdAt||'—')}
+  `);
+}
+function openMerchantDetail(id){
+  const m=S.merchants.find(x=>x.id===id); if(!m)return;
+  openDetailSheet('بيانات التاجر الكاملة',`
+    ${detailRow('اسم المتجر',m.name)}
+    ${detailRow('نوع النشاط',m.type)}
+    ${detailRow('رقم الموبايل',m.phone)}
+    ${detailRow('القرية',m.villageName||'—')}
+    ${detailRow('الحالة',m.status==='trial'?'تجربة مجانية':m.status==='active'?'مشترك':m.status==='awaiting_approval'?'قيد الموافقة':m.status)}
+    ${detailRow('الأيام المتبقية',m.daysLeft!=null?m.daysLeft+' يوم':'—')}
+    ${detailRow('إجمالي المبيعات',M(m.salesTotal||0)+' ج')}
+    ${detailRow('مواعيد العمل',(m.openTime&&m.closeTime)?(m.openTime+' — '+m.closeTime):'—')}
+  `);
+}
+function openDriverDetail(id){
+  const a=S.driverApplications.find(x=>x.driverId===id); if(!a)return;
+  openDetailSheet('بيانات المندوب الكاملة',`
+    ${detailRow('الاسم',a.driverName)}
+    ${detailRow('رقم الموبايل',a.phone)}
+    ${detailRow('الوسيلة',a.vehicle)}
+    ${detailRow('عدد التوصيلات',a.deliveries||0)}
+    ${detailRow('الحالة',a.status==='approved'?'موثّق ومعتمد':a.status)}
+    <div style="margin-top:12px">
+      <div class="tiny muted mb">صورة البطاقة الشخصية</div>
+      ${a.idCardPhoto?`<img src="${a.idCardPhoto}" style="width:100%;border-radius:10px;margin-bottom:10px" onclick="window.open('${a.idCardPhoto}','_blank')">`:'<div class="tiny muted">مفيش صورة</div>'}
+      <div class="tiny muted mb">الصورة الشخصية</div>
+      ${a.selfiePhoto?`<img src="${a.selfiePhoto}" style="width:100%;border-radius:10px" onclick="window.open('${a.selfiePhoto}','_blank')">`:'<div class="tiny muted">مفيش صورة</div>'}
+    </div>
+  `);
+}
 function vMembers(){
   const t=S.membersTab||'customers';
   const tabs=[['customers','👤','عملاء',S.customers.length],['merchants','🏪','تجّار',S.merchants.length],
@@ -1037,21 +1113,21 @@ function vMembers(){
   let body='';
   if(t==='customers'){
     body=!S.customers.length?`<div class="alert info">👤 لسه مفيش عملاء مسجّلين — أي حد يعمل حساب في تطبيق العميل هيظهر هنا</div>`:
-      `<div class="card">${S.customers.map(c=>`<div class="row">
+      `<div class="card">${S.customers.map(c=>`<div class="row" style="cursor:pointer" onclick="openCustomerDetail('${c.id}')">
         <span class="av">👤</span><span style="flex:1"><span class="n">${c.name}</span>
-        <span class="s" dir="ltr">${c.phone||''} ${c.landmark?'· '+c.landmark:''}</span></span>
+        <span class="s" dir="ltr">${c.phone||''}</span></span>
         <span class="end"><b class="num" style="display:block">${c.orders||0} طلب</b>
-        <button style="background:none;border:0;color:var(--danger);font-size:11px;margin-top:3px;cursor:pointer" onclick="deleteCustomer('${c.id}')">حذف</button></span></div>`).join('')}</div>`;
+        <button style="background:none;border:0;color:var(--danger);font-size:11px;margin-top:3px;cursor:pointer" onclick="event.stopPropagation();deleteCustomer('${c.id}')">حذف</button></span></div>`).join('')}</div>`;
   } else if(t==='merchants'){
     body=!S.merchants.length?`<div class="alert info">🏪 لسه مفيش تجّار مسجّلين</div>`:
-      `<div class="card">${S.merchants.map(m=>`<div class="row">
+      `<div class="card">${S.merchants.map(m=>`<div class="row" style="cursor:pointer" onclick="openMerchantDetail('${m.id}')">
         <span class="av">${m.icon||'🏪'}</span><span style="flex:1"><span class="n">${m.name}</span>
         <span class="s" dir="ltr">${m.phone||''} ${m.type?'· '+m.type:''}</span></span><span class="end"><b class="num" style="display:block">${M(m.salesTotal||0)} ج</b>
-        <button style="background:none;border:0;color:var(--danger);font-size:11px;margin-top:3px;cursor:pointer" onclick="deleteMerchant('${m.id}')">حذف</button></span></div>`).join('')}</div>`;
+        <button style="background:none;border:0;color:var(--danger);font-size:11px;margin-top:3px;cursor:pointer" onclick="event.stopPropagation();deleteMerchant('${m.id}')">حذف</button></span></div>`).join('')}</div>`;
   } else {
     const drivers=S.driverApplications.filter(a=>a.status==='approved');
     body=!drivers.length?`<div class="alert info">🛵 لسه مفيش مناديب موثّقين</div>`:
-      `<div class="card">${drivers.map(a=>`<div class="row">
+      `<div class="card">${drivers.map(a=>`<div class="row" style="cursor:pointer" onclick="openDriverDetail('${a.driverId}')">
         <span class="av">🛵</span><span style="flex:1"><span class="n">${a.driverName}</span>
         <span class="s" dir="ltr">${a.phone||''}</span></span><b class="num end">${a.deliveries||0} توصيلة</b></div>`).join('')}</div>`;
   }
