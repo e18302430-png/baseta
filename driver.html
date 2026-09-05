@@ -698,6 +698,7 @@ function previewDriverDoc(input,kind){
   reader.readAsDataURL(file);
 }
 async function finishDriverSignup(){
+  S.tasks=[]; S.history=[]; S.shiftTotal=0; S.tips=[]; S.commissionOwed=0; S.deliveryEarnings=0; // مندوب جديد يبدأ بصفحة نظيفة، مش وارث بيانات مندوب قديم على نفس الجهاز
   if(!dDocs.idCard){toast('لازم ترفع صورة البطاقة الشخصية');return}
   if(!dDocs.selfie){toast('لازم ترفع صورتك الشخصية');return}
   if(!document.getElementById('dAgreeCheck').checked){toast('لازم توافق على بنود الاتفاقية الأول');return}
