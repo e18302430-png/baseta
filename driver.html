@@ -174,6 +174,24 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
 .me .av{width:40px;height:40px;border-radius:13px;background:var(--ac-l);color:var(--ac-d);
   display:grid;place-items:center;font-family:'Cairo';font-size:15px;flex:0 0 auto}
 .me b{font-size:14px;display:block}
+.statusBanner{display:flex;align-items:center;gap:11px;padding:12px 16px;margin:0;transition:.3s}
+.statusBanner.on{background:linear-gradient(120deg,#E3F9F1,#F3EFE4)}
+.statusBanner.off{background:linear-gradient(120deg,#FDE8E6,#F3EFE4)}
+.statusBanner .dot{width:11px;height:11px;border-radius:50%;flex:0 0 auto;position:relative}
+.statusBanner.on .dot{background:#00B67A;box-shadow:0 0 0 0 rgba(0,182,122,.5);animation:sbPulse 1.8s infinite}
+.statusBanner.off .dot{background:var(--danger)}
+@keyframes sbPulse{70%{box-shadow:0 0 0 8px rgba(0,182,122,0)}100%{box-shadow:0 0 0 0 rgba(0,182,122,0)}}
+.statusBanner b{font-size:13.5px;display:block;font-family:'Cairo'}
+.statusBanner.on b{color:#00723F}
+.statusBanner.off b{color:#C23327}
+.statusBanner span{font-size:10.5px;color:var(--txt2);display:block;margin-top:1px}
+.statusBanner .swBig{margin-inline-start:auto;width:52px;height:30px;border-radius:16px;position:relative;flex:0 0 auto;cursor:pointer}
+.statusBanner.on .swBig{background:#00B67A}
+.statusBanner.off .swBig{background:#D8D2C4}
+.statusBanner .swBig i{position:absolute;top:3px;width:24px;height:24px;border-radius:50%;background:#fff;
+  box-shadow:0 1px 4px rgba(0,0,0,.25);transition:.25s;font-style:normal}
+.statusBanner.on .swBig i{inset-inline-start:25px}
+.statusBanner.off .swBig i{inset-inline-start:3px}
 .status-tg{margin-inline-start:auto;display:flex;background:var(--surf2);border-radius:11px;padding:3px;gap:2px}
 .float-support{position:absolute;bottom:calc(var(--nav) + env(safe-area-inset-bottom) + 14px);inset-inline-start:14px;z-index:35;
   height:44px;padding:0 16px 0 14px;border-radius:999px;background:var(--ac);color:#fff;font-size:13.5px;font-weight:700;border:0;
@@ -488,9 +506,9 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
         <button style="border:0;background:rgba(0,0,0,.04);border-radius:9px;width:34px;height:34px;position:relative;display:grid;place-items:center;flex:0 0 auto" onclick="openInbox()" aria-label="الإشعارات">🔔<span id="bellBadge" class="bellBadge"></span></button>
       </div>
       <div class="me"><span class="av" id="topAv">ك</span><b id="topName">كريم عبد الله</b>
-        <span class="tiny" id="ratingBadge" style="color:var(--ac-d);font-weight:700;margin-inline-start:6px"></span>
-        <div class="status-tg" id="statusTg"></div></div>
+        <span class="tiny" id="ratingBadge" style="color:var(--ac-d);font-weight:700;margin-inline-start:6px"></span></div>
     </div>
+    <div id="statusBannerWrap"></div>
     <div id="settleTop"></div>
     <div class="body" id="screen"></div>
     <div id="alertBanner"></div>
@@ -853,14 +871,18 @@ function startShift(){
 let _audioCtx=null;
 function getAudioCtx(){
   if(!_audioCtx){ try{ _audioCtx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return null; } }
-  if(_audioCtx.state==='suspended') _audioCtx.resume().catch(()=>{});
   return _audioCtx;
+}
+async function ensureAudioCtxRunning(){
+  const ctx=getAudioCtx(); if(!ctx)return null;
+  if(ctx.state==='suspended'){ try{ await ctx.resume(); }catch(e){} }
+  return ctx;
 }
 ['touchstart','mousedown','click','keydown'].forEach(evt=>
   document.addEventListener(evt,()=>getAudioCtx(),{once:true,passive:true}));
-function playNotifySound(){
+async function playNotifySound(){
   try{
-    const ctx=getAudioCtx(); if(!ctx)return;
+    const ctx=await ensureAudioCtxRunning(); if(!ctx)return;
     const o=ctx.createOscillator(),g=ctx.createGain();
     o.connect(g);g.connect(ctx.destination);
     o.type='sine';o.frequency.value=880;
@@ -871,9 +893,9 @@ function playNotifySound(){
   }catch(e){}
 }
 /* ═══ نغمة قوية ومميزة لمهمة جديدة — مختلفة تمامًا عن التنبيه العادي، وبتتكرر ثلاث مرات عشان محدش يفوّتها ═══ */
-function playOrderAlert(){
+async function playOrderAlert(){
   try{
-    const ctx=getAudioCtx(); if(!ctx){ console.warn('basita: الصوت متقفل لحد أول لمسة على الشاشة'); return; }
+    const ctx=await ensureAudioCtxRunning(); if(!ctx){ console.warn('basita: الصوت متقفل لحد أول لمسة على الشاشة'); return; }
     const ring=startTime=>{
       [740,988,1319].forEach((freq,i)=>{
         const o=ctx.createOscillator(),g=ctx.createGain();
@@ -903,6 +925,7 @@ function toast(m){playNotifySound();pushNotify(m);const t=document.getElementByI
   clearTimeout(window._tT);window._tT=setTimeout(()=>t.classList.remove('show'),2600)}
 
 /* ═══ حالة التطبيق + حفظ دائم للبيانات الحساسة (وثائق التسجيل، الصور، أرقام الشحنات، المحادثات) ═══ */
+const MAX_CONCURRENT_TASKS=3; // نفس السقف المستخدم عند التاجر — مندوب واحد يقدر يشيل أكتر من طلب لحد السقف ده
 let S={view:'tasks',avail:true,tasks:[],history:[],shiftTotal:0,settling:false,password:'',driverName:'',vehicle:'🛵',phone:'',ratings:[],tips:[],driverId:'',verifyStatus:'',idCardPhoto:'',selfiePhoto:'',villageId:null,commissionOwed:0,deliveryEarnings:0};
 const STATE_KEY='basita_state_'+ROLE;
 function loadState(){ try{return JSON.parse(localStorage.getItem(STATE_KEY)||'null')}catch(e){return null} }
@@ -1176,8 +1199,8 @@ function rejectTask(id){
   const t=S.tasks.find(x=>x.id===id); if(!t)return;
   pendingAlertIds.delete(id);
   S.tasks=S.tasks.filter(x=>x.id!==id);
-  if(!S.tasks.length){
-    S.avail=true;
+  if(S._autoUnavailable&&S.tasks.length<MAX_CONCURRENT_TASKS){
+    S._autoUnavailable=false; S.avail=true;
     if(sb&&S.driverId) sb.from('drivers').update({is_available:true}).eq('id',S.driverId).then(()=>{});
   }
   if(sb){
@@ -1251,8 +1274,8 @@ async function confirmDeliveryPhoto(){
   S.deliveryEarnings=(S.deliveryEarnings||0)+(t.deliveryFee||0);
   delete t.addr; delete t.ph; t.closedAt=new Date().toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'});
   S.history.unshift(t); S.tasks=S.tasks.filter(x=>x.id!==id);
-  if(!S.tasks.length){
-    S.avail=true;
+  if(S._autoUnavailable&&S.tasks.length<MAX_CONCURRENT_TASKS){
+    S._autoUnavailable=false; S.avail=true;
     if(sb&&S.driverId) sb.from('drivers').update({is_available:true}).eq('id',S.driverId).then(()=>{});
   }
   emit({to:['owner'],type:'ticket:closed',orderId:id});
@@ -1459,15 +1482,20 @@ function vTasks(){
     </div></div>`;
   if(!S.tasks.length)return goalBanner+`<div class="empty" style="padding-top:0"><div class="e">🛵</div><h4>مفيش مهام دلوقتي</h4>
     <p class="tiny">لما التاجر يعيّنك، هتظهر هنا فورًا</p></div>`;
+  // ترتيب ذكي: المهام اللي معاك فيها بضاعة فعلًا (delivering) الأول عشان تخلّصها،
+  // وبعدين المهام اللي لسه محتاجة استلام (assigned)، والمهام من نفس المحل مجمّعة مع بعض
+  const stageOrder={delivering:0,picked:1,assigned:2};
+  const sortedActive=[...active].sort((a,b)=>(stageOrder[a.stage]??3)-(stageOrder[b.stage]??3)||(a.merchantId===b.merchantId?0:1));
   return goalBanner+`<div class="pad" style="padding-top:0">
-    ${active.map(t=>{
+    ${active.length>1?`<div class="sec-t" style="margin-top:0"><h3>📦 مهامك النشطة</h3><span class="num bdg b-prog">${active.length} من ${MAX_CONCURRENT_TASKS}</span></div>`:''}
+    ${sortedActive.map((t,i)=>{
       const idx=STEPS.indexOf(t.stage);
       const nextLabel={assigned:'استلمت الطلب من المحل',picked:'بدأت التوصيل',delivering:'تم التسليم'}[t.stage];
       return `<div class="tcard active">
-        <div class="th"><span class="av">📦</span>
+        <div class="th"><span class="av">${active.length>1?(i+1):'📦'}</span>
           <span style="flex:1"><span class="n">طلب <span class="num">${t.id}</span>${t.batchHint?' <span class="bdg b-new">🔗 نفس الرحلة</span>':''}</span>
           <span class="t">${t.name} · <span class="num">${M(t.total)}</span> ج</span></span>
-          <span class="bdg b-prog">مهمة نشطة</span></div>
+          <span class="bdg b-prog">${t.stage==='delivering'?'في الطريق':t.stage==='picked'?'استلمت':'مهمة نشطة'}</span></div>
         <div class="tb">
           <div class="taddr"><span class="k">📍</span><span>${t.addr}</span></div>
           ${t.notes?`<div class="tiny" style="background:#FFF3DE;color:#8A5E10;border-radius:9px;padding:7px 9px;margin:4px 0">📝 ${t.notes}</div>`:""}
@@ -1583,7 +1611,13 @@ function markOfflineNow(){
   if(sb&&S.driverId) sb.from('drivers').update({is_available:false}).eq('id',S.driverId).then(()=>{});
 }
 window.addEventListener('pagehide',markOfflineNow);
-document.addEventListener('visibilitychange',()=>{ if(document.hidden) markOfflineNow(); else if(sb&&S.driverId&&S.avail){ sb.from('drivers').update({is_available:true,last_seen_at:new Date().toISOString()}).eq('id',S.driverId).then(()=>{}); } });
+document.addEventListener('visibilitychange',()=>{
+  // قفل الشاشة أو تحويل لتطبيق تاني مؤقتًا حاجة طبيعية جدًا وقت الشغل — مش معناها المندوب سايب المهمة.
+  // النبض الدوري (كل ٤٥ ثانية) والمهلة الزمنية عند التاجر (دقيقتين) كافيين لاكتشاف اللي قفل التطبيق فعليًا.
+  if(!document.hidden&&sb&&S.driverId&&S.avail){
+    sb.from('drivers').update({is_available:true,last_seen_at:new Date().toISOString()}).eq('id',S.driverId).then(()=>{});
+  }
+});
 function startLocBroadcast(){
   stopLocBroadcast();
   const tick=()=>{
@@ -1599,7 +1633,7 @@ function startLocBroadcast(){
 }
 function stopLocBroadcast(){ clearInterval(locBroadcastT); locBroadcastT=null; }
 function setAvail(v){
-  S.avail=v; render();
+  S.avail=v; S._autoUnavailable=false; render(); // أي تفاعل يدوي بيلغي أي تأثير تلقائي سابق
   if(sb&&S.driverId) sb.from('drivers').update({is_available:v}).eq('id',S.driverId).then(()=>{});
   if(v){ startLocBroadcast(); } else { stopLocBroadcast(); if(!sb) emit({to:['merchant'],type:'driver:offline',driverId:S.driverId}); }
 }
@@ -1623,8 +1657,11 @@ function subscribeMyTasks(){
         task.shopName=merchantRow?merchantRow.name:'';
         S.tasks.push({...task,batchHint:hasActive});
         subscribeTaskChat(payload.new.id);
-        S.avail=false;
-        sb.from('drivers').update({is_available:false}).eq('id',S.driverId).then(()=>{});
+        // مفيش داعي نطفّي "متاح" من أول مهمة — المندوب يقدر يشيل أكتر من طلب. التاجر بيتحكّم في السقف الأقصى من قاعدة البيانات مباشرة.
+        if(S.tasks.length>=MAX_CONCURRENT_TASKS){
+          S._autoUnavailable=true; S.avail=false;
+          sb.from('drivers').update({is_available:false}).eq('id',S.driverId).then(()=>{});
+        }
         notify(hasActive?'🔗 طلب تاني من نفس المحل — ممكن تضيفه لنفس رحلتك':'مهمة جديدة وصلت من التاجر!',true);
         pendingAlertIds.add(payload.new.id); startAlertEscalation(); render();
         return;
@@ -1664,9 +1701,11 @@ async function loadMyTips(){
 function render(){
   saveState();
   renderBell();
-  $('#statusTg').innerHTML=`
-    <button aria-pressed="${S.avail}" onclick="setAvail(true)">متاح</button>
-    <button class="busy" aria-pressed="${!S.avail}" onclick="setAvail(false)">مشغول</button>`;
+  $('#statusBannerWrap').innerHTML=`<div class="statusBanner ${S.avail?'on':'off'}" onclick="setAvail(${!S.avail})">
+    <span class="dot"></span>
+    <span><b>${S.avail?'🟢 متاح — بتستقبل طلبات دلوقتي':'🔴 مشغول — مش هتوصلك أي طلبات'}</b>
+    <span>${S.avail?'دوس عشان توقف استقبال الطلبات مؤقتًا':'دوس عشان ترجع تستقبل طلبات تاني'}</span></span>
+    <div class="swBig"><i></i></div></div>`;
   const rb=$('#ratingBadge'); if(rb)rb.textContent=S.ratings.length?'⭐ '+(S.ratings.reduce((s,r)=>s+r.rating,0)/S.ratings.length).toFixed(1):'';
   $('#screen').innerHTML=(V[S.view]||vTasks)();
   const pendN=S.tasks.filter(t=>!t.accepted).length;
