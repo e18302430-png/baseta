@@ -1588,7 +1588,7 @@ function vTasks(){
           <span class="bdg b-prog">${r.stage==='assigned'?'رايح يجيبها':'في الطريق للعميل'}</span></div>
         <div class="tb">
           ${r.budget_estimate?`<div class="tiny muted">تقريبًا هتكلّف: <span class="num">${M(r.budget_estimate)}</span> ج (كاش من العميل)</div>`:''}
-          <div class="tiny muted mt">رسوم توصيلك: <span class="num" style="color:var(--ac-d)">${M(r.delivery_fee)} ج</span></div>
+          <div class="tiny muted mt">صافي ربحك: <span class="num" style="color:var(--ac-d)">${M(r.driver_net_earning||r.delivery_fee)} ج</span></div>
           ${r.stage==='assigned'?
             `<button class="btn2 btn-p2" style="width:100%;margin-top:8px" onclick="advanceCustomRequest('${r.id}','delivering')">✓ جبت الحاجة — في الطريق للعميل</button>`:
             `<button class="btn2 btn-p2" style="width:100%;margin-top:8px" onclick="advanceCustomRequest('${r.id}','delivered')">✓ سلّمت الطلب</button>`}
