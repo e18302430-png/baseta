@@ -827,7 +827,7 @@ function clearSignupBanner(){
   if(el){ el.style.display='none'; el.innerHTML=''; }
 }
 async function finishSignup(){
-  S.inbox=[]; try{localStorage.removeItem(INBOX_KEY);}catch(e){} // حساب جديد يبدأ بصفحة نظيفة، مش وارث إشعارات حساب قديم على نفس الجهاز
+  S.inbox=[]; S.orders=[]; try{localStorage.removeItem(INBOX_KEY);}catch(e){} // حساب جديد يبدأ بصفحة نظيفة تمامًا، مش وارث بيانات حساب قديم على نفس الجهاز
   const nm=document.getElementById('nmInput').value.trim()||'صديقنا';
   document.getElementById('hiName').textContent=nm.split(' ')[0];
   S.co.name=nm; S.co.lm=document.getElementById('lmInput').value;
