@@ -5,6 +5,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
+.connWarn{position:fixed;top:0;inset-inline:0;z-index:999;background:#C23327;color:#fff;
+  padding:11px 14px;display:flex;align-items:center;gap:9px;font-size:12px;box-shadow:0 4px 14px rgba(0,0,0,.3)}
+.connWarn b{font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-weight:800;font-size:12.5px;display:block}
+.connWarn span{font-size:10.5px;color:#FFD9D6;display:block;margin-top:1px}
+.connWarn button{margin-inline-start:auto;background:#fff;color:#C23327;border:0;padding:7px 12px;
+  border-radius:8px;font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-weight:800;font-size:11px;flex:0 0 auto}
 :root{
   --bg:#08090D;--surf:#101218;--surf2:#171A22;--line:#20242F;--line2:#2C313F;
   --txt:#F2F4F8;--txt2:#848DA3;--txt3:#4E5567;
@@ -210,6 +216,7 @@ p.lsub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13px;line-he
 </style></head>
 <body>
 <div class="app" id="app">
+  <div id="connWarnWrap"></div>
 
   <div id="boot"><div class="in">
     <svg class="mk" viewBox="0 0 64 64"><rect width="64" height="64" rx="19" fill="#12242A"/>
@@ -371,16 +378,36 @@ setTimeout(()=>document.getElementById('boot').classList.add('gone'),1300);
 setTimeout(()=>document.getElementById('loginFlow').classList.add('show'),1350);
 ensureSupabaseReady(); // نبدأ التحميل بدري من غير ما نأخّر شاشة الدخول — المالك بيكتب الرمز أصلًا في وقت كافي
 
+function renderConnWarning(){
+  const wrap=document.getElementById('connWarnWrap'); if(!wrap)return;
+  if(sb){ wrap.innerHTML=''; return; }
+  wrap.innerHTML=`<div class="connWarn">
+    <span style="font-size:20px">⚠️</span>
+    <span><b>مفيش اتصال بقاعدة البيانات دلوقتي</b>
+    <span>أي حاجة تعملها دلوقتي لن تتحفظ ولا توصل لحد تاني — تأكد من النت وأعد المحاولة</span></span>
+    <button onclick="retryConnection()">إعادة المحاولة</button></div>`;
+}
+async function retryConnection(){
+  const wrap=document.getElementById('connWarnWrap');
+  if(wrap) wrap.innerHTML=`<div class="connWarn"><span style="font-size:20px">🔄</span><span><b>جاري إعادة المحاولة...</b></span></div>`;
+  const ok=await ensureSupabaseReady();
+  renderConnWarning();
+  if(ok) toast('✓ اتصل بقاعدة البيانات فعليًا دلوقتي');
+}
 async function doLogin(){
   const v=document.getElementById('pinInput').value.trim();
   if(v!==S.pin){toast('الرمز غلط');return}
   document.getElementById('loginFlow').classList.remove('show');
   await ensureSupabaseReady();
+  renderConnWarning();
   setTimeout(()=>{
     document.getElementById('mainApp').classList.add('show');render();
     emit({to:['merchant'],type:'vodafone:number_updated',number:S.vodafoneCash});
     if('Notification' in window && Notification.permission==='default') Notification.requestPermission();
     if(sb){ loadPendingFromDB(); subscribePendingDB(); subscribeTipsDB(); subscribeTicketsDB(); subscribeCustomersDB(); refreshAnalytics();
+      sb.from('platform_settings').select('weather_alert,vodafone_cash_number').eq('id',1).maybeSingle().then(({data})=>{
+        if(data){ S.weatherAlert=data.weather_alert||null; if(data.vodafone_cash_number)S.vodafoneCash=data.vodafone_cash_number; render(); }
+      });
       sb.channel('owner-order-stats').on('postgres_changes',{event:'UPDATE',schema:'public',table:'orders'},()=>refreshAnalytics()).subscribe(); }
   },350);
 }
@@ -907,6 +934,15 @@ function vSupport(){
         <span style="flex:1"><span class="n">${t.roleName} — ${t.fromName}</span>
           <span class="s">${t.message.slice(0,40)}${t.message.length>40?'…':''}</span></span>
         <span class="bdg b-active">✅ أكّد الحل</span></div>`).join('')}</div>`:''}
+    ${(S.complaints||[]).filter(c=>!c.resolved).length?`<div class="sec-t"><h3>🚨 شكاوى عملاء مفتوحة</h3><span class="num">${(S.complaints||[]).filter(c=>!c.resolved).length}</span></div>
+      <div class="card">${(S.complaints||[]).filter(c=>!c.resolved).map(c=>`<div class="row" style="align-items:flex-start;flex-direction:column;gap:6px">
+        <div style="display:flex;width:100%;align-items:center">
+          <span class="av">${c.is_driver_complaint?'🛵':'🏪'}</span>
+          <span style="flex:1"><span class="n">${c.complaint}</span></span>
+          ${c.is_driver_complaint?'<span class="bdg b-d">عاجلة</span>':''}
+        </div>
+        <button class="btn2 btn-ok2" style="width:100%" onclick="resolveComplaint('${c.id}')">✓ تم الحل</button>
+      </div>`).join('')}</div>`:''}
     <div style="height:14px"></div></div>`;
 }
 async function payoutDriver(driverId,driverName){
@@ -936,10 +972,12 @@ function subscribeTipsDB(){
   sb.channel('owner-tips')
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'tips'},()=>loadTipsFromDB())
     .subscribe();
+  loadComplaintsFromDB();
   sb.channel('owner-reviews')
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'reviews'},payload=>{
       if(!payload.new.complaint)return;
       const urgent=payload.new.is_driver_complaint;
+      S.complaints=S.complaints||[]; S.complaints.unshift(payload.new);
       S.events.unshift({t:(urgent?'🚨 شكوى عاجلة على مندوب: ':'⚠️ شكوى: ')+payload.new.complaint,at:'الآن',urgent});
       render();
       toast(urgent?'🚨 شكوى عاجلة على مندوب — يستاهل تراجعها فورًا':'⚠️ شكوى جديدة من عميل');
@@ -952,6 +990,23 @@ function subscribeTipsDB(){
   sb.channel('owner-custom-requests')
     .on('postgres_changes',{event:'*',schema:'public',table:'custom_requests'},()=>loadCustomRequestsFromDB())
     .subscribe();
+}
+async function loadComplaintsFromDB(){
+  if(!sb)return;
+  const {data}=await sb.from('reviews').select('*').not('complaint','is',null).order('created_at',{ascending:false}).limit(30);
+  S.complaints=data||[];
+  render();
+}
+async function resolveComplaint(id){
+  const c=(S.complaints||[]).find(x=>x.id===id); if(!c)return;
+  const note=prompt('اكتب إيه اللي اتعمل لحل الشكوى دي (هيوصل للعميل):','اتواصلنا مع المندوب وتم التنبيه عليه');
+  if(note===null)return;
+  c.resolved=true; c.resolution_note=note; render();
+  if(sb){
+    const {error}=await sb.from('reviews').update({resolved:true,resolution_note:note,resolved_at:new Date().toISOString()}).eq('id',id);
+    if(error){ console.error('basita:',error); toast('حصلت مشكلة — جرّب تاني'); return; }
+  }
+  toast('✓ اتسجّل الحل ووصل إشعار للعميل');
 }
 async function loadCustomRequestsFromDB(){
   if(!sb)return;
@@ -1000,6 +1055,19 @@ async function saveVodafoneNumber(){
   }
   render(); toast('اتحدّث الرقم وبيوصل لكل التجار تلقائيًا');
 }
+async function saveWeatherAlert(){
+  const v=document.getElementById('weatherInput').value.trim();
+  S.weatherAlert=v||null;
+  if(sb){
+    const {error}=await sb.from('platform_settings').update({weather_alert:v||null}).eq('id',1);
+    if(error){ console.error('basita:',error); toast('حصلت مشكلة — جرّب تاني'); return; }
+  }
+  render(); toast(v?'✓ اتنشر التنبيه لكل العملاء فورًا':'✓ اتلغى التنبيه');
+}
+function clearWeatherAlert(){
+  document.getElementById('weatherInput').value='';
+  saveWeatherAlert();
+}
 function simulateDayPass(){
   emit({to:['merchant'],type:'trial:tick'});
   S.events.unshift({t:'🧪 محاكاة اختبار: يوم افتراضي عدّى على التجار',at:'الآن'});
@@ -1014,6 +1082,16 @@ function vFlags(){
         <input id="vfInput" value="${S.vodafoneCash}" dir="ltr" style="flex:1;padding:12px;border:1px solid var(--line);
           border-radius:11px;background:var(--surf2);color:var(--txt);font-family:'Cairo','Segoe UI','Tahoma',sans-serif;text-align:center">
         <button class="btn2 btn-p2" onclick="saveVodafoneNumber()">حفظ</button>
+      </div>
+    </div>
+    <div class="sec-t"><h3>🌧️ تنبيه طقس أو ظرف طارئ</h3></div>
+    <div class="card" style="padding:14px">
+      <div class="tiny muted mb">هيظهر لكل العملاء فورًا فوق الشاشة الرئيسية — سيبها فاضية لو مفيش تنبيه دلوقتي</div>
+      <textarea id="weatherInput" rows="2" placeholder="مثلاً: الجو ماطر — التوصيل ممكن ياخد وقت أطول من المعتاد" style="width:100%;padding:12px;border:1px solid var(--line);
+        border-radius:11px;background:var(--surf2);color:var(--txt);font-family:inherit;margin-bottom:8px">${S.weatherAlert||''}</textarea>
+      <div style="display:flex;gap:8px">
+        <button class="btn2 btn-p2" style="flex:1" onclick="saveWeatherAlert()">نشر التنبيه</button>
+        <button class="btn2" style="background:#FDE8E6;color:#C23327" onclick="clearWeatherAlert()">إلغاء التنبيه</button>
       </div>
     </div>
     <div class="alert info mb mt">💡 <span>تقدر تشغّل أو توقف أي ميزة فورًا من غير تحديث للتطبيق</span></div>
