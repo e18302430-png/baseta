@@ -1728,6 +1728,7 @@ document.addEventListener('visibilitychange',()=>{
   // النبض الدوري (كل ٤٥ ثانية) والمهلة الزمنية عند التاجر (دقيقتين) كافيين لاكتشاف اللي قفل التطبيق فعليًا.
   if(!document.hidden&&sb&&S.driverId&&S.avail){
     sb.from('drivers').update({is_available:true,last_seen_at:new Date().toISOString()}).eq('id',S.driverId).then(()=>{});
+    loadExistingTasks();
   }
 });
 function startLocBroadcast(){
@@ -1807,9 +1808,32 @@ function subscribeMySettlements(){
     })
     .subscribe();
 }
+async function loadExistingTasks(){
+  // بيجيب أي طلب متعيّن للمندوب فعليًا من القاعدة مباشرة — تغطية لأي حالة فات فيها حدث realtime
+  // (قفلة شاشة، تبديل تطبيق، انقطاع شبكة لحظي، أو تعيين حصل قبل ما اليوزر يضغط "ابدأ الوردية")
+  if(!sb||!S.driverId)return;
+  const {data:rows,error}=await sb.from('orders').select('*').eq('driver_id',S.driverId).in('stage',['assigned','picked','delivering']);
+  if(error||!rows||!rows.length)return;
+  let added=false;
+  for(const o of rows){
+    if(S.tasks.some(t=>t.id===o.id))continue;
+    const {data:items}=await sb.from('order_items').select('*').eq('order_id',o.id);
+    const {data:merchantRow}=await sb.from('merchants').select('shop_lat,shop_lng,name').eq('id',o.merchant_id).maybeSingle();
+    const task=mapTaskRow(o,items);
+    if(merchantRow&&merchantRow.shop_lat!=null) task.shopGeo={lat:merchantRow.shop_lat,lng:merchantRow.shop_lng};
+    task.shopName=merchantRow?merchantRow.name:'';
+    task.accepted=o.stage!=='assigned'; // لو كان اتقبل وبدأ التوصيل بالفعل، منرجعوش نسأله يقبل تاني
+    S.tasks.push(task);
+    subscribeTaskChat(o.id);
+    pendingAlertIds.add(o.id);
+    added=true;
+  }
+  if(added){ startAlertEscalation(); render(); notify('📦 لقينا طلب متعيّنلك مكنتش شايفه — اتظبط دلوقتي',true); }
+}
 function subscribeMyTasks(){
   if(!sb||!S.driverId)return;
   loadMyTips();
+  loadExistingTasks();
   sb.channel('driver-tasks-'+S.driverId)
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'orders',filter:'driver_id=eq.'+S.driverId},async payload=>{
       if(payload.new.stage==='assigned'&&!S.tasks.some(t=>t.id===payload.new.id)){
