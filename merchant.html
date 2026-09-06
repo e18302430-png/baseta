@@ -1041,7 +1041,9 @@ function saveState(){ try{localStorage.setItem(STATE_KEY,JSON.stringify({
   shopPhoto:S.shopPhoto,vodafoneCash:S.vodafoneCash,bizBio:S.bizBio,sub:S.sub,products:S.products,
   purchases:S.purchases,password:S.password,bizType:S.bizType,reviews:S.reviews,customerStats:S.customerStats
 }));}catch(e){ console.warn('basita: تعذّر الحفظ المحلي',e); } }
-{ const _saved=loadState(); if(_saved) Object.assign(S,_saved); }
+// ملاحظة مهمة: ما بنسترجعش الحالة المحفوظة محليًا هنا خالص — بيانات المتجر الحقيقية (الطلبات،
+// المنتجات، بيانات الحساب) بترجع صح من قاعدة البيانات فور تسجيل الدخول، واسترجاع نسخة قديمة
+// محليًا كان بيسبب ظهور بيانات متجر أو حساب قديم بالغلط على نفس الجهاز.
 const $=s=>document.querySelector(s);
 const M=n=>Math.round(n).toLocaleString('en');
 const weightLabel=kg=>kg<1?Math.round(kg*1000)+' جم':(kg%1===0?kg:kg.toFixed(2))+' كجم';
