@@ -341,6 +341,16 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
 .searchBar input{flex:1;border:0;background:none;outline:0;font-size:13.5px;color:var(--txt)}
 .searchBar input::placeholder{color:var(--txt3)}
 .searchBar .ic{font-size:17px;color:var(--txt3)}
+.seasonBar{display:flex;align-items:center;gap:9px;padding:11px 13px;border-radius:13px;
+  background:#FFF3DE;border:1px dashed #E3C98A;color:#8A5E10}
+.seasonBar .ic{font-size:16px;flex:0 0 auto}
+.seasonBar b{font-size:12px;font-weight:700;display:block}
+.seasonBar span span{font-size:10.5px;display:block;margin-top:1px;opacity:.85}
+.quickRow{display:flex;align-items:center;gap:8px;margin:11px 16px 0}
+.quickTip{flex:1;display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--txt2)}
+.quickTip .ic{font-size:13px;flex:0 0 auto}
+.quickCall{flex:0 0 auto;font-size:10.5px;font-weight:700;color:#1F7A45;background:#E8F8EE;
+  border:1px solid #8FCFA8;padding:7px 11px;border-radius:20px;white-space:nowrap}
 .promoHero{margin:14px 16px 0;border-radius:20px;padding:18px;position:relative;overflow:hidden;
   background:linear-gradient(120deg,#1A1206 0%,#241A05 55%,#1A1206 100%);color:#fff;box-shadow:0 16px 34px -14px rgba(0,0,0,.45)}
 .promoHero::before{content:"";position:absolute;inset:0;background:linear-gradient(120deg,transparent,rgba(255,199,92,.18),transparent);
@@ -503,15 +513,15 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
       <div class="vhero">
         <div class="vhero-in">
           <div class="vhero-top">
-            <span class="vhero-badge">⏱️ التزام بالوقت أو تعويض فوري</span>
+            <span class="vhero-badge" id="heroBadge">⏱️ التزام بالوقت أو تعويض فوري</span>
           </div>
           <div class="vhero-foodIll">
             <span class="orb o1">💊</span><span class="orb o2">🛒</span>
             <span class="orb o3">☕</span><span class="orb o4">🥖</span>
             <span class="center">🍔</span>
           </div>
-          <h2>طلبك يوصلك <b>في معاده بالظبط</b><br>وإلا بنعوّضك تلقائيًا</h2>
-          <p class="vh-sub">من بقالة، مخبز، أو صيدلية حيّك — نلتزم بميعاد التوصيل المتوقع، ولو اتأخرنا عليك، كوبون خصم بيتحط لك على طول من غير ما تتصل بحد</p>
+          <h2 id="heroHeadline">طلبك يوصلك <b>في معاده بالظبط</b><br>وإلا بنعوّضك تلقائيًا</h2>
+          <p class="vh-sub" id="heroSub">من بقالة، مخبز، أو صيدلية حيّك — نلتزم بميعاد التوصيل المتوقع، ولو اتأخرنا عليك، كوبون خصم بيتحط لك على طول من غير ما تتصل بحد</p>
           <div class="vhero-stats">
             <div class="vhero-stat"><b class="num">+٢٥٠</b><span>قرية متصلة</span></div>
             <div class="vhero-stat"><b class="num">+٤٠٠٠</b><span>طلب يوميًا</span></div>
@@ -734,6 +744,10 @@ function renderWelcomePromo(){
     <span class="ic">🎉</span>
     <span><b>عرض الإطلاق: توصيل مجاني تمامًا!</b>
     <span>على كل طلب — العرض هيخلص بعد ${daysLeft} ${daysLeft===1?'يوم':'أيام'}</span></span></div>`;
+  const badge=document.getElementById('heroBadge'), headline=document.getElementById('heroHeadline'), sub=document.getElementById('heroSub');
+  if(badge) badge.textContent='🎉 يا أهل المنيل ومركز طلخا — عرض إطلاق حصري!';
+  if(headline) headline.innerHTML='بسيطة وصلت لقريتكم!<br><b>توصيل مجاني تمامًا</b> أول أسبوع';
+  if(sub) sub.textContent='من غير ما تدفع جنيه توصيل واحد — جرّب دلوقتي من أي محل في المنيل قبل ما العرض يخلص';
 }
 setTimeout(renderWelcomePromo,50);
 
@@ -1441,9 +1455,8 @@ function showCrossVillageConfirm(shop){
 async function placeOrder(){
   const c=S.co;
   if(!c.addr||!c.addr.trim()){toast('اكتب عنوانك بالتفصيل');return}
-  if(!c.geo){toast('لازم تفعّل موقعك الأول');return}
-  const shop=SHOPS[S.activeShop];
-  if(!shop){toast('اختار محل الأول');return}
+  const shop=SHOPS[S.cartShop];
+  if(!shop){toast('السلة فاضية — ارجع اختار أصناف الأول');return}
   const crossVillage=!!(shop.villageId&&S.co.villageId&&shop.villageId!==S.co.villageId);
   if(crossVillage&&!S._crossVillageConfirmed){
     showCrossVillageConfirm(shop);
@@ -1473,7 +1486,7 @@ async function placeOrder(){
     const netEarning=+(fee-commission).toFixed(2);
     const {data:orderRow,error}=await sb.from('orders').insert({
       merchant_id:shop.id, customer_id:c.id, customer_name:c.name, customer_phone:c.ph||'01015974104',
-      address:addr, delivery_lat:c.geo.lat, delivery_lng:c.geo.lng, delivery_fee:fee,
+      address:addr, delivery_lat:c.geo?c.geo.lat:null, delivery_lng:c.geo?c.geo.lng:null, delivery_fee:fee,
       origin_village_id:shop.villageId||null, dest_village_id:c.villageId||null,
       platform_commission:commission, driver_net_earning:netEarning,
       total:cSub()+fee, stage:'placed', is_recurring:false, feedback_submitted:false, notes:fullNotes
@@ -1637,26 +1650,24 @@ function vHome(){
       .sort((a,b)=>(a._dist??999)-(b._dist??999));
   }
   const total=mine.length+others.length;
+  const priorityBanner=isInAppPromoBanner()?
+    {cls:'promoLaunch',ic:'🎉',b:'لسه توصيل مجاني للأسبوع ده بس!',s:`باقي ${14-daysSinceLaunch()} ${14-daysSinceLaunch()===1?'يوم':'أيام'} على العرض`}:
+    S.weatherAlert?{cls:'seasonBar',ic:'🌧️',b:S.weatherAlert,s:''}:
+    (()=>{const h=seasonalHint(); return h?{cls:'seasonBar',ic:h.ic,b:h.txt,s:''}:null;})();
   return `<div class="searchBar"><span class="ic">🔍</span>
       <input id="shopSearchInput" placeholder="دوّر على محل أو صنف..." value="${S.searchQuery||''}" oninput="handleSearchInput(this)"></div>
-    <button class="callUsBar" onclick="window.open('https://wa.me/201015974104?text='+encodeURIComponent('عايز أطلب بس مش عارف أستخدم التطبيق'),'_blank')">
-      <span class="ic">📞</span> مش عارف تطلب؟ اتصل بينا نطلبلك احنا</button>
+    ${priorityBanner?`<div class="${priorityBanner.cls}" style="margin:9px 16px 0;width:calc(100% - 32px)">
+      <span class="ic">${priorityBanner.ic}</span>
+      <span><b>${priorityBanner.b}</b>${priorityBanner.s?`<span>${priorityBanner.s}</span>`:''}</span></div>`:''}
     <button class="anythingBar" onclick="openCustomRequestSheet()">
       <span class="anyBadge">✨ جديد</span>
       <span class="anyIc">📦</span>
       <span class="anyTxt"><b>اطلب أي حاجة!</b><span>أنبوبة، دوا، حاجة نسيتها — أي حاجة عايزها من بره</span></span>
       <span class="anyArrow">›</span></button>
-    ${isInAppPromoBanner()?`<div class="promoLaunch" style="margin:9px 16px 0;width:calc(100% - 32px)">
-      <span class="ic">🎉</span>
-      <span><b>لسه توصيل مجاني للأسبوع ده بس!</b>
-      <span>باقي ${14-daysSinceLaunch()} ${14-daysSinceLaunch()===1?'يوم':'أيام'} على العرض</span></span></div>`:''}
-    ${S.weatherAlert?`<div class="callUsBar" style="justify-content:flex-start;background:#FFF3DE;border:1px dashed #E3C98A;color:#8A5E10">
-      <span class="ic">🌧️</span><span>${S.weatherAlert}</span></div>`:
-      (()=>{const h=seasonalHint(); return h?`<div class="callUsBar" style="justify-content:flex-start;background:#FFF3DE;border:1px dashed #E3C98A;color:#8A5E10">
-      <span class="ic">${h.ic}</span><span>${h.txt}</span></div>`:'';})()}
-    <div class="promoHero"><div class="promoHero-in"><span class="ic">⏱️</span>
-      <span><b>التزام بسيطة: توصيلك في معاده</b>
-      <span>لو اتأخرنا عليك، بنعوّضك تلقائيًا — من غير ما تتصل بحد</span></span></div></div>
+    <div class="quickRow">
+      <div class="quickTip"><span class="ic">⏱️</span><span>توصيلك في معاده، وإلا بنعوّضك تلقائيًا</span></div>
+      <button class="quickCall" onclick="window.open('https://wa.me/201015974104?text='+encodeURIComponent('عايز أطلب بس مش عارف أستخدم التطبيق'),'_blank')">📞 اتصل بينا</button>
+    </div>
     <div class="catsRow">
       <button class="catPill ${!S.catFilter?'on-cat':''}" onclick="S.catFilter=null;render()">
         <span class="e" style="--cat-c:var(--surf2)">🏪</span><span class="n">الكل</span></button>
@@ -1688,9 +1699,6 @@ function vHome(){
       </div>`;
     })():''}
     <div class="pad">
-    <div class="qrentry"><span class="ic">🔗</span>
-      <span><b>عندك كود محل؟</b><span>امسحه وادخل متجره على طول</span></span>
-      <button onclick="startScan()">امسح QR</button></div>
     ${!total?`<div class="empty"><div class="e">🏪</div><h4>${q?'مفيش نتايج مطابقة':'لسه مفيش محلات فاتحة'}</h4>
       <p class="tiny">${q?'جرّب كلمة تانية':'أول ما تاجر يسجّل ويفتح متجره، هيظهر هنا فورًا من غير ما تعمل حاجة'}</p></div>`:`
       ${mine.length?`<div class="sec-t" style="margin-top:16px"><h3>🏘️ محلات في قريتك${myVillage?' — '+myVillage.name:''}</h3><span class="num">${mine.length}</span></div>
