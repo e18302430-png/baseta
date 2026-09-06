@@ -701,14 +701,24 @@ function vOverview(){
       <div class="tiny muted mt">من ${S.merchants.filter(m=>m.status==='active').length} تاجر مشترك فعليًا</div>
     </div>
     <div class="alert warn mt">⏰ <span>${trialCount} تاجر لسه في فترة التجربة المجانية — تابعهم قبل ما تخلص</span></div>
+    ${(S.customRequests||[]).filter(r=>r.stage==='placed').length?`
+    <div class="sec-t"><h3>🔔 طلبات مخصّصة محتاجة موافقتك</h3><span class="num bdg b-new">${(S.customRequests||[]).filter(r=>r.stage==='placed').length}</span></div>
+    <div class="card mb">${(S.customRequests||[]).filter(r=>r.stage==='placed').map(r=>`<div class="row" style="align-items:flex-start;flex-direction:column;gap:8px;padding:12px">
+      <div style="display:flex;width:100%"><span class="av">📦</span>
+        <span style="flex:1"><span class="n">${r.description}</span>
+        <span class="s">${r.customer_name} · ${r.address||''}${r.budget_estimate?' · تقريبًا '+M(r.budget_estimate)+' ج':''}</span></span></div>
+      <div style="display:flex;gap:8px;width:100%">
+        <button class="btn2 btn-ok2" style="flex:1" onclick="approveCustomRequest('${r.id}')">✓ وافق وابعته للمناديب</button>
+        <button class="btn2" style="background:#FDE8E6;color:#C23327;flex:0 0 auto" onclick="rejectCustomRequest('${r.id}')">رفض</button>
+      </div></div>`).join('')}</div>`:''}
     <div class="sec-t"><h3>📦 الطلبات المخصّصة (اطلب أي حاجة)</h3></div>
     <div class="card mb">
-      ${(S.customRequests||[]).length?S.customRequests.slice(0,6).map(r=>`<div class="row">
+      ${(S.customRequests||[]).filter(r=>r.stage!=='placed').length?S.customRequests.filter(r=>r.stage!=='placed').slice(0,6).map(r=>`<div class="row">
         <span class="av">📦</span><span style="flex:1"><span class="n">${r.description}</span>
         <span class="s">${r.customer_name} ${r.driver_name?'· المندوب: '+r.driver_name:'· ⏳ مستني مندوب'}</span></span>
-        <span class="bdg ${r.stage==='delivered'?'b-ac':r.stage==='placed'?'b-w':'b-prog'}">${
-          {placed:'مستني مندوب',assigned:'المندوب في الطريق',delivering:'راجع للعميل',delivered:'اتسلّم'}[r.stage]||r.stage}</span></div>`).join(''):
-        `<div class="row"><span class="s muted" style="padding:8px 0">لسه مفيش طلبات مخصّصة</span></div>`}
+        <span class="bdg ${r.stage==='delivered'?'b-ac':r.stage==='rejected'?'b-d':'b-prog'}">${
+          {approved:'مستني مندوب',assigned:'المندوب في الطريق',delivering:'راجع للعميل',delivered:'اتسلّم',rejected:'مرفوض'}[r.stage]||r.stage}</span></div>`).join(''):
+        `<div class="row"><span class="s muted" style="padding:8px 0">لسه مفيش طلبات موافَق عليها</span></div>`}
     </div>
     <div class="sec-t"><h3>آخر الأحداث</h3></div>
     <div class="card">
@@ -1009,6 +1019,21 @@ async function resolveComplaint(id){
     if(error){ console.error('basita:',error); toast('حصلت مشكلة — جرّب تاني'); return; }
   }
   toast('✓ اتسجّل الحل ووصل إشعار للعميل');
+}
+async function approveCustomRequest(id){
+  if(!sb)return;
+  const {error}=await sb.from('custom_requests').update({stage:'approved'}).eq('id',id);
+  if(error){ console.error('basita:',error); toast('حصلت مشكلة — جرّب تاني'); return; }
+  const r=(S.customRequests||[]).find(x=>x.id===id); if(r)r.stage='approved';
+  render(); toast('✓ اتوافق على الطلب — وصل للمناديب المتاحين دلوقتي');
+}
+async function rejectCustomRequest(id){
+  if(!sb)return;
+  if(!confirm('متأكد إنك عايز ترفض الطلب ده؟'))return;
+  const {error}=await sb.from('custom_requests').update({stage:'rejected'}).eq('id',id);
+  if(error){ console.error('basita:',error); toast('حصلت مشكلة — جرّب تاني'); return; }
+  const r=(S.customRequests||[]).find(x=>x.id===id); if(r)r.stage='rejected';
+  render(); toast('اترفض الطلب');
 }
 async function loadCustomRequestsFromDB(){
   if(!sb)return;
