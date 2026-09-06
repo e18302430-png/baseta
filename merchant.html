@@ -19,6 +19,12 @@
 .connWarn span{font-size:10.5px;color:#FFD9D6;display:block;margin-top:1px}
 .connWarn button{margin-inline-start:auto;background:#fff;color:#C23327;border:0;padding:7px 12px;
   border-radius:8px;font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-weight:800;font-size:11px;flex:0 0 auto}
+.notifWarn{position:fixed;top:0;inset-inline:0;z-index:997;background:#8A5E10;color:#fff;
+  padding:11px 14px;display:flex;align-items:center;gap:9px;font-size:12px;box-shadow:0 4px 14px rgba(0,0,0,.3)}
+.notifWarn b{font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-weight:800;font-size:12.5px;display:block}
+.notifWarn span{font-size:10.5px;color:#FFE8C2;display:block;margin-top:1px}
+.notifWarn button{margin-inline-start:auto;background:#fff;color:#8A5E10;border:0;padding:7px 12px;
+  border-radius:8px;font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-weight:800;font-size:11px;flex:0 0 auto}
 .installBanner{display:flex;align-items:center;gap:10px;background:#241A05;color:#fff;
   border-radius:16px;padding:13px 14px;margin:0 0 14px;box-shadow:0 12px 26px -10px rgba(36,26,5,.5)}
 .installBanner .ic{font-size:24px;flex:0 0 auto}
@@ -309,6 +315,7 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
 <body>
 <div class="app" id="app">
   <div id="connWarnWrap"></div>
+  <div id="notifWarnWrap"></div>
 
   <div id="boot"><div class="in">
     <svg class="mk" viewBox="0 0 64 64"><rect width="64" height="64" rx="19" fill="#3A2A10"/>
@@ -807,6 +814,7 @@ function applyMerchantRow(data){
   S.isOpen=data.is_open!==false;
   S.villageId=data.village_id||null;
   S.openTime=data.open_time||'09:00'; S.closeTime=data.close_time||'23:00';
+  S.awayMessage=data.away_message||null;
 }
 async function tryRestoreSession(){
   const s=loadSession();
@@ -877,7 +885,10 @@ function proceedToStoreOpen(){
         render();
         emit({to:['owner','customer'],type:'merchant:online',merchantId:S.merchantId,merchantName:BIZ().name,
           bizLabel:BIZ().label,bizIcon:BIZ().icon,bizTypeKey:S.bizType});
-        if('Notification' in window && Notification.permission==='default') Notification.requestPermission();
+        if('Notification' in window && Notification.permission==='default'){
+          Notification.requestPermission().then(()=>renderNotifWarning());
+        }
+        renderNotifWarning();
         if(sb&&S.merchantId){ loadMyProducts(); subscribeMyOrders(); subscribeMyReviews(); subscribeMyTickets(); subscribeMySettlements(); }
         if(S._newDeviceAlert){
           S._newDeviceAlert=false;
@@ -976,6 +987,22 @@ async function playOrderAlert(){
     ring(ctx.currentTime+1.0);
     if(navigator.vibrate) navigator.vibrate([220,90,220,90,220,90,220]);
   }catch(e){}
+}
+function renderNotifWarning(){
+  const wrap=document.getElementById('notifWarnWrap'); if(!wrap)return;
+  if(!('Notification' in window)||Notification.permission==='granted'){ wrap.innerHTML=''; return; }
+  if(Notification.permission==='denied'){
+    wrap.innerHTML=`<div class="notifWarn">
+      <span style="font-size:20px">🔕</span>
+      <span><b>الإشعارات مقفولة على المتصفح ده</b>
+      <span>لن توصلك طلبات جديدة لو غيّرت التطبيق — فعّلها من إعدادات الموبايل للمتصفح</span></span></div>`;
+  }else{
+    wrap.innerHTML=`<div class="notifWarn">
+      <span style="font-size:20px">🔔</span>
+      <span><b>فعّل الإشعارات عشان توصلك الطلبات دايمًا</b>
+      <span>حتى لو فتحت تطبيق تاني — ده أهم حاجة عشان طلب ما يفوتكش</span></span>
+      <button onclick="Notification.requestPermission().then(renderNotifWarning)">تفعيل</button></div>`;
+  }
 }
 function pushNotify(m){
   try{
