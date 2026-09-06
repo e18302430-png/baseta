@@ -1758,7 +1758,8 @@ function mapTaskRow(o,items){
 }
 function subscribeCustomRequests(){
   if(!sb)return;
-  sb.from('custom_requests').select('*').eq('stage','placed').then(({data})=>{
+  sb.from('custom_requests').select('*').eq('stage','placed').then(({data,error})=>{
+    if(error){ console.error('basita: فشل جلب الطلبات المخصّصة المتاحة — تأكد من صلاحيات SELECT على جدول custom_requests للدور anon',error); return; }
     S.availableCustomRequests=(data||[]);
     render();
   });
@@ -1777,7 +1778,11 @@ function subscribeCustomRequests(){
       if(mine) Object.assign(mine,payload.new);
       render();
     })
-    .subscribe();
+    .subscribe(status=>{
+      if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'||status==='CLOSED'){
+        console.error('basita: فشل الاشتراك في تحديثات الطلبات المخصّصة الفورية — حالة القناة:',status,'— تأكد إن Realtime مفعّل لجدول custom_requests من Database > Replication في Supabase');
+      }
+    });
 }
 async function acceptCustomRequest(id){
   if(!sb||!S.driverId)return;
