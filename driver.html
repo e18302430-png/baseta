@@ -908,7 +908,7 @@ function startShift(){
       document.getElementById('shiftStart').classList.remove('show');
       document.getElementById('mainApp').classList.add('show');
       render();
-      if(sb&&S.driverId){ sb.from('drivers').update({is_available:true,last_seen_at:new Date().toISOString()}).eq('id',S.driverId).then(()=>{}); subscribeMyTasks(); subscribeMyTickets(); subscribeMySettlements(); subscribeCustomRequests(); startHeartbeat(); }
+      if(sb&&S.driverId){ sb.from('drivers').update({is_available:true,last_seen_at:new Date().toISOString()}).eq('id',S.driverId).then(()=>{}); subscribeMyTasks(); subscribeMyTickets(); subscribeMySettlements(); subscribeCustomRequests(); startHeartbeat(); loadMyHistory(); }
       else emit({to:['merchant','owner'],type:'driver:online',driverId:S.driverId,driverName:S.driverName||'كريم عبد الله',vehicle:S.vehicle||'🛵'});
       if('Notification' in window && Notification.permission==='default'){
         Notification.requestPermission().then(()=>renderNotifWarning());
@@ -1686,15 +1686,44 @@ function vTasks(){
         </div></div>`).join('')}`:''}
     <div style="height:12px"></div></div>`;
 }
+async function loadMyHistory(){
+  if(!sb||!S.driverId)return;
+  const {data,error}=await sb.from('orders').select('*').eq('driver_id',S.driverId).eq('stage','delivered').order('closed_at',{ascending:false}).limit(100);
+  if(error){ console.error('basita: فشل تحميل سجل التوصيلات',error); return; }
+  S.history=(data||[]).map(o=>({id:o.id,name:o.customer_name,total:+o.total,deliveryFee:+o.delivery_fee,
+    commission:+o.platform_commission||1.5,ph:o.customer_phone,addr:o.address,
+    closedAt:o.closed_at?new Date(o.closed_at).toLocaleString('ar-EG',{hour:'2-digit',minute:'2-digit',day:'numeric',month:'short'}):'',
+    closedAtRaw:o.closed_at}));
+  // نحسب إجمالي أرباح المندوب وعمولة المنصة من نفس بيانات السجل الحقيقية —
+  // مش من عدّاد محلي بيتصفّر مع أي جلسة جديدة
+  S.deliveryEarnings=S.history.reduce((s,t)=>s+(t.deliveryFee||0),0);
+  S.commissionOwed=S.history.reduce((s,t)=>s+(t.commission||0),0);
+  render();
+}
 function vHistory(){
   if(!S.history.length)return `<div class="empty"><div class="e">🗂️</div><h4>مفيش سجل لسه</h4>
     <p class="tiny">المهام المكتملة هتظهر هنا</p></div>`;
-  return `<div class="pad" style="padding-top:14px">${S.history.map(t=>`<div class="tcard">
-    <div class="th"><span class="av">✓</span>
-      <span style="flex:1"><span class="n">طلب <span class="num">${t.id}</span></span>
-      <span class="t">${t.name}</span></span><span class="bdg b-ok">اتسلّم</span></div>
-    <div class="tb" style="padding-top:0"><div class="tiny muted">🔒 التذكرة اتقفلت تلقائيًا الساعة <span class="num">${t.closedAt||''}</span> — العنوان ورقم العميل اتمسحوا من سجلك</div>
-    </div></div>`).join('')}
+  const groups={};
+  S.history.forEach(t=>{
+    const day=t.closedAtRaw?new Date(t.closedAtRaw).toLocaleDateString('ar-EG',{day:'numeric',month:'long'}):'قديم';
+    groups[day]=groups[day]||[]; groups[day].push(t);
+  });
+  const totalEarnings=S.history.reduce((s,t)=>s+(t.deliveryFee||0),0);
+  return `<div class="pad" style="padding-top:14px">
+    <div class="card mb" style="padding:15px;text-align:center;background:var(--ac-l)">
+      <div class="tiny muted">إجمالي أرباحك من كل التوصيلات المسجّلة</div>
+      <b class="num" style="font-size:22px;color:var(--ac-d);display:block;margin-top:3px">${M(totalEarnings)} ج</b>
+      <div class="tiny muted mt">${S.history.length} توصيلة مكتملة</div>
+    </div>
+    ${Object.entries(groups).map(([day,items])=>`
+      <div class="sec-t"><h3>${day}</h3><span class="num">${items.length}</span></div>
+      ${items.map(t=>`<div class="tcard">
+        <div class="th"><span class="av">✓</span>
+          <span style="flex:1"><span class="n">طلب <span class="num">${t.id.toString().slice(0,8)}</span></span>
+          <span class="t">${t.name} · ربحك <span class="num" style="color:var(--ac-d)">${M(t.deliveryFee)}</span> ج</span></span>
+          <span class="bdg b-ok">اتسلّم</span></div>
+        <div class="tb" style="padding-top:0"><div class="tiny muted">🕐 اتسلّم الساعة <span class="num">${t.closedAt||'—'}</span></div>
+        </div></div>`).join('')}`).join('')}
     <div style="height:12px"></div></div>`;
 }
 function vWallet(){
