@@ -2119,7 +2119,7 @@ function repeatOrder(orderId){
   toast(missing?`✓ اتضاف ${added} صنف — و${missing} صنف مش متاح دلوقتي`:'✓ اتضاف الطلب كامل للسلة');
   go('cart');
 }
-const CR_STAGE_LABEL={placed:'⏳ مستني مندوب يقبل الطلب',assigned:'🛵 المندوب رايح يجيبهالك',delivering:'📦 في الطريق ليك',delivered:'✅ اتسلّم'};
+const CR_STAGE_LABEL={placed:'⏳ بننتظر موافقة الإدارة',approved:'📢 مستني مندوب يقبل الطلب',assigned:'🛵 المندوب رايح يجيبهالك',delivering:'📦 في الطريق ليك',delivered:'✅ اتسلّم',rejected:'❌ اتلغى الطلب — كلّمنا للتفاصيل'};
 function vOrders(){
   const hasCustom=(S.customRequests||[]).length>0;
   if(!S.orders.length&&!hasCustom)return `<div class="empty"><div class="e">📦</div><h4>مفيش طلبات لسه</h4>
