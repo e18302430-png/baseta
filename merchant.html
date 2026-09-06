@@ -13,6 +13,12 @@
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <style>
+.connWarn{position:fixed;top:0;inset-inline:0;z-index:999;background:#C23327;color:#fff;
+  padding:11px 14px;display:flex;align-items:center;gap:9px;font-size:12px;box-shadow:0 4px 14px rgba(0,0,0,.3)}
+.connWarn b{font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-weight:800;font-size:12.5px;display:block}
+.connWarn span{font-size:10.5px;color:#FFD9D6;display:block;margin-top:1px}
+.connWarn button{margin-inline-start:auto;background:#fff;color:#C23327;border:0;padding:7px 12px;
+  border-radius:8px;font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-weight:800;font-size:11px;flex:0 0 auto}
 .installBanner{display:flex;align-items:center;gap:10px;background:#241A05;color:#fff;
   border-radius:16px;padding:13px 14px;margin:0 0 14px;box-shadow:0 12px 26px -10px rgba(36,26,5,.5)}
 .installBanner .ic{font-size:24px;flex:0 0 auto}
@@ -302,6 +308,7 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
 </style></head>
 <body>
 <div class="app" id="app">
+  <div id="connWarnWrap"></div>
 
   <div id="boot"><div class="in">
     <svg class="mk" viewBox="0 0 64 64"><rect width="64" height="64" rx="19" fill="#3A2A10"/>
@@ -498,6 +505,13 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
   </div>
 
   <div id="mainApp">
+    <div id="appLockScreen" style="display:none;position:fixed;inset:0;z-index:500;background:#241A05;
+      flex-direction:column;align-items:center;justify-content:center;gap:16px">
+      <div style="font-size:40px">🔒</div>
+      <b style="color:#F0A93B;font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-size:16px">اكتب رمز القفل</b>
+      <input id="appLockInput" type="password" inputmode="numeric" maxlength="4" style="width:140px;text-align:center;
+        font-size:24px;letter-spacing:12px;padding:10px;border-radius:12px;border:0" oninput="checkAppLockPin(this)">
+    </div>
     <div class="top">
       <div class="top-r">
         <svg class="mark" viewBox="0 0 32 32"><rect width="32" height="32" rx="10" fill="#241B08"/>
@@ -637,9 +651,26 @@ function onBus(fn){
     try{const d=JSON.parse(e.newValue); if(d.from!==ROLE) wrapped(d)}catch(_){} }});
 }
 
+function renderConnWarning(){
+  const wrap=document.getElementById('connWarnWrap'); if(!wrap)return;
+  if(sb){ wrap.innerHTML=''; return; }
+  wrap.innerHTML=`<div class="connWarn">
+    <span style="font-size:20px">⚠️</span>
+    <span><b>مفيش اتصال بقاعدة البيانات دلوقتي</b>
+    <span>أي حاجة تعملها دلوقتي لن تتحفظ ولا توصل لحد تاني — تأكد من النت وأعد المحاولة</span></span>
+    <button onclick="retryConnection()">إعادة المحاولة</button></div>`;
+}
+async function retryConnection(){
+  const wrap=document.getElementById('connWarnWrap');
+  if(wrap) wrap.innerHTML=`<div class="connWarn"><span style="font-size:20px">🔄</span><span><b>جاري إعادة المحاولة...</b></span></div>`;
+  const ok=await ensureSupabaseReady();
+  renderConnWarning();
+  if(ok){ toast('✓ اتصل بقاعدة البيانات فعليًا دلوقتي'); location.reload(); }
+}
 setTimeout(()=>document.getElementById('boot').classList.add('gone'),1300);
 (async()=>{
   await ensureSupabaseReady();
+  renderConnWarning();
   loadVillages();
   setTimeout(async()=>{
     const restored=await tryRestoreSession();
@@ -808,12 +839,28 @@ async function doLogin(){
     if(pass_hash!==data.password_hash){ toast('كلمة المرور غلط'); return; }
     applyMerchantRow(data);
     S.password=pass;
+    await checkNewDeviceLogin(data);
   } else {
     if(!S.password) S.password=pass;
   }
   saveSession();
   applyBizIdentity();
   proceedToStoreOpen();
+}
+function getDeviceId(){
+  let id=localStorage.getItem('basita_device_id');
+  if(!id){ id='dev_'+Math.random().toString(36).slice(2)+Date.now().toString(36); localStorage.setItem('basita_device_id',id); }
+  return id;
+}
+async function checkNewDeviceLogin(merchantRow){
+  const myDeviceId=getDeviceId();
+  const known=merchantRow.known_device_ids||[];
+  if(known.includes(myDeviceId))return;
+  const updated=[...known,myDeviceId];
+  await sb.from('merchants').update({known_device_ids:updated}).eq('id',merchantRow.id);
+  if(known.length>0){ // مش أول تسجيل دخول على الإطلاق، ده جهاز إضافي جديد فعليًا
+    S._newDeviceAlert=true;
+  }
 }
 function proceedToStoreOpen(){
   document.getElementById('loginFlow').classList.remove('show');
@@ -832,6 +879,11 @@ function proceedToStoreOpen(){
           bizLabel:BIZ().label,bizIcon:BIZ().icon,bizTypeKey:S.bizType});
         if('Notification' in window && Notification.permission==='default') Notification.requestPermission();
         if(sb&&S.merchantId){ loadMyProducts(); subscribeMyOrders(); subscribeMyReviews(); subscribeMyTickets(); subscribeMySettlements(); }
+        if(S._newDeviceAlert){
+          S._newDeviceAlert=false;
+          setTimeout(()=>{ if(confirm('⚠️ ده تسجيل دخول من جهاز جديد على حسابك.\nلو إنت اللي بتسجّل دخول من موبايل تاني، تجاهل الرسالة دي.\nلو مش إنت، دوس "موافق" عشان تغيّر كلمة المرور فورًا.'))openChangePassword();
+          },1200);
+        }
         else syncCatalog();
         if(S.shopPhoto&&!sb) emit({to:['customer'],type:'shop:photo_updated',merchantId:S.merchantId,photo:S.shopPhoto});
         captureShopGeo();
@@ -868,7 +920,14 @@ function renderShopOpenState(){
 async function toggleShopOpen(){
   S.isOpen=!S.isOpen;
   renderShopOpenState();
-  if(sb&&S.merchantId) await sb.from('merchants').update({is_open:S.isOpen}).eq('id',S.merchantId);
+  if(!S.isOpen){
+    const msg=prompt('عايز تسيب رسالة للعملاء طول ما المتجر مقفول؟ (اختياري)','مسافر دلوقتي، هرجع قريب إن شاء الله');
+    S.awayMessage=msg||null;
+    if(sb&&S.merchantId) await sb.from('merchants').update({is_open:false,away_message:S.awayMessage}).eq('id',S.merchantId);
+  }else{
+    S.awayMessage=null;
+    if(sb&&S.merchantId) await sb.from('merchants').update({is_open:true,away_message:null}).eq('id',S.merchantId);
+  }
   toast(S.isOpen?'متجرك بقى ظاهر ومفتوح للعملاء':'متجرك اتقفل مؤقتًا — العملاء مش هيقدروا يطلبوا لحد ما تفتحه تاني');
 }
 /* ═══ سياق صوت واحد دائم — بيتفتح لحظة أول لمسة من التاجر على الشاشة (سياسة المتصفحات بتمنع الصوت التلقائي قبل كده) ═══ */
@@ -963,7 +1022,7 @@ const qtyLabel=i=>i.sellBy==='weight'?weightLabel(i.q):i.q+'×';
 
 /* ═══ منتجات ومبيعات حقيقية من قاعدة البيانات ═══ */
 function mapProductRow(p){ return {id:p.id,n:p.name,br:p.brand||'',u:p.unit,p:+p.price,i:p.icon||BIZ().icon,s:+p.stock,
-  sellBy:p.sell_by,batch:p.batch_number,expiry:p.expiry_date,wholesale:p.wholesale_price?+p.wholesale_price:undefined}; }
+  sellBy:p.sell_by,batch:p.batch_number,expiry:p.expiry_date,wholesale:p.wholesale_price?+p.wholesale_price:undefined,category:p.category||null}; }
 async function loadMyProducts(){
   if(!sb||!S.merchantId)return;
   const {data,error}=await sb.from('products').select('*').eq('merchant_id',S.merchantId);
@@ -1219,6 +1278,8 @@ function openProductForm(id){
   const sellBy=p&&p.sellBy==='weight'?'weight':'unit';
   openSheet(p?'تعديل المنتج':'ضيف منتج جديد',`
     <div class="fld"><label>اسم المنتج</label><input id="pfName" value="${p?p.n:''}" placeholder="مثلاً: بانادول"></div>
+    <div class="fld"><label>القسم</label><input id="pfCategory" value="${p&&p.category||''}" placeholder="مثلاً: مواد غذائية، منظفات، مشروبات" list="catSuggestions">
+      <datalist id="catSuggestions">${[...new Set(S.products.map(x=>x.category).filter(Boolean))].map(c=>`<option value="${c}">`).join('')}</datalist></div>
     <div class="fld"><label>طريقة البيع</label><select id="pfSellBy" onchange="toggleSellByUI()">
       <option value="unit" ${sellBy==='unit'?'selected':''}>بالوحدة (قطعة / كيس / بيكيت / علبة)</option>
       <option value="weight" ${sellBy==='weight'?'selected':''}>بالوزن سايب (تسعير بالكيلو)</option></select></div>
@@ -1255,7 +1316,7 @@ async function saveProduct(id){
     if(!batch||!expiry){toast('رقم التشغيلة وتاريخ الصلاحية إجباريين للأدوية');return}
   }
   const row={
-    name:n,price,unit,stock,sell_by:sellBy,
+    name:n,price,unit,stock,sell_by:sellBy,category:document.getElementById('pfCategory').value.trim()||null,
     batch_number:S.bizType==='pharmacy'?document.getElementById('pfBatch').value.trim():null,
     expiry_date:S.bizType==='pharmacy'?(document.getElementById('pfExpiry').value||null):null,
     wholesale_price:S.bizType==='grocery'?(+document.getElementById('pfWholesale').value||null):null};
@@ -1296,36 +1357,56 @@ async function toggleOutOfStock(id){
   }
   render();
 }
+function computeBestSellers(){
+  const weekAgo=Date.now()-7*86400000;
+  const counts={};
+  S.orders.filter(o=>o.stage==='delivered'&&new Date(o.placedAt||o.placed_at||Date.now()).getTime()>=weekAgo)
+    .forEach(o=>o.items.forEach(it=>{ counts[it.n]=(counts[it.n]||0)+it.q; }));
+  return Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([n])=>n);
+}
 function vProducts(){
+  const bestSellers=computeBestSellers();
+  const grouped={};
+  S.products.forEach(p=>{ const cat=p.category||'من غير قسم'; grouped[cat]=grouped[cat]||[]; grouped[cat].push(p); });
+  const catNames=Object.keys(grouped).sort((a,b)=>a==='من غير قسم'?1:b==='من غير قسم'?-1:a.localeCompare(b,'ar'));
   return `<div class="pad" style="padding-top:14px">
     <button class="btn btn-p mb" style="width:100%" onclick="openProductForm()">+ ضيف منتج جديد</button>
-    <div class="card">${S.products.map(p=>`<div class="row" style="${p.s<=0?'opacity:.55':''}">
-      <span class="av">${p.i||BIZ().icon}</span>
-      <span style="flex:1;min-width:0"><span class="n">${p.n}</span>
-        <span class="s">${p.u} · مخزون <span class="num">${p.s}</span>
-        ${p.expiry?` · صلاحية <span class="num">${p.expiry}</span>`:''}
-        ${p.s<=0?'<span class="bdg b-d" style="margin-inline-start:6px">نفدت الكمية</span>':p.s<10?'<span class="bdg b-new" style="margin-inline-start:6px">قليل</span>':''}</span></span>
-      <button class="btn2" style="flex:0 0 auto;background:${p.s<=0?'var(--ac-l)':'#FDE8E6'};color:${p.s<=0?'var(--ac-d)':'#C23327'};font-size:11px;padding:8px 10px" onclick="toggleOutOfStock('${p.id}')">${p.s<=0?'رجّعه متاح':'نفدت الكمية'}</button>
-      <button class="btn2 btn-o2" style="flex:0 0 auto" onclick="openProductForm('${p.id}')">
-        <span class="num">${M(p.p)}</span> ج ✎</button></div>`).join('')}</div>
+    ${bestSellers.length?`<div class="alert info mb"><span>🔥 الأكثر مبيعًا الأسبوع ده: ${bestSellers.join(' · ')}</span></div>`:''}
+    ${catNames.map(cat=>`
+      <div class="sec-t" style="${cat===catNames[0]?'margin-top:0':''}"><h3>${cat==='من غير قسم'?'📦 '+cat:'🏷️ '+cat}</h3><span class="num">${grouped[cat].length}</span></div>
+      <div class="card mb">${grouped[cat].map(p=>`<div class="row" style="${p.s<=0?'opacity:.55':''}">
+        <span class="av">${p.i||BIZ().icon}</span>
+        <span style="flex:1;min-width:0"><span class="n">${p.n}${bestSellers.includes(p.n)?' <span class="bdg b-new">🔥</span>':''}</span>
+          <span class="s">${p.u} · مخزون <span class="num">${p.s}</span>
+          ${p.expiry?` · صلاحية <span class="num">${p.expiry}</span>`:''}
+          ${p.s<=0?'<span class="bdg b-d" style="margin-inline-start:6px">نفدت الكمية</span>':p.s<10?'<span class="bdg b-new" style="margin-inline-start:6px">قليل</span>':''}</span></span>
+        <button class="btn2" style="flex:0 0 auto;background:${p.s<=0?'var(--ac-l)':'#FDE8E6'};color:${p.s<=0?'var(--ac-d)':'#C23327'};font-size:11px;padding:8px 10px" onclick="toggleOutOfStock('${p.id}')">${p.s<=0?'رجّعه متاح':'نفدت الكمية'}</button>
+        <button class="btn2 btn-o2" style="flex:0 0 auto" onclick="openProductForm('${p.id}')">
+          <span class="num">${M(p.p)}</span> ج ✎</button></div>`).join('')}</div>`).join('')}
     <div style="height:12px"></div></div>`;
 }
 
 function viewInvoice(id){
   const o=S.orders.find(x=>x.id===id); if(!o)return;
   const sub=o.items.reduce((s,i)=>s+i.p*i.q,0);
+  const waMsg=encodeURIComponent(`فاتورة ${BIZ().name} — طلب ${o.id}\n`+o.items.map(i=>`${i.n} ×${qtyLabel(i)} = ${Math.round(i.p*i.q)} ج`).join('\n')+`\nالتوصيل: ${o.fee} ج\nالإجمالي: ${sub+o.fee} ج`);
+  const waPhone=(o.ph||'').replace(/^0/,'20').replace(/\D/g,'');
   const html=`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
     <title>فاتورة ${o.id}</title>
     <style>body{font-family:'Cairo',Arial,sans-serif;padding:30px;color:#1A1710}
     h1{font-size:20px}table{width:100%;border-collapse:collapse;margin-top:16px}
     td,th{padding:9px;border-bottom:1px solid #EAE3D8;text-align:right;font-size:14px}
-    .tot{font-weight:800;font-size:17px}</style></head><body>
+    .tot{font-weight:800;font-size:17px}
+    .waBtn{display:inline-flex;align-items:center;gap:8px;background:#25D366;color:#fff;padding:11px 18px;
+      border-radius:10px;text-decoration:none;font-weight:700;margin-top:20px;font-size:14px}
+    @media print{.waBtn{display:none}}</style></head><body>
     <h1>${BIZ().name}</h1>
     <div>فاتورة رقم <b>${o.id}</b> — العميل: ${o.name}</div>
     <table><tr><th>الصنف</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th></tr>
     ${o.items.map(i=>`<tr><td>${i.n}</td><td>${qtyLabel(i)}</td><td>${i.p} ج</td><td>${Math.round(i.p*i.q)} ج</td></tr>`).join('')}
     <tr><td colspan="3">التوصيل</td><td>${o.fee} ج</td></tr>
     <tr><td colspan="3" class="tot">الإجمالي</td><td class="tot">${sub+o.fee} ج</td></tr></table>
+    ${o.ph?`<a class="waBtn" href="https://wa.me/${waPhone}?text=${waMsg}" target="_blank">💬 ابعت الفاتورة للعميل على واتساب</a>`:''}
     <p style="margin-top:30px;color:#999;font-size:12px">بسيطة — نظام إدارة الأعمال</p>
     <script>window.print()<\/script></body></html>`;
   const w=window.open('','_blank'); if(w){w.document.write(html);w.document.close();}
@@ -1580,6 +1661,55 @@ function confirmPickup(orderId){
   else emit({to:['customer','driver'],type:'order:status',orderId,status:'picked'});
   render(); toast('✓ اتأكد استلام '+(o.driver||'المندوب')+' للطلب');
 }
+async function openMonthlyStatement(){
+  const monthVal=document.getElementById('stmtMonth').value; if(!monthVal){toast('اختار الشهر الأول');return}
+  const [y,m]=monthVal.split('-').map(Number);
+  const from=new Date(y,m-1,1), to=new Date(y,m,1);
+  let orders=[];
+  if(sb){
+    const {data}=await sb.from('orders').select('*').eq('merchant_id',S.merchantId)
+      .gte('placed_at',from.toISOString()).lt('placed_at',to.toISOString()).order('placed_at',{ascending:true});
+    orders=data||[];
+  }else{
+    orders=S.orders.filter(o=>{ const d=new Date(o.placedAt||Date.now()); return d>=from&&d<to; });
+  }
+  const delivered=orders.filter(o=>o.stage==='delivered');
+  const revenue=delivered.reduce((s,o)=>s+(+o.total-(+o.delivery_fee||+o.deliveryFee||0)),0);
+  const monthName=from.toLocaleDateString('ar-EG',{month:'long',year:'numeric'});
+  const rowsHtml=delivered.map(o=>`<tr>
+    <td>${new Date(o.placed_at||o.placedAt).toLocaleDateString('ar-EG')}</td>
+    <td style="font-family:monospace">${(o.id||'').toString().slice(0,8)}</td>
+    <td>${o.customer_name||o.name||'—'}</td>
+    <td style="text-align:left">${M((+o.total-(+o.delivery_fee||+o.deliveryFee||0)))} ج</td>
+  </tr>`).join('');
+  const html=`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
+    <title>كشف حساب ${BIZ().name} — ${monthName}</title>
+    <style>
+      body{font-family:'Tahoma',Arial,sans-serif;padding:30px;color:#241A05}
+      h1{font-size:20px;margin-bottom:2px} .sub{color:#666;font-size:13px;margin-bottom:20px}
+      table{width:100%;border-collapse:collapse;margin-top:14px}
+      th,td{padding:8px 10px;border-bottom:1px solid #ddd;font-size:13px;text-align:right}
+      th{background:#F9F7F1;font-weight:700}
+      .totals{margin-top:20px;background:#FFF8EA;border:1px solid #F0A93B;border-radius:8px;padding:14px;max-width:320px}
+      .totals div{display:flex;justify-content:space-between;padding:5px 0;font-size:14px}
+      .totals b{font-weight:800}
+      @media print{ button{display:none} }
+      button{margin-top:20px;padding:10px 20px;background:#F0A93B;border:0;border-radius:8px;font-weight:700;cursor:pointer}
+    </style></head><body>
+    <h1>كشف حساب ${BIZ().name}</h1>
+    <div class="sub">${monthName} · بسيطة</div>
+    <table><thead><tr><th>التاريخ</th><th>رقم الطلب</th><th>العميل</th><th>القيمة</th></tr></thead>
+      <tbody>${rowsHtml||'<tr><td colspan="4" style="text-align:center;color:#999">مفيش طلبات متسلّمة في الشهر ده</td></tr>'}</tbody></table>
+    <div class="totals">
+      <div><span>عدد الطلبات المتسلّمة</span><b>${delivered.length}</b></div>
+      <div><span>إجمالي قيمة المبيعات</span><b>${M(revenue)} ج</b></div>
+    </div>
+    <button onclick="window.print()">🖨️ طباعة الكشف</button>
+  </body></html>`;
+  const win=window.open('','_blank');
+  if(!win){ toast('المتصفح منع فتح نافذة جديدة — اسمح بالنوافذ المنبثقة وجرّب تاني'); return; }
+  win.document.write(html); win.document.close();
+}
 function addExpense(){
   const amt=+document.getElementById('expAmt').value||0;
   const cat=document.getElementById('expCat').value;
@@ -1751,6 +1881,18 @@ function vStats(){
         <span class="end tiny muted">⭐${c.rating}</span></div>`).join('')}</div>`:''}
     <div style="height:12px"></div></div>`;
 }
+function exportProductsCSV(){
+  if(!S.products.length){toast('مفيش منتجات لسه تتصدّر');return}
+  const header=['الاسم','القسم','السعر','الوحدة','المخزون','الحالة'];
+  const rows=S.products.map(p=>[p.n,p.category||'—',p.p,p.u,p.s,p.s<=0?'نفدت الكمية':'متاح']);
+  const csv='\uFEFF'+[header,...rows].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download=`منتجات-${BIZ().name}-${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+  toast('✓ نزّل ملف المنتجات كامل');
+}
 function vAcct(){
   const revenue=S.orders.filter(o=>o.stage!=='rejected').reduce((s,o)=>s+o.items.reduce((a,i)=>a+i.p*i.q,0),0);
   const expTotal=S.expenses.reduce((s,e)=>s+e.amt,0);
@@ -1765,6 +1907,17 @@ function vAcct(){
         <input type="number" value="${S.cashCounted}" oninput="S.cashCounted=this.value;render()" placeholder="اكتب المبلغ"></div>
       ${diff!==null?`<div class="row mt" style="border-top:1px solid var(--line);padding-top:9px">
         <b>الفرق</b><b class="num" style="color:${diff===0?'var(--ok)':'var(--danger)'}">${diff>0?'+':''}${M(diff)} ج</b></div>`:''}
+    </div>
+    <div class="sec-t"><h3>كشف حساب شهري</h3></div>
+    <div class="card" style="padding:14px">
+      <div class="tiny muted mb">كشف كامل قابل للطباعة لأي شهر — لو محتاجه ورقي للحسابات</div>
+      <div style="display:flex;gap:8px">
+        <input id="stmtMonth" type="month" value="${new Date().toISOString().slice(0,7)}" style="flex:1;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--surf2);font-family:inherit">
+        <button class="btn2 btn-p2" onclick="openMonthlyStatement()">📄 اعرض الكشف</button>
+      </div>
+      <button class="btn2 btn-o2 mt" style="width:100%" onclick="exportProductsCSV()">⬇️ تصدير كل منتجاتك لملف Excel</button>
+      <button class="btn2 mt" style="width:100%;background:var(--surf2)" onclick="openChangePassword()">🔑 غيّر كلمة المرور</button>
+      <button class="btn2 mt" style="width:100%;background:var(--surf2)" onclick="promptSetAppLock()">🔒 ${getAppLockPin()?'إلغاء قفل التطبيق':'فعّل قفل التطبيق برمز'}</button>
     </div>
     <div class="sec-t"><h3>تسجيل مصروف</h3></div>
     <div class="card" style="padding:14px">
@@ -1917,5 +2070,46 @@ async function installAppNow(){
   const wrap=document.getElementById('installBannerWrap'); if(wrap)wrap.innerHTML='';
 }
 setTimeout(renderInstallBanner,600);
+/* ═══ قفل تطبيق اختياري — حماية إضافية لو حد تاني ممسك الموبايل ═══ */
+const APPLOCK_KEY='basita_applock_merchant';
+function getAppLockPin(){ try{return localStorage.getItem(APPLOCK_KEY);}catch(e){return null;} }
+function setAppLockPin(pin){ try{ if(pin) localStorage.setItem(APPLOCK_KEY,pin); else localStorage.removeItem(APPLOCK_KEY); }catch(e){} }
+function openChangePassword(){
+  openSheet('تغيير كلمة المرور',`
+    <div class="fld"><label>كلمة المرور الجديدة</label><input id="newPassInput" type="password" placeholder="٤ أرقام أو أكتر"></div>
+    <button class="btn btn-p" style="width:100%" onclick="saveNewPassword()">حفظ كلمة المرور الجديدة</button>`);
+}
+async function saveNewPassword(){
+  const np=document.getElementById('newPassInput').value;
+  if(!np||np.length<4){toast('اكتب كلمة مرور ٤ حروف على الأقل');return}
+  const hash=await hashPassword(np);
+  if(sb&&S.merchantId){
+    const {error}=await sb.from('merchants').update({password_hash:hash}).eq('id',S.merchantId);
+    if(error){ console.error('basita:',error); toast('حصلت مشكلة — جرّب تاني'); return; }
+  }
+  S.password=np; closeSheet(); toast('✓ اتغيّرت كلمة المرور بنجاح');
+}
+function promptSetAppLock(){
+  const cur=getAppLockPin();
+  if(cur){ if(confirm('عايز تلغي قفل التطبيق؟')){ setAppLockPin(null); toast('✓ اتلغى قفل التطبيق'); } return; }
+  const pin=prompt('اكتب رمز مكوّن من ٤ أرقام لقفل التطبيق:');
+  if(!pin||!/^\d{4}$/.test(pin)){ if(pin!==null) toast('لازم ٤ أرقام بالظبط'); return; }
+  setAppLockPin(pin); toast('✓ اتفعّل قفل التطبيق');
+}
+function showAppLockIfNeeded(){
+  const pin=getAppLockPin();
+  const scr=document.getElementById('appLockScreen');
+  if(!scr)return;
+  if(pin&&document.getElementById('mainApp').classList.contains('show')){
+    scr.style.display='flex';
+    const inp=document.getElementById('appLockInput'); if(inp){inp.value='';inp.focus();}
+  }
+}
+function checkAppLockPin(el){
+  if(el.value.length<4)return;
+  if(el.value===getAppLockPin()){ document.getElementById('appLockScreen').style.display='none'; }
+  else{ el.value=''; toast('رمز غلط'); }
+}
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) showAppLockIfNeeded(); });
 </script>
 </body></html>
