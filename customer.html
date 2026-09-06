@@ -1180,7 +1180,10 @@ let S={view:'home',cart:{},cartShop:null,orders:[],oid:null,activeShop:null,catF
 const STATE_KEY='basita_state_'+ROLE;
 function loadState(){ try{return JSON.parse(localStorage.getItem(STATE_KEY)||'null')}catch(e){return null} }
 function saveState(){ try{localStorage.setItem(STATE_KEY,JSON.stringify({orders:S.orders,co:S.co,pin:S.pin,fta:S.fta}));}catch(e){ console.warn('basita: تعذّر الحفظ المحلي',e); } }
-{ const _saved=loadState(); if(_saved) Object.assign(S,_saved); }
+// نسترجع بس التفضيلات اللي معندهاش مصدر تاني في قاعدة البيانات (زي هل شاف الجولة التعريفية قبل كده) —
+// أما الطلبات وبيانات الحساب فبترجع صح من قاعدة البيانات فور تسجيل الدخول، واسترجاعها هنا كان
+// بيسبب ظهور بيانات قديمة من حساب سابق على نفس الجهاز.
+{ const _saved=loadState(); if(_saved){ if(_saved.fta) S.fta=_saved.fta; } }
 const $=s=>document.querySelector(s);
 const M=n=>Math.round(n).toLocaleString('en');
 function shopProducts(shopId){ return (SHOPS[shopId]&&SHOPS[shopId].products)||[]; }
