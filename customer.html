@@ -332,10 +332,12 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
 .anythingBar .anyTxt b{font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-weight:800;font-size:13.5px;color:#F0A93B;display:block}
 .anythingBar .anyTxt span{font-size:10.5px;color:#D9C9A3;display:block;margin-top:2px}
 .anythingBar .anyArrow{font-size:18px;color:#F0A93B;flex:0 0 auto;position:relative;z-index:1}
-.callUsBar{display:flex;align-items:center;justify-content:center;gap:7px;width:calc(100% - 32px);margin:9px 16px 0;
-  padding:10px;border-radius:12px;background:#E8F8EE;color:#1F7A45;border:1px dashed #8FCFA8;
-  font-size:12px;font-weight:700}
-.callUsBar .ic{font-size:14px}
+.callUsBar{display:flex;align-items:center;gap:10px;width:calc(100% - 32px);margin:9px 16px 0;
+  padding:12px 14px;border-radius:14px;background:#E8F8EE;color:#1F7A45;border:1.5px solid #8FCFA8}
+.callUsBar .ic{font-size:22px;flex:0 0 auto}
+.callUsBar .callTxt{flex:1;text-align:right}
+.callUsBar .callTxt b{font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-weight:800;font-size:12.5px;color:#1F7A45;display:block}
+.callUsBar .callTxt span{font-size:10.5px;color:#3D8A5E;display:block;margin-top:2px;line-height:1.5}
 .searchBar{display:flex;align-items:center;gap:10px;margin:14px 16px 0;padding:13px 16px;border-radius:16px;
   background:var(--surf);border:1.5px solid var(--line);box-shadow:var(--sh)}
 .searchBar input{flex:1;border:0;background:none;outline:0;font-size:13.5px;color:var(--txt)}
@@ -1664,9 +1666,11 @@ function vHome(){
       <span class="anyIc">📦</span>
       <span class="anyTxt"><b>اطلب أي حاجة!</b><span>أنبوبة، دوا، حاجة نسيتها — أي حاجة عايزها من بره</span></span>
       <span class="anyArrow">›</span></button>
+    <button class="callUsBar" onclick="window.open('https://wa.me/201015974104?text='+encodeURIComponent('عايز أطلب بس مش عارف أستخدم التطبيق'),'_blank')">
+      <span class="ic">📞</span>
+      <span class="callTxt"><b>مش عارف تستخدم التطبيق؟</b><span>ابعتلنا واتساب وهنطلب لك إحنا بنفسنا بالتليفون</span></span></button>
     <div class="quickRow">
       <div class="quickTip"><span class="ic">⏱️</span><span>توصيلك في معاده، وإلا بنعوّضك تلقائيًا</span></div>
-      <button class="quickCall" onclick="window.open('https://wa.me/201015974104?text='+encodeURIComponent('عايز أطلب بس مش عارف أستخدم التطبيق'),'_blank')">📞 اتصل بينا</button>
     </div>
     <div class="catsRow">
       <button class="catPill ${!S.catFilter?'on-cat':''}" onclick="S.catFilter=null;render()">
