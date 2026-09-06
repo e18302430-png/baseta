@@ -12,6 +12,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
+.connWarn{position:fixed;top:0;inset-inline:0;z-index:999;background:#C23327;color:#fff;
+  padding:11px 14px;display:flex;align-items:center;gap:9px;font-size:12px;box-shadow:0 4px 14px rgba(0,0,0,.3)}
+.connWarn b{font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-weight:800;font-size:12.5px;display:block}
+.connWarn span{font-size:10.5px;color:#FFD9D6;display:block;margin-top:1px}
+.connWarn button{margin-inline-start:auto;background:#fff;color:#C23327;border:0;padding:7px 12px;
+  border-radius:8px;font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-weight:800;font-size:11px;flex:0 0 auto}
 .installBanner{display:flex;align-items:center;gap:10px;background:#241A05;color:#fff;
   border-radius:16px;padding:13px 14px;margin:0 0 14px;box-shadow:0 12px 26px -10px rgba(36,26,5,.5)}
 .installBanner .ic{font-size:24px;flex:0 0 auto}
@@ -321,6 +327,8 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
 </style></head>
 <body>
 <div class="app" id="app">
+  <div id="connWarnWrap"></div>
+
 
   <div id="boot"><div class="in">
     <svg class="mk" viewBox="0 0 64 64"><rect width="64" height="64" rx="19" fill="#1A1F4D"/>
@@ -657,9 +665,26 @@ function onBus(fn){
     try{const d=JSON.parse(e.newValue); if(d.from!==ROLE) wrapped(d)}catch(_){} }});
 }
 
+function renderConnWarning(){
+  const wrap=document.getElementById('connWarnWrap'); if(!wrap)return;
+  if(sb){ wrap.innerHTML=''; return; }
+  wrap.innerHTML=`<div class="connWarn">
+    <span style="font-size:20px">⚠️</span>
+    <span><b>مفيش اتصال بقاعدة البيانات دلوقتي</b>
+    <span>أي حاجة تعملها دلوقتي لن تتحفظ ولا توصل لحد تاني — تأكد من النت وأعد المحاولة</span></span>
+    <button onclick="retryConnection()">إعادة المحاولة</button></div>`;
+}
+async function retryConnection(){
+  const wrap=document.getElementById('connWarnWrap');
+  if(wrap) wrap.innerHTML=`<div class="connWarn"><span style="font-size:20px">🔄</span><span><b>جاري إعادة المحاولة...</b></span></div>`;
+  const ok=await ensureSupabaseReady();
+  renderConnWarning();
+  if(ok){ toast('✓ اتصل بقاعدة البيانات فعليًا دلوقتي'); location.reload(); }
+}
 setTimeout(()=>document.getElementById('boot').classList.add('gone'),1300);
 (async()=>{
   await ensureSupabaseReady();
+  renderConnWarning();
   loadVillages();
   setTimeout(async()=>{
     const restored=await tryRestoreSession();
@@ -1606,20 +1631,30 @@ function vTasks(){
     ${(S.myCustomRequests||[]).length?`<div class="sec-t"><h3>📦 طلباتك المخصّصة</h3></div>
       ${S.myCustomRequests.map(r=>`<div class="tcard active">
         <div class="th"><span class="av">📦</span><span style="flex:1"><span class="n">${r.description}</span>
-          <span class="t">${r.customer_name} · ${r.address}</span></span>
+          <span class="t">${r.customer_name}</span></span>
           <span class="bdg b-prog">${r.stage==='assigned'?'رايح يجيبها':'في الطريق للعميل'}</span></div>
         <div class="tb">
+          <div style="background:var(--ac-l);border-radius:11px;padding:10px 12px;margin:4px 0">
+            <div class="tiny muted" style="margin-bottom:3px">📍 عنوان العميل بالتفصيل</div>
+            <b style="font-size:13.5px;color:var(--ac-d);line-height:1.6">${r.address}</b></div>
+          ${r.delivery_lat!=null?`<button onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${r.delivery_lat},${r.delivery_lng}','_blank')"
+            style="display:flex;align-items:center;gap:8px;width:100%;text-align:right;border:0;cursor:pointer;background:var(--surf2);color:var(--txt);
+            padding:9px 12px;border-radius:11px;font-size:12.5px;font-weight:700;margin:6px 0;font-family:inherit">🗺️ افتح خرائط جوجل</button>`:
+            `<div class="tiny" style="background:#FFF3DE;color:#8A5E10;border-radius:9px;padding:7px 9px;margin:6px 0">⚠️ العميل مفعّلش الموقع — اعتمد على العنوان المكتوب فوق واتصل بيه لو محتاج توضيح</div>`}
           ${r.budget_estimate?`<div class="tiny muted">تقريبًا هتكلّف: <span class="num">${M(r.budget_estimate)}</span> ج (كاش من العميل)</div>`:''}
           <div class="tiny muted mt">صافي ربحك: <span class="num" style="color:var(--ac-d)">${M(r.driver_net_earning||r.delivery_fee)} ج</span></div>
+          <div class="taddr"><span class="k">📞</span><span class="num" dir="ltr">${maskPhone(r.customer_phone)}</span></div>
           ${r.stage==='assigned'?
             `<button class="btn2 btn-p2" style="width:100%;margin-top:8px" onclick="advanceCustomRequest('${r.id}','delivering')">✓ جبت الحاجة — في الطريق للعميل</button>`:
             `<button class="btn2 btn-p2" style="width:100%;margin-top:8px" onclick="advanceCustomRequest('${r.id}','delivered')">✓ سلّمت الطلب</button>`}
         </div></div>`).join('')}`:''}
     ${(S.availableCustomRequests||[]).length?`<div class="sec-t"><h3>📦 طلبات مخصّصة متاحة — أول واحد يقبل ياخدها</h3></div>
       ${S.availableCustomRequests.map(r=>`<div class="tcard">
-        <div class="th"><span class="av">📦</span><span style="flex:1"><span class="n">${r.description}</span>
-          <span class="t">${r.address}</span></span><span class="bdg b-new">جديد</span></div>
+        <div class="th"><span class="av">📦</span><span style="flex:1"><span class="n">${r.description}</span></span><span class="bdg b-new">جديد</span></div>
         <div class="tb">
+          <div style="background:var(--surf2);border-radius:11px;padding:10px 12px;margin:4px 0">
+            <div class="tiny muted" style="margin-bottom:3px">📍 عنوان العميل بالتفصيل</div>
+            <b style="font-size:13px;line-height:1.6">${r.address}</b></div>
           ${r.budget_estimate?`<div class="tiny muted">تقريبًا هتكلّف: <span class="num">${M(r.budget_estimate)}</span> ج</div>`:''}
           <button class="btn2 btn-ok2" style="width:100%;margin-top:8px" onclick="acceptCustomRequest('${r.id}')">اقبل الطلب ده</button>
         </div></div>`).join('')}`:''}
