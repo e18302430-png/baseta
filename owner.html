@@ -694,23 +694,30 @@ function saveOwnerPin(){
 function vOverview(){
   const mrr=S.merchants.filter(m=>m.status==='active').reduce((s,m)=>s+m.price,0);
   const trialCount=S.merchants.filter(m=>m.status==='trial').length;
+  const pendingCR=(S.customRequests||[]).filter(r=>r.stage==='placed');
   return `<div class="pad" style="padding-top:14px">
+    ${pendingCR.length?`<div style="background:linear-gradient(120deg,#241A05,#3A2E14);border-radius:16px;padding:14px 16px;margin-bottom:14px;
+      box-shadow:0 10px 24px -10px rgba(36,26,5,.5)">
+      <div style="display:flex;align-items:center;gap:9px">
+        <span style="font-size:20px">🔔</span>
+        <b style="color:#F0A93B;font-family:'Cairo';font-size:14px">${pendingCR.length} طلب "اطلب أي حاجة" محتاج موافقتك دلوقتي</b>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
+        ${pendingCR.map(r=>`<div style="background:rgba(255,255,255,.07);border-radius:11px;padding:10px 12px">
+          <div style="color:#fff;font-size:12.5px;font-weight:700">${r.description}</div>
+          <div style="color:#D9C9A3;font-size:10.5px;margin-top:2px">${r.customer_name} · ${r.address||''}${r.budget_estimate?' · تقريبًا '+M(r.budget_estimate)+' ج':''}</div>
+          <div style="display:flex;gap:7px;margin-top:8px">
+            <button style="flex:1;background:#F0A93B;color:#241A05;border:0;padding:8px;border-radius:9px;font-family:'Cairo';font-weight:800;font-size:11.5px" onclick="approveCustomRequest('${r.id}')">✓ وافق وابعته للمناديب</button>
+            <button style="flex:0 0 auto;background:rgba(255,255,255,.1);color:#FFD9D6;border:0;padding:8px 12px;border-radius:9px;font-family:'Cairo';font-weight:700;font-size:11px" onclick="rejectCustomRequest('${r.id}')">رفض</button>
+          </div></div>`).join('')}
+      </div>
+    </div>`:''}
     <div class="sec-t" style="margin-top:0"><h3>الإيراد الشهري (MRR)</h3></div>
     <div class="card" style="padding:18px;text-align:center">
       <div class="kufi num" style="font-size:32px;color:var(--ac)">${M(mrr)} ج</div>
       <div class="tiny muted mt">من ${S.merchants.filter(m=>m.status==='active').length} تاجر مشترك فعليًا</div>
     </div>
     <div class="alert warn mt">⏰ <span>${trialCount} تاجر لسه في فترة التجربة المجانية — تابعهم قبل ما تخلص</span></div>
-    ${(S.customRequests||[]).filter(r=>r.stage==='placed').length?`
-    <div class="sec-t"><h3>🔔 طلبات مخصّصة محتاجة موافقتك</h3><span class="num bdg b-new">${(S.customRequests||[]).filter(r=>r.stage==='placed').length}</span></div>
-    <div class="card mb">${(S.customRequests||[]).filter(r=>r.stage==='placed').map(r=>`<div class="row" style="align-items:flex-start;flex-direction:column;gap:8px;padding:12px">
-      <div style="display:flex;width:100%"><span class="av">📦</span>
-        <span style="flex:1"><span class="n">${r.description}</span>
-        <span class="s">${r.customer_name} · ${r.address||''}${r.budget_estimate?' · تقريبًا '+M(r.budget_estimate)+' ج':''}</span></span></div>
-      <div style="display:flex;gap:8px;width:100%">
-        <button class="btn2 btn-ok2" style="flex:1" onclick="approveCustomRequest('${r.id}')">✓ وافق وابعته للمناديب</button>
-        <button class="btn2" style="background:#FDE8E6;color:#C23327;flex:0 0 auto" onclick="rejectCustomRequest('${r.id}')">رفض</button>
-      </div></div>`).join('')}</div>`:''}
     <div class="sec-t"><h3>📦 الطلبات المخصّصة (اطلب أي حاجة)</h3></div>
     <div class="card mb">
       ${(S.customRequests||[]).filter(r=>r.stage!=='placed').length?S.customRequests.filter(r=>r.stage!=='placed').slice(0,6).map(r=>`<div class="row">
