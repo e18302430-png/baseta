@@ -998,7 +998,9 @@ let S={view:'tasks',avail:true,tasks:[],history:[],shiftTotal:0,settling:false,p
 const STATE_KEY='basita_state_'+ROLE;
 function loadState(){ try{return JSON.parse(localStorage.getItem(STATE_KEY)||'null')}catch(e){return null} }
 function saveState(){ try{localStorage.setItem(STATE_KEY,JSON.stringify(S));}catch(e){ console.warn('basita: تعذّر الحفظ المحلي',e); } }
-{ const _saved=loadState(); if(_saved) Object.assign(S,_saved); }
+// ملاحظة مهمة: ما بنسترجعش الحالة القديمة المحفوظة محليًا هنا خالص — كل بيانات المندوب الحقيقية
+// (المهام، السجل، الأرباح، بيانات التسجيل) بترجع صح من قاعدة البيانات فور تسجيل الدخول،
+// واسترجاع نسخة قديمة محليًا كان بيسبب ظهور "مهام" أو بيانات قديمة انتهت من زمان بالغلط.
 const $=s=>document.querySelector(s);
 const M=n=>Math.round(n).toLocaleString('en');
 
