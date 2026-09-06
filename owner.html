@@ -458,7 +458,9 @@ function saveState(){ try{localStorage.setItem(STATE_KEY,JSON.stringify({
   merchants:S.merchants,customers:S.customers,events:S.events,tickets:S.tickets,tips:S.tips,
   driverApplications:S.driverApplications,vodafoneCash:S.vodafoneCash,pin:S.pin,flags:S.flags
 }));}catch(e){ console.warn('basita: تعذّر الحفظ المحلي',e); } }
-{ const _saved=loadState(); if(_saved) Object.assign(S,_saved); }
+// ملاحظة مهمة: ما بنسترجعش الحالة المحفوظة محليًا هنا خالص — كل بيانات المنصة الحقيقية
+// (التجار، العملاء، المناديب، الأحداث) بترجع صح من قاعدة البيانات فور الدخول، واسترجاع نسخة
+// قديمة محليًا كان بيسبب ظهور بيانات قديمة أو منتهية بالغلط.
 const $=s=>document.querySelector(s);
 const M=n=>Math.round(n).toLocaleString('en');
 
