@@ -1116,7 +1116,7 @@ function viewDriverInvoice(id){
     ${(t.items||[]).map(i=>`<tr><td>${i.n}</td><td>${qtyLabel2(i)}</td><td>${i.p} ج</td><td>${Math.round(i.p*i.q)} ج</td></tr>`).join('')}
     <tr><td colspan="3">إجمالي المنتجات</td><td>${M(productsSub)} ج</td></tr>
     <tr><td colspan="3">رسوم التوصيل (ربحك)</td><td>${M(t.deliveryFee)} ج</td></tr>
-    <tr><td colspan="3" class="neg">عمولة منصة بسيطة</td><td class="neg">− ${t.commission.toFixed(2)} ج</td></tr>
+    <tr><td colspan="3" class="neg">عمولة منصة بسيطة</td><td class="neg">− ${(t.commission!=null?t.commission:1.5).toFixed(2)} ج</td></tr>
     <tr><td colspan="3" class="tot">إجمالي المطلوب تحصيله كاش</td><td class="tot">${M(t.total)} ج</td></tr></table>
     <p style="margin-top:30px;color:#999;font-size:12px">بسيطة — شبكة توصيل موثّقة</p>
     <script>window.print()<\/script></body></html>`;
@@ -1364,7 +1364,8 @@ function requestSettle(merchantId){
   if(sb&&S.driverId){
     sb.from('settlements').insert({driver_id:S.driverId,driver_name:S.driverName||'مندوب',merchant_id:merchantId,amount:owed.amount})
       .select().single().then(({data,error})=>{
-        if(error){ console.error('basita: فشل إرسال طلب التسوية',error); owed.settling=false; render(); toast('حصلت مشكلة — جرّب تاني'); return; }
+        if(error){ console.error('basita: فشل إرسال طلب التسوية',error); owed.settling=false; render();
+          toast('حصلت مشكلة: '+(error.message||error.code||'غير معروفة')); return; }
         owed.settlementId=data.id;
       });
   }else{
@@ -1566,7 +1567,7 @@ function renderFullTaskCard(t,i,activeLen){
             <div class="row" style="border:0;padding:2px 0"><span class="muted tiny">رسوم التوصيل (ربحك)</span>
               <b class="end num tiny" style="color:var(--ac-d)">${M(t.deliveryFee)} ج</b></div>
             <div class="row" style="border:0;padding:2px 0"><span class="muted tiny">عمولة منصة بسيطة</span>
-              <b class="end num tiny" style="color:var(--danger)">− ${t.commission.toFixed(2)} ج</b></div>
+              <b class="end num tiny" style="color:var(--danger)">− ${(t.commission!=null?t.commission:1.5).toFixed(2)} ج</b></div>
             <div class="row" style="border-top:1px solid var(--line);margin-top:4px;padding-top:6px">
               <b class="tiny">إجمالي تحصّله من العميل كاش</b><b class="end num" style="color:var(--ac-d)">${M(t.total)} ج</b></div>
             <button class="btn2 btn-o2" style="width:100%;margin-top:9px" onclick="viewDriverInvoice('${t.id}')">🧾 عرض الفاتورة</button>
@@ -1814,21 +1815,21 @@ function mapTaskRow(o,items){
 }
 function subscribeCustomRequests(){
   if(!sb)return;
-  sb.from('custom_requests').select('*').eq('stage','placed').then(({data})=>{
+  sb.from('custom_requests').select('*').eq('stage','approved').then(({data})=>{
     S.availableCustomRequests=(data||[]);
     render();
   });
   sb.channel('driver-custom-requests')
-    .on('postgres_changes',{event:'INSERT',schema:'public',table:'custom_requests'},payload=>{
-      if(payload.new.stage!=='placed')return;
-      S.availableCustomRequests=S.availableCustomRequests||[];
-      S.availableCustomRequests.push(payload.new);
-      notify('📦 طلب مخصّص جديد — حد عايز حاجة من بره!',true);
-      render();
-    })
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'custom_requests'},payload=>{
-      // لو حد تاني قبل الطلب، نشيله من قائمة "متاح" عند الجميع
-      S.availableCustomRequests=(S.availableCustomRequests||[]).filter(r=>r.id!==payload.new.id);
+      if(payload.new.stage==='approved'&&!(S.availableCustomRequests||[]).some(r=>r.id===payload.new.id)){
+        // المالك وافق على الطلب دلوقتي — يظهر للمناديب كلهم فورًا
+        S.availableCustomRequests=S.availableCustomRequests||[];
+        S.availableCustomRequests.push(payload.new);
+        notify('📦 طلب مخصّص جديد اتوافق عليه — حد عايز حاجة من بره!',true);
+      } else {
+        // لو حد تاني قبل الطلب أو المالك رفضه، نشيله من قائمة "متاح" عند الجميع
+        S.availableCustomRequests=(S.availableCustomRequests||[]).filter(r=>r.id!==payload.new.id);
+      }
       const mine=(S.myCustomRequests||[]).find(r=>r.id===payload.new.id);
       if(mine) Object.assign(mine,payload.new);
       render();
@@ -1838,7 +1839,7 @@ function subscribeCustomRequests(){
 async function acceptCustomRequest(id){
   if(!sb||!S.driverId)return;
   const {data,error}=await sb.from('custom_requests').update({stage:'assigned',driver_id:S.driverId,driver_name:S.driverName||'مندوب'})
-    .eq('id',id).eq('stage','placed').select().maybeSingle();
+    .eq('id',id).eq('stage','approved').select().maybeSingle();
   if(!data){ toast('للأسف مندوب تاني سبقك بالطلب ده'); S.availableCustomRequests=(S.availableCustomRequests||[]).filter(r=>r.id!==id); render(); return; }
   S.availableCustomRequests=(S.availableCustomRequests||[]).filter(r=>r.id!==id);
   S.myCustomRequests=S.myCustomRequests||[]; S.myCustomRequests.unshift(data);
@@ -1864,9 +1865,27 @@ function subscribeMySettlements(){
     })
     .subscribe();
 }
+async function loadMyActiveTasks(){
+  if(!sb||!S.driverId)return;
+  const {data:orders,error}=await sb.from('orders').select('*').eq('driver_id',S.driverId).in('stage',['assigned','picked','delivering']);
+  if(error){ console.error('basita: فشل تحميل مهامك النشطة',error); return; }
+  for(const o of (orders||[])){
+    if(S.tasks.some(t=>t.id===o.id))continue;
+    const {data:items}=await sb.from('order_items').select('*').eq('order_id',o.id);
+    const {data:merchantRow}=await sb.from('merchants').select('shop_lat,shop_lng,name').eq('id',o.merchant_id).maybeSingle();
+    const task=mapTaskRow(o,items);
+    task.accepted=true; // كانت متعيّنة له قبل كده، يبقى قابلها فعلًا
+    if(merchantRow&&merchantRow.shop_lat!=null) task.shopGeo={lat:merchantRow.shop_lat,lng:merchantRow.shop_lng};
+    task.shopName=merchantRow?merchantRow.name:'';
+    S.tasks.push(task);
+    subscribeTaskChat(o.id);
+  }
+  render();
+}
 function subscribeMyTasks(){
   if(!sb||!S.driverId)return;
   loadMyTips();
+  loadMyActiveTasks();
   sb.channel('driver-tasks-'+S.driverId)
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'orders',filter:'driver_id=eq.'+S.driverId},async payload=>{
       if(payload.new.stage==='assigned'&&!S.tasks.some(t=>t.id===payload.new.id)){
