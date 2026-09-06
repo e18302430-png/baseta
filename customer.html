@@ -14,6 +14,12 @@
   onerror="console.error('basita: تعذّر تحميل خطوط Google Fonts — هيرجع النظام لخط النظام الافتراضي')">
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <style>
+.connWarn{position:fixed;top:0;inset-inline:0;z-index:999;background:#C23327;color:#fff;
+  padding:11px 14px;display:flex;align-items:center;gap:9px;font-size:12px;box-shadow:0 4px 14px rgba(0,0,0,.3)}
+.connWarn b{font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-weight:800;font-size:12.5px;display:block}
+.connWarn span{font-size:10.5px;color:#FFD9D6;display:block;margin-top:1px}
+.connWarn button{margin-inline-start:auto;background:#fff;color:#C23327;border:0;padding:7px 12px;
+  border-radius:8px;font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-weight:800;font-size:11px;flex:0 0 auto}
 :root{
   --bg:#F9F7F1;--surf:#FFFFFF;--surf2:#F3EFE4;--line:#EDE4CE;
   --txt:#221A0E;--txt2:#6B5E45;--txt3:#A89A7B;
@@ -311,12 +317,21 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
 
 .anythingBar{display:flex;align-items:center;gap:11px;width:calc(100% - 32px);margin:10px 16px 0;
   padding:13px 14px;border-radius:15px;background:linear-gradient(120deg,#241A05,#3A2E14);
-  box-shadow:0 10px 24px -10px rgba(36,26,5,.5);border:1px solid rgba(240,169,59,.3)}
+  box-shadow:0 10px 24px -10px rgba(36,26,5,.5);border:1px solid rgba(240,169,59,.3);
+  position:relative;overflow:hidden}
+.anythingBar::before{content:"";position:absolute;top:0;bottom:0;width:60%;
+  background:linear-gradient(100deg,transparent,rgba(240,169,59,.22),transparent);
+  animation:anyShine 3.2s ease-in-out infinite}
+@keyframes anyShine{0%{left:-70%}55%{left:130%}100%{left:130%}}
+.anythingBar .anyIc{font-size:26px;flex:0 0 auto;animation:anyBounce 1.8s ease-in-out infinite;position:relative;z-index:1}
+@keyframes anyBounce{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-3px) rotate(-6deg)}}
+.anythingBar .anyBadge{position:absolute;top:-1px;left:-1px;background:#E85D52;color:#fff;font-family:'Cairo','Segoe UI','Tahoma',sans-serif;
+  font-weight:800;font-size:8.5px;padding:2.5px 8px;border-radius:0 0 10px 0;z-index:1;letter-spacing:.3px}
 .anythingBar .anyIc{font-size:26px;flex:0 0 auto}
-.anythingBar .anyTxt{flex:1;text-align:right}
+.anythingBar .anyTxt{flex:1;text-align:right;position:relative;z-index:1}
 .anythingBar .anyTxt b{font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-weight:800;font-size:13.5px;color:#F0A93B;display:block}
 .anythingBar .anyTxt span{font-size:10.5px;color:#D9C9A3;display:block;margin-top:2px}
-.anythingBar .anyArrow{font-size:18px;color:#F0A93B;flex:0 0 auto}
+.anythingBar .anyArrow{font-size:18px;color:#F0A93B;flex:0 0 auto;position:relative;z-index:1}
 .callUsBar{display:flex;align-items:center;justify-content:center;gap:7px;width:calc(100% - 32px);margin:9px 16px 0;
   padding:10px;border-radius:12px;background:#E8F8EE;color:#1F7A45;border:1px dashed #8FCFA8;
   font-size:12px;font-weight:700}
@@ -473,6 +488,7 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
 </style></head>
 <body>
 <div class="app" id="app">
+  <div id="connWarnWrap"></div>
 
   <div id="boot"><div class="in">
     <svg class="mk" viewBox="0 0 64 64"><rect width="64" height="64" rx="19" fill="#241A05"/>
@@ -732,11 +748,30 @@ setInterval(()=>{
   });
   if(changed) render();
 },60000);
+function renderConnWarning(){
+  const wrap=document.getElementById('connWarnWrap'); if(!wrap)return;
+  if(sb){ wrap.innerHTML=''; return; }
+  wrap.innerHTML=`<div class="connWarn">
+    <span style="font-size:20px">⚠️</span>
+    <span><b>مفيش اتصال بقاعدة البيانات دلوقتي</b>
+    <span>أي حاجة تعملها دلوقتي لن تتحفظ ولا توصل لحد تاني — تأكد من النت وأعد المحاولة</span></span>
+    <button onclick="retryConnection()">إعادة المحاولة</button></div>`;
+}
+async function retryConnection(){
+  const wrap=document.getElementById('connWarnWrap');
+  if(wrap) wrap.innerHTML=`<div class="connWarn"><span style="font-size:20px">🔄</span><span><b>جاري إعادة المحاولة...</b></span></div>`;
+  const ok=await ensureSupabaseReady();
+  renderConnWarning();
+  if(ok){ toast('✓ اتصل بقاعدة البيانات فعليًا دلوقتي'); location.reload(); }
+}
 setTimeout(()=>document.getElementById('boot').classList.add('gone'),1300);
 (async()=>{
   try{
     await ensureSupabaseReady();
+    renderConnWarning();
     loadShops();
+    loadWeatherAlert();
+    subscribeWeatherAlert();
     subscribeShopsLive();
     loadVillages();
   }catch(err){
@@ -780,6 +815,17 @@ function clearSession(){
 function logout(){
   if(!confirm('متأكد إنك عايز تسجّل خروج؟'))return;
   clearSession(); location.reload();
+}
+async function requestAccountDeletion(){
+  if(!confirm('متأكد إنك عايز تحذف حسابك نهائيًا؟ الاسم ورقمك هيتشالوا تمامًا، والحذف مينفعش يترجع.'))return;
+  if(!confirm('تأكيد أخير — هيتم حذف بياناتك الشخصية دلوقتي فورًا. متأكد؟'))return;
+  if(sb&&S.co.id){
+    const {error}=await sb.from('customers').update({name:'حساب محذوف',phone:'0'+Date.now().toString().slice(-9)}).eq('id',S.co.id);
+    if(error){ console.error('basita:',error); toast('حصلت مشكلة — جرّب تاني أو كلّم الدعم'); return; }
+  }
+  clearSession();
+  toast('✓ اتحذفت بياناتك الشخصية بالكامل');
+  location.reload();
 }
 async function tryRestoreSession(){
   const s=loadSession();
@@ -900,6 +946,8 @@ function mountApp(){
       subscribeMyOrders(); subscribeMyTickets();
       checkPendingReferralReward();
       loadMyCustomRequests(); subscribeMyCustomRequests();
+      subscribeMyComplaintUpdates();
+      checkMonthlyLeaderboard();
     }
     if('Notification' in window && Notification.permission==='default') Notification.requestPermission();
     if(S._welcomeCoupon){
@@ -1001,7 +1049,28 @@ const LAUNCH_DATE=new Date('2026-09-05T00:00:00'); // غيّرها لتاريخ 
 function daysSinceLaunch(){ return Math.floor((Date.now()-LAUNCH_DATE.getTime())/86400000); }
 function isFreeDeliveryPromo(){ const d=daysSinceLaunch(); return d>=0&&d<14; }
 function isWelcomePromoBanner(){ const d=daysSinceLaunch(); return d>=0&&d<7; }
+async function loadWeatherAlert(){
+  if(!sb)return;
+  const {data}=await sb.from('platform_settings').select('weather_alert').eq('id',1).maybeSingle();
+  S.weatherAlert=data&&data.weather_alert?data.weather_alert:null;
+  render();
+}
+function subscribeWeatherAlert(){
+  if(!sb)return;
+  sb.channel('customer-weather-alert')
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'platform_settings'},payload=>{
+      S.weatherAlert=payload.new.weather_alert||null; render();
+    })
+    .subscribe();
+}
 function isInAppPromoBanner(){ const d=daysSinceLaunch(); return d>=7&&d<14; }
+/* ═══ تنبيه موسمي بسيط — حسب الوقت والشهر، وتنبيه طقس يدوي من المالك (أدق من أي توقع تلقائي) ═══ */
+function seasonalHint(){
+  const now=new Date(), month=now.getMonth()+1, hour=now.getHours();
+  if(month>=5&&month<=9&&hour>=12&&hour<=17) return {ic:'☀️',txt:'الجو حر النهاردة — اطلب مياه وعصاير باردة'};
+  if((month===12||month<=2)&&(hour>=17||hour<=7)) return {ic:'🥶',txt:'الجو برد — وقت مناسب لمشروب سخن أو شوربة'};
+  return null;
+}
 function computeDeliveryFee(km,sameVillage){
   if(isFreeDeliveryPromo())return 0;
   if(sameVillage) return 10;
@@ -1066,7 +1135,7 @@ async function loadShops(){
       const rt=ratingsByShop[m.id];
       fresh[m.id]={id:m.id,name:m.name,type:BIZ_LABELS[m.biz_type]||m.biz_type,typeKey:m.biz_type,
         icon:BIZ_ICONS[m.biz_type]||'🏪',photo:m.shop_photo_url||'',bio:'',isOpen:(m.is_open!==false)&&isWithinStoreHours(m.open_time,m.close_time),
-        _manualOpen:m.is_open!==false,openTime:m.open_time,closeTime:m.close_time,
+        _manualOpen:m.is_open!==false,openTime:m.open_time,closeTime:m.close_time,awayMessage:m.away_message||null,
         villageId:m.village_id||null,geo:(m.shop_lat!=null)?{lat:m.shop_lat,lng:m.shop_lng}:null,products:[],
         rating:rt?+(rt.sum/rt.n).toFixed(1):null,reviewCount:rt?rt.n:0};
     });
@@ -1281,6 +1350,15 @@ function setWeightQty(id,kg){
   S.cart[id]=kg;
   closeSheet(); render();
 }
+function findCheaperAlternative(productName,currentPrice,currentShopId){
+  let best=null;
+  Object.values(SHOPS).forEach(s=>{
+    if(s.id===currentShopId||!s.isOpen)return;
+    const match=s.products.find(p=>p.n===productName&&p.p<currentPrice&&p.s>0);
+    if(match&&(!best||match.p<best.price)) best={shopName:s.name,price:match.p};
+  });
+  return best;
+}
 function addCart(id){
   if(S.cartShop&&S.cartShop!==S.activeShop&&Object.keys(S.cart).length){
     if(!confirm('عندك أصناف من محل تاني في السلة. تفضيها وتبدأ من المحل ده؟'))return;
@@ -1288,6 +1366,11 @@ function addCart(id){
   }
   S.cartShop=S.activeShop;
   S.cart[id]=(S.cart[id]||0)+1;render();
+  const p=P(id);
+  if(p){
+    const cheaper=findCheaperAlternative(p.n,p.p,S.activeShop);
+    if(cheaper) setTimeout(()=>toast(`💡 ${p.n} أرخص عند ${cheaper.shopName} بـ${M(cheaper.price)} ج`),400);
+  }
 }
 function addCartFrom(shopId,id){
   if(S.cartShop&&S.cartShop!==shopId&&Object.keys(S.cart).length){
@@ -1381,7 +1464,10 @@ async function placeOrder(){
   const commission=computePlatformCommission(km,sameVillage);
   const addr=c.addr.trim();
   const changeNote=S.changeAmount&&+S.changeAmount>0?`💵 معاه فكة من ${Math.round(+S.changeAmount)} ج`:'';
-  const fullNotes=[S.cartNotes,changeNote].filter(Boolean).join(' — ')||null;
+  const slotLabels={now:'',1:'⏰ العميل عايز الطلب بعد ساعة تقريبًا','1h':'⏰ العميل عايز الطلب بعد ساعة تقريبًا','2h':'⏰ العميل عايز الطلب بعد ساعتين تقريبًا',evening:'🌙 العميل عايز الطلب النهارده بالليل',tomorrow_morning:'🌅 العميل عايز الطلب بكرة الصبح'};
+  const slotVal=(document.getElementById('deliverySlot')||{}).value||'now';
+  const slotNote=slotLabels[slotVal]||'';
+  const fullNotes=[slotNote,S.cartNotes,changeNote].filter(Boolean).join(' — ')||null;
   let order;
   if(sb&&c.id){
     const netEarning=+(fee-commission).toFixed(2);
@@ -1556,6 +1642,7 @@ function vHome(){
     <button class="callUsBar" onclick="window.open('https://wa.me/201015974104?text='+encodeURIComponent('عايز أطلب بس مش عارف أستخدم التطبيق'),'_blank')">
       <span class="ic">📞</span> مش عارف تطلب؟ اتصل بينا نطلبلك احنا</button>
     <button class="anythingBar" onclick="openCustomRequestSheet()">
+      <span class="anyBadge">✨ جديد</span>
       <span class="anyIc">📦</span>
       <span class="anyTxt"><b>اطلب أي حاجة!</b><span>أنبوبة، دوا، حاجة نسيتها — أي حاجة عايزها من بره</span></span>
       <span class="anyArrow">›</span></button>
@@ -1563,6 +1650,10 @@ function vHome(){
       <span class="ic">🎉</span>
       <span><b>لسه توصيل مجاني للأسبوع ده بس!</b>
       <span>باقي ${14-daysSinceLaunch()} ${14-daysSinceLaunch()===1?'يوم':'أيام'} على العرض</span></span></div>`:''}
+    ${S.weatherAlert?`<div class="callUsBar" style="justify-content:flex-start;background:#FFF3DE;border:1px dashed #E3C98A;color:#8A5E10">
+      <span class="ic">🌧️</span><span>${S.weatherAlert}</span></div>`:
+      (()=>{const h=seasonalHint(); return h?`<div class="callUsBar" style="justify-content:flex-start;background:#FFF3DE;border:1px dashed #E3C98A;color:#8A5E10">
+      <span class="ic">${h.ic}</span><span>${h.txt}</span></div>`:'';})()}
     <div class="promoHero"><div class="promoHero-in"><span class="ic">⏱️</span>
       <span><b>التزام بسيطة: توصيلك في معاده</b>
       <span>لو اتأخرنا عليك، بنعوّضك تلقائيًا — من غير ما تتصل بحد</span></span></div></div>
@@ -1662,7 +1753,7 @@ function vShop(){
       ${s.bio?`<p style="margin-top:8px;color:var(--txt);opacity:.85;line-height:1.7">${s.bio}</p>`:''}</div>
     ${!s.isOpen?`<div class="card mt" style="padding:14px;background:#FDE8E6;border-color:#F5B5AE;text-align:center">
       <div style="font-size:22px">🔒</div><b style="display:block;margin-top:6px;color:#C23327">المحل مقفول دلوقتي</b>
-      <div class="tiny muted mt">التاجر قفل استقبال الطلبات مؤقتًا — جرّب تاني بعدين</div></div>`:''}
+      <div class="tiny muted mt">${s.awayMessage||'التاجر قفل استقبال الطلبات مؤقتًا — جرّب تاني بعدين'}</div></div>`:''}
     ${ftaShopTipHtml()}
     <div class="sec-t"><h3>الأصناف</h3><span class="num">${s.products.length} صنف</span></div>
     ${s.products.length?s.products.map(p=>`<div class="prod" style="${p.s<=0?'opacity:.5':''}"><span class="ph">${p.i}</span>
@@ -1755,6 +1846,14 @@ function vCheckout(){
     <div class="fld"><label>عنوانك بالتفصيل</label>
       <textarea id="addrInput" rows="3" placeholder="مثلاً: شارع المدرسة، بيت رقم ١٢، الدور التاني، جنب فرن العسل" oninput="S.co.addr=this.value">${c.addr||''}</textarea>
       <span class="tiny muted" style="display:block;margin-top:5px">اكتب أي علامة تساعد المندوب يوصلّك بسهولة</span></div>
+    <div class="fld"><label>عايز طلبك إمتى؟</label>
+      <select id="deliverySlot">
+        <option value="now">دلوقتي — أسرع ما يمكن</option>
+        <option value="1h">بعد ساعة تقريبًا</option>
+        <option value="2h">بعد ساعتين تقريبًا</option>
+        <option value="evening">النهارده بالليل</option>
+        <option value="tomorrow_morning">بكرة الصبح</option>
+      </select></div>
     <div class="fld"><label>معاك فكة قد إيه؟ (اختياري)</label>
       <input value="${S.changeAmount||''}" type="number" placeholder="مثلاً 100" oninput="S.changeAmount=this.value">
       <span class="tiny muted" style="display:block;margin-top:5px">بنقولها للمندوب عشان يجهّز الباقي معاه من الأول</span></div>
@@ -2030,6 +2129,30 @@ function vOrders(){
     </div>`}).join('')}
     <div style="height:14px"></div></div>`;
 }
+function computeCustomerBadges(){
+  const n=S.orders.filter(o=>o.stage==='delivered').length;
+  const badges=[];
+  if(n>=1) badges.push({icon:'🎉',label:'أول طلب'});
+  if(n>=10) badges.push({icon:'⭐',label:'١٠ طلبات'});
+  if(n>=50) badges.push({icon:'🏆',label:'٥٠ طلب'});
+  if(n>=100) badges.push({icon:'👑',label:'١٠٠ طلب'});
+  return badges;
+}
+async function checkMonthlyLeaderboard(){
+  if(!sb||!S.co.id)return;
+  const now=new Date(), from=new Date(now.getFullYear(),now.getMonth(),1);
+  const {data}=await sb.from('orders').select('customer_id').eq('stage','delivered').gte('placed_at',from.toISOString());
+  if(!data||!data.length)return;
+  const counts={};
+  data.forEach(o=>{ counts[o.customer_id]=(counts[o.customer_id]||0)+1; });
+  const ranked=Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  const myRank=ranked.findIndex(([id])=>id===S.co.id);
+  const key='basita_leaderboard_seen_'+now.getMonth();
+  if(myRank>=0&&myRank<3&&!localStorage.getItem(key)){
+    localStorage.setItem(key,'1');
+    setTimeout(()=>notify('🏆 مبروك! إنت من ضمن أنشط ٣ عملاء الشهر ده',true),1500);
+  }
+}
 function vAccount(){
   return `<div class="pad" style="padding-top:14px">
     <div class="card" style="padding:17px;text-align:center">
@@ -2037,6 +2160,10 @@ function vAccount(){
         display:grid;place-items:center;font-size:26px;margin:0 auto 9px">👤</div>
       <b style="font-size:16px">${S.co.name||'زائر'}</b>
       <div class="tiny muted num" dir="ltr">${S.co.ph||''}</div></div>
+    ${(()=>{ const badges=computeCustomerBadges(); return badges.length?`<div class="card mt" style="padding:14px">
+      <div class="tiny muted mb">شاراتك</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">${badges.map(b=>`<span style="display:flex;align-items:center;gap:5px;background:var(--ac-l);color:var(--ac-d);
+        padding:7px 11px;border-radius:20px;font-size:11.5px;font-weight:700;font-family:'Cairo','Segoe UI','Tahoma',sans-serif">${b.icon} ${b.label}</span>`).join('')}</div></div>`:''; })()}
     <div class="card mt">
       <button class="row" style="width:100%;text-align:right" onclick="openPinSheet()">
         <span class="av">🔒</span><span><span class="n">تغيير رمز الدخول السريع</span>
@@ -2051,6 +2178,7 @@ function vAccount(){
     </div>
     <button class="btn mt" style="width:100%;background:#25D366;color:#fff" onclick="shareReferralLink()">🎁 ادعُ صديقك — وخدوا خصم الاتنين</button>
     <button class="btn" style="width:100%;margin-top:14px;background:#FDE8E6;color:#C23327" onclick="logout()">🚪 تسجيل خروج</button>
+    <button class="btn" style="width:100%;margin-top:8px;background:none;border:1px solid #F5B5AE;color:#C23327;font-size:12px" onclick="requestAccountDeletion()">🗑️ احذف حسابي وكل بياناتي نهائيًا</button>
     <button onclick="openAboutBasita()" style="width:100%;text-align:center;margin-top:20px">
       <p class="tiny muted">بسيطة · بنرقمن مصر قرية ورا قرية 🇪🇬</p></button>
     <div style="height:12px"></div></div>`;
@@ -2115,16 +2243,24 @@ function subscribeMyCustomRequests(){
     })
     .subscribe();
 }
+function subscribeMyComplaintUpdates(){
+  if(!sb||!S.co.id)return;
+  sb.channel('customer-complaints-'+S.co.id)
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'reviews',filter:'customer_id=eq.'+S.co.id},payload=>{
+      if(payload.new.resolved) notify('✅ اتحلّت شكواك: '+(payload.new.resolution_note||'تم التواصل وحل المشكلة'),true);
+    })
+    .subscribe();
+}
 function openCustomRequestSheet(){
-  if(!S.co.geo){ toast('محتاج نفعّل موقعك الأول عشان نقدر نوصّلك'); requestLocation(true); return; }
   openSheet('📦 اطلب أي حاجة',`
     <p class="tiny muted mb">اكتب اللي عايزه بالظبط — أي حاجة من بره، ومندوب هيجيبهالك</p>
     <div class="fld"><label>عايز إيه بالظبط؟</label>
       <textarea id="anyDesc" rows="3" placeholder="مثلاً: أنبوبة بنادول من الصيدلية، أو علبة سجاير من الكشك"></textarea></div>
     <div class="fld"><label>تقريبًا هيكلّف كام؟ (اختياري)</label>
       <input id="anyBudget" type="number" placeholder="مثلاً 50"></div>
-    <div class="fld"><label>عنوانك</label>
-      <textarea id="anyAddr" rows="2" placeholder="نفس عنوانك المعتاد">${S.co.addr||''}</textarea></div>
+    <div class="fld"><label>عنوانك بالتفصيل الكامل</label>
+      <textarea id="anyAddr" rows="3" placeholder="مثلاً: شارع المدرسة، بيت رقم ١٢، جنب فرن العسل — اكتب علامات تساعد المندوب يوصلّك">${S.co.addr||''}</textarea>
+      <span class="tiny muted" style="display:block;margin-top:5px">اكتب بالتفصيل الكفاية — المندوب هيعتمد على العنوان ده يلاقيك</span></div>
     <div class="alert info" style="margin-top:4px">رسوم التوصيل <span class="num">${CUSTOM_REQUEST_FEE}</span> ج + تكلفة الحاجة نفسها كاش وقت الاستلام</div>
     <button class="btn btn-p mt" onclick="submitCustomRequest()">ابعت الطلب</button>`);
 }
@@ -2136,7 +2272,7 @@ async function submitCustomRequest(){
   if(!addr){toast('اكتب عنوانك');return}
   closeSheet();
   const row={customer_id:S.co.id,customer_name:S.co.name,customer_phone:S.co.ph||'01015974104',
-    description:desc,budget_estimate:budget,address:addr,delivery_lat:S.co.geo.lat,delivery_lng:S.co.geo.lng,
+    description:desc,budget_estimate:budget,address:addr,delivery_lat:S.co.geo?S.co.geo.lat:null,delivery_lng:S.co.geo?S.co.geo.lng:null,
     delivery_fee:CUSTOM_REQUEST_FEE,platform_commission:CUSTOM_REQUEST_COMMISSION,
     driver_net_earning:CUSTOM_REQUEST_FEE-CUSTOM_REQUEST_COMMISSION,
     village_id:S.co.villageId,stage:'placed'};
