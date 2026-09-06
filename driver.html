@@ -1804,6 +1804,8 @@ function subscribeMySettlements(){
       const owed=S.owedByMerchant&&S.owedByMerchant[payload.new.merchant_id];
       if(owed){ owed.amount=0; owed.settling=false; }
       S.shiftTotal=Math.max(0,(S.shiftTotal||0)-(payload.new.amount||0));
+      // نعلّم كل الطلبات المتسلّمة من التاجر ده كـ"متسوّاة" في القاعدة عشان ميتحسبوش تاني بعد أي ريفريش
+      sb.from('orders').update({driver_settled:true}).eq('driver_id',S.driverId).eq('merchant_id',payload.new.merchant_id).eq('stage','delivered').eq('driver_settled',false).then(()=>{});
       render(); notify('✓ '+(owed?owed.name:'التاجر')+' أكّد استلام الكاش',true);
     })
     .subscribe();
@@ -1830,10 +1832,40 @@ async function loadExistingTasks(){
   }
   if(added){ startAlertEscalation(); render(); notify('📦 لقينا طلب متعيّنلك مكنتش شايفه — اتظبط دلوقتي',true); }
 }
+async function loadDriverFinancials(){
+  // بيبني أرباح المندوب وحسابه مع كل تاجر من القاعدة مباشرة — بدل ما يعتمد على ذاكرة المتصفح
+  // اللي بتتصفّر أي مرة يعمل ريفريش. بيعتمد على عمود driver_settled (لازم يتضاف في Supabase أول مرة).
+  if(!sb||!S.driverId)return;
+  const {data:unsettled,error}=await sb.from('orders').select('*').eq('driver_id',S.driverId).eq('stage','delivered').eq('driver_settled',false);
+  if(error){ console.error('basita: فشل جلب أرباح المندوب — لازم عمود driver_settled يتضاف في جدول orders',error); return; }
+  S.shiftTotal=0; S.commissionOwed=0; S.deliveryEarnings=0; S.owedByMerchant={};
+  (unsettled||[]).forEach(o=>{
+    S.shiftTotal+=(+o.total||0);
+    S.commissionOwed+=(+o.platform_commission||1.5);
+    S.deliveryEarnings+=(+o.delivery_fee||0);
+    if(!S.owedByMerchant[o.merchant_id]) S.owedByMerchant[o.merchant_id]={name:'المحل',amount:0};
+    S.owedByMerchant[o.merchant_id].amount+=(+o.total||0);
+  });
+  const merchantIds=Object.keys(S.owedByMerchant);
+  if(merchantIds.length){
+    const {data:merchants}=await sb.from('merchants').select('id,name').in('id',merchantIds);
+    (merchants||[]).forEach(m=>{ if(S.owedByMerchant[m.id]) S.owedByMerchant[m.id].name=m.name; });
+  }
+  const {data:delivered}=await sb.from('orders').select('*').eq('driver_id',S.driverId).eq('stage','delivered').order('closed_at',{ascending:false}).limit(50);
+  if(delivered&&delivered.length){
+    S.history=delivered.map(o=>{
+      const t=mapTaskRow(o,[]);
+      t.closedAt=o.closed_at?new Date(o.closed_at).toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'}):'';
+      return t;
+    });
+  }
+  render();
+}
 function subscribeMyTasks(){
   if(!sb||!S.driverId)return;
   loadMyTips();
   loadExistingTasks();
+  loadDriverFinancials();
   sb.channel('driver-tasks-'+S.driverId)
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'orders',filter:'driver_id=eq.'+S.driverId},async payload=>{
       if(payload.new.stage==='assigned'&&!S.tasks.some(t=>t.id===payload.new.id)){
