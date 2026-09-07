@@ -570,6 +570,7 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
       <p class="asub">هنبعتلك كود تحقق سريع عليه</p>
       <div class="fld mt"><label>رقم الموبايل</label>
         <input id="phInput" type="tel" dir="ltr" placeholder="01xxxxxxxxx" style="text-align:center;font-family:'Cairo','Segoe UI','Tahoma',sans-serif;letter-spacing:1px"></div>
+      <div id="phoneCheckBanner" style="display:none"></div>
       <div class="spacer"></div>
       <button class="btn btn-p" onclick="sendOtp()">متابعة</button>
     </div>
@@ -821,15 +822,48 @@ setTimeout(()=>document.getElementById('boot').classList.add('gone'),1300);
 let authMode='signup';
 function goAuth(stage,mode){
   if(mode)authMode=mode;
+  clearPhoneCheckBanner();
   document.querySelectorAll('.astage').forEach(s=>s.classList.remove('on'));
   document.getElementById('st-'+stage).classList.add('on');
 }
 function sendOtp(){
   const v=document.getElementById('phInput').value.trim();
   if(!/^01[0125]\d{8}$/.test(v)){toast('اكتب رقم موبايل مصري صحيح');return}
+  clearPhoneCheckBanner();
+  if(sb){
+    sb.from('customers').select('id').eq('phone',v).maybeSingle().then(({data,error})=>{
+      if(error){ console.error('basita: تعذّر التحقق من الرقم قبل المتابعة',error); proceedToOtp(v); return; }
+      if(authMode==='signup'&&data){
+        // الرقم ده عنده حساب بالفعل — منمنعش إنشاء حساب تاني بنفس الرقم، ونوجّهه يسجّل دخول بدل كده
+        showPhoneCheckBanner('📱 الرقم ده مسجّل بحساب موجود بالفعل',
+          '<button class="btn btn-p" style="width:100%;margin-top:10px" onclick="clearPhoneCheckBanner();goAuth(\'phone\',\'login\')">سجّل دخول بدل كده</button>');
+        return;
+      }
+      if(authMode==='login'&&!data){
+        showPhoneCheckBanner('🤔 مفيش حساب مسجّل بالرقم ده',
+          '<button class="btn btn-p" style="width:100%;margin-top:10px" onclick="clearPhoneCheckBanner();goAuth(\'phone\',\'signup\')">أنشئ حساب جديد بدل كده</button>');
+        return;
+      }
+      proceedToOtp(v);
+    });
+  }else{
+    proceedToOtp(v);
+  }
+}
+function proceedToOtp(v){
   document.getElementById('otpPhone').textContent=v;
   S.co.ph=v;
   goAuth('otp');
+}
+function showPhoneCheckBanner(text,actionsHtml){
+  const el=document.getElementById('phoneCheckBanner'); if(!el)return;
+  el.style.display='block';
+  el.innerHTML=`<div class="card mt" style="padding:14px;background:#FDE8E6;border-color:#F5B5AE">
+    <b style="color:#C23327;font-size:13.5px;display:block">${text}</b>${actionsHtml||''}</div>`;
+  if(el.scrollIntoView) el.scrollIntoView({behavior:'smooth',block:'center'});
+}
+function clearPhoneCheckBanner(){
+  const el=document.getElementById('phoneCheckBanner'); if(el){ el.style.display='none'; el.innerHTML=''; }
 }
 /* ═══ الجلسة الدائمة — تسجيل الدخول مرة واحدة بس، ويفضل شغال حتى بعد الريفريش ═══ */
 const SESSION_KEY='basita_session_'+ROLE;
@@ -870,6 +904,11 @@ async function tryRestoreSession(){
       clearSession();
       return false;
     }
+  }else{
+    // مفيش اتصال بقاعدة البيانات دلوقتي، فمش هنقدر نتأكد إن الحساب المحفوظ محليًا لسه موجود فعلًا —
+    // أهم من راحة الاستخدام إننا منوريش المستخدم كإنه "داخل" على حساب ممكن يكون اتمسح فعلًا (زي بعد تصفير المنصة)
+    console.error('basita: مفيش اتصال بقاعدة البيانات — مش هنسترجع الجلسة المحفوظة محليًا من غير تأكيد');
+    return false;
   }
   S.co={...S.co,...s};
   document.getElementById('hiName').textContent=(s.name||'').split(' ')[0]||'صديقنا';
