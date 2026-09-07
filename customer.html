@@ -2101,8 +2101,12 @@ function vTrack(){
     <div class="sec-t"><h3>ملخص الطلب</h3></div>
     <div class="card">${o.items.map(i=>`<div class="row"><span>${i.n} <span class="tiny muted">${i.sellBy==='weight'?weightLabel(i.q):'×'+i.q}</span></span>
       <b class="num">${M(i.p*i.q)} ج</b></div>`).join('')}
-      <div class="row" style="border-top:1px solid var(--line);padding-top:9px"><b>الإجمالي</b>
-      <b class="num kufi" style="color:var(--ac-d)">${M(o.total)} ج</b></div></div>
+      <div class="row" style="border-top:1px solid var(--line);padding-top:9px"><span class="muted">إجمالي الأصناف</span>
+      <b class="num">${M(o.total-o.fee)} ج</b></div>
+      <div class="row"><span class="muted">رسوم التوصيل</span>
+      <b class="num" style="color:${o.fee===0?'var(--ok)':'var(--txt)'}">${o.fee===0?'مجانًا 🎉':M(o.fee)+' ج'}</b></div>
+      <div class="row" style="border-top:1px solid var(--line);padding-top:9px"><b>الإجمالي شامل التوصيل</b>
+      <b class="num kufi" style="color:var(--ac-d);font-size:16px">${M(o.total)} ج</b></div></div>
     <div style="height:14px"></div></div>`;
 }
 function toggleRecurring(id){
