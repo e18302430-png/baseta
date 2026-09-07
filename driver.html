@@ -1227,7 +1227,7 @@ async function sendQuickMsg(msg){
   }else{
     emit({to:['customer'],type:'driver:message',orderId:contactTaskId,message:msg,driverName:S.driverName||'كريم عبد الله'});
   }
-  const t=S.tasks.find(x=>x.id===contactTaskId);
+  const t=S.tasks.find(x=>x.id===contactTaskId)||(S.myCustomRequests||[]).find(x=>x.id===contactTaskId);
   if(t){ t.chatLog=t.chatLog||[]; t.chatLog.unshift({from:'driver',name:'إنت',msg,
     at:new Date().toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'})}); }
   closeContactSheet(); toast('اتبعتت الرسالة للعميل ✓'); render();
@@ -1237,7 +1237,7 @@ function subscribeTaskChat(orderId){
   sb.channel('chat-'+orderId)
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'driver_customer_messages',filter:'order_id=eq.'+orderId},payload=>{
       if(payload.new.from_role==='driver')return;
-      const t=S.tasks.find(x=>x.id===orderId);
+      const t=S.tasks.find(x=>x.id===orderId)||(S.myCustomRequests||[]).find(x=>x.id===orderId);
       if(t){ t.chatLog=t.chatLog||[]; t.chatLog.unshift({from:'customer',name:payload.new.from_name,msg:payload.new.message,
         at:new Date(payload.new.created_at).toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'})}); }
       notify('👤 رسالة من العميل: '+payload.new.message);
@@ -1284,9 +1284,9 @@ function rejectTask(id){
 }
 
 /* ═══════ التصوير الإجباري قبل التسليم ═══════ */
-let photoStream=null, capturedPhoto=null, deliverOrderId=null;
-function openDeliveryCam(orderId){
-  deliverOrderId=orderId; capturedPhoto=null;
+let photoStream=null, capturedPhoto=null, deliverOrderId=null, deliverKind='order';
+function openDeliveryCam(orderId,kind){
+  deliverOrderId=orderId; deliverKind=kind||'order'; capturedPhoto=null;
   document.getElementById('photoVideo').style.display='block';
   document.getElementById('photoPreview').style.display='none';
   document.getElementById('photoHint').textContent='صوّر الطلب في إيد العميل أو قدام الباب — الصورة إجبارية لإثبات التسليم';
@@ -1325,7 +1325,9 @@ function closePhotoUI(){
 }
 async function confirmDeliveryPhoto(){
   if(!capturedPhoto){toast('لازم تلتقط الصورة الأول');return}
-  const id=deliverOrderId; const t=S.tasks.find(x=>x.id===id);
+  const id=deliverOrderId;
+  if(deliverKind==='custom'){ await confirmCustomDeliveryPhoto(id); return; }
+  const t=S.tasks.find(x=>x.id===id);
   closePhotoUI();
   t.stage='delivered';
   if(sb){
@@ -1355,6 +1357,25 @@ async function confirmDeliveryPhoto(){
   emit({to:['owner'],type:'ticket:closed',orderId:id});
   emit({to:['owner'],type:'driver:delivery_completed',driverId:S.driverId,driverName:S.driverName||'كريم عبد الله',amount:t.total||0});
   toast('✓ اتسلّم الطلب بالصورة — 🔒 والتذكرة اتقفلت تلقائيًا');
+  render();
+}
+async function confirmCustomDeliveryPhoto(id){
+  const r=(S.myCustomRequests||[]).find(x=>x.id===id);
+  closePhotoUI();
+  if(r) r.stage='delivered';
+  if(sb){
+    try{
+      const blob=await (await fetch(capturedPhoto)).blob();
+      const path='CR-'+id+'-'+Date.now()+'.jpg';
+      await sb.storage.from('delivery-photos').upload(path,blob,{upsert:true});
+      const photoUrl=sb.storage.from('delivery-photos').getPublicUrl(path).data.publicUrl;
+      await sb.from('custom_requests').update({stage:'delivered',delivery_photo_url:photoUrl}).eq('id',id);
+    }catch(err){ console.error('basita: فشل رفع صورة تسليم الطلب المخصّص',err); }
+  }
+  const earning=r?(r.driver_net_earning||r.delivery_fee||0):0;
+  S.shiftTotal+=earning; S.deliveryEarnings=(S.deliveryEarnings||0)+earning;
+  S.myCustomRequests=(S.myCustomRequests||[]).filter(x=>x.id!==id);
+  toast('✓ اتسلّم الطلب المخصّص بالصورة');
   render();
 }
 
@@ -1641,9 +1662,13 @@ function vTasks(){
           ${r.budget_estimate?`<div class="tiny muted">تقريبًا هتكلّف: <span class="num">${M(r.budget_estimate)}</span> ج (كاش من العميل)</div>`:''}
           <div class="tiny muted mt">صافي ربحك: <span class="num" style="color:var(--ac-d)">${M(r.driver_net_earning||r.delivery_fee)} ج</span></div>
           <div class="taddr"><span class="k">📞</span><span class="num" dir="ltr">${maskPhone(r.customer_phone)}</span></div>
+          <button class="btn2 btn-o2" style="width:100%;margin-top:8px" onclick="openContactSheet('${r.id}')">💬 راسل العميل</button>
+          ${(r.chatLog&&r.chatLog.length)?`<div class="tiny" style="background:var(--surf2);border-radius:10px;padding:8px 10px;margin:6px 0">
+            ${r.chatLog.slice(0,3).map(m=>`<div style="padding:3px 0"><b style="color:${m.from==='driver'?'var(--ac-d)':'var(--txt2)'}">${m.name}:</b> ${m.msg}</div>`).join('')}
+          </div>`:''}
           ${r.stage==='assigned'?
-            `<button class="btn2 btn-p2" style="width:100%;margin-top:8px" onclick="advanceCustomRequest('${r.id}','delivering')">✓ جبت الحاجة — في الطريق للعميل</button>`:
-            `<button class="btn2 btn-p2" style="width:100%;margin-top:8px" onclick="advanceCustomRequest('${r.id}','delivered')">✓ سلّمت الطلب</button>`}
+            `<button class="btn2 btn-p2" style="width:100%;margin-top:2px" onclick="advanceCustomRequest('${r.id}','delivering')">✓ جبت الحاجة — في الطريق للعميل</button>`:
+            `<button class="btn2 btn-p2" style="width:100%;margin-top:2px" onclick="openDeliveryCam('${r.id}','custom')">📸 وصلت — صوّر وأكّد التسليم</button>`}
         </div></div>`).join('')}`:''}
     ${(S.availableCustomRequests||[]).length?`<div class="sec-t"><h3>📦 طلبات مخصّصة متاحة — أول واحد يقبل ياخدها</h3></div>
       ${S.availableCustomRequests.map(r=>`<div class="tcard">
@@ -1685,7 +1710,7 @@ function vTasks(){
     ${pending.map(t=>`<div class="tcard">
       <div class="th"><span class="av">🔔</span>
         <span style="flex:1"><span class="n">طلب <span class="num">${shortId(t.id)}</span></span>
-        <span class="t">مهمة جديدة من ماركت أبو حمزة</span></span>
+        <span class="t">${t.shopName?'مهمة جديدة من '+t.shopName:'مهمة جديدة'}</span></span>
         <span class="bdg b-new">جديدة</span></div>
       <div class="tb"><div class="taddr"><span class="k">📍</span><span>${t.addr}</span></div>
         <div style="display:flex;gap:8px;margin-top:8px">
@@ -1708,9 +1733,13 @@ function vTasks(){
           ${r.budget_estimate?`<div class="tiny muted">تقريبًا هتكلّف: <span class="num">${M(r.budget_estimate)}</span> ج (كاش من العميل)</div>`:''}
           <div class="tiny muted mt">صافي ربحك: <span class="num" style="color:var(--ac-d)">${M(r.driver_net_earning||r.delivery_fee)} ج</span></div>
           <div class="taddr"><span class="k">📞</span><span class="num" dir="ltr">${maskPhone(r.customer_phone)}</span></div>
+          <button class="btn2 btn-o2" style="width:100%;margin-top:8px" onclick="openContactSheet('${r.id}')">💬 راسل العميل</button>
+          ${(r.chatLog&&r.chatLog.length)?`<div class="tiny" style="background:var(--surf2);border-radius:10px;padding:8px 10px;margin:6px 0">
+            ${r.chatLog.slice(0,3).map(m=>`<div style="padding:3px 0"><b style="color:${m.from==='driver'?'var(--ac-d)':'var(--txt2)'}">${m.name}:</b> ${m.msg}</div>`).join('')}
+          </div>`:''}
           ${r.stage==='assigned'?
-            `<button class="btn2 btn-p2" style="width:100%;margin-top:8px" onclick="advanceCustomRequest('${r.id}','delivering')">✓ جبت الحاجة — في الطريق للعميل</button>`:
-            `<button class="btn2 btn-p2" style="width:100%;margin-top:8px" onclick="advanceCustomRequest('${r.id}','delivered')">✓ سلّمت الطلب</button>`}
+            `<button class="btn2 btn-p2" style="width:100%;margin-top:2px" onclick="advanceCustomRequest('${r.id}','delivering')">✓ جبت الحاجة — في الطريق للعميل</button>`:
+            `<button class="btn2 btn-p2" style="width:100%;margin-top:2px" onclick="openDeliveryCam('${r.id}','custom')">📸 وصلت — صوّر وأكّد التسليم</button>`}
         </div></div>`).join('')}`:''}
     ${(S.availableCustomRequests||[]).length?`<div class="sec-t"><h3>📦 طلبات مخصّصة متاحة — أول واحد يقبل ياخدها</h3></div>
       ${S.availableCustomRequests.map(r=>`<div class="tcard">
@@ -1881,6 +1910,7 @@ async function acceptCustomRequest(id){
   if(!data){ toast('للأسف مندوب تاني سبقك بالطلب ده'); S.availableCustomRequests=(S.availableCustomRequests||[]).filter(r=>r.id!==id); render(); return; }
   S.availableCustomRequests=(S.availableCustomRequests||[]).filter(r=>r.id!==id);
   S.myCustomRequests=S.myCustomRequests||[]; S.myCustomRequests.unshift(data);
+  subscribeTaskChat(id);
   toast('✓ قبلت الطلب — روح جيب الحاجة وسلّمها');
   render();
 }
