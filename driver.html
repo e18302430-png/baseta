@@ -997,6 +997,10 @@ function toast(m){playNotifySound();pushNotify(m);const t=document.getElementByI
 /* ═══ حالة التطبيق + حفظ دائم للبيانات الحساسة (وثائق التسجيل، الصور، أرقام الشحنات، المحادثات) ═══ */
 const MAX_CONCURRENT_TASKS=3; // نفس السقف المستخدم عند التاجر — مندوب واحد يقدر يشيل أكتر من طلب لحد السقف ده
 let S={view:'tasks',avail:true,tasks:[],history:[],shiftTotal:0,settling:false,password:'',driverName:'',vehicle:'🛵',phone:'',ratings:[],tips:[],driverId:'',verifyStatus:'',idCardPhoto:'',selfiePhoto:'',villageId:null,commissionOwed:0,deliveryEarnings:0};
+/* ═══ الطلبات المخصّصة اللي هي في الحقيقة "توك توك" (توصيلة شخص) بتتعرّف من علامة مميزة في بداية الوصف ═══ */
+const TUKTUK_MARKER='🛺 توك توك';
+function isTukTukRequest(r){ return !!(r&&r.description&&r.description.startsWith(TUKTUK_MARKER)); }
+function crIcon(r){ return isTukTukRequest(r)?'🛺':'📦'; }
 const STATE_KEY='basita_state_'+ROLE;
 function loadState(){ try{return JSON.parse(localStorage.getItem(STATE_KEY)||'null')}catch(e){return null} }
 function saveState(){ try{localStorage.setItem(STATE_KEY,JSON.stringify(S));}catch(e){ console.warn('basita: تعذّر الحفظ المحلي',e); } }
@@ -1673,7 +1677,7 @@ function vTasks(){
   if(!S.tasks.length)return goalBanner+`<div class="pad" style="padding-top:0">
     ${(S.myCustomRequests||[]).length?`<div class="sec-t"><h3>📦 طلباتك المخصّصة</h3></div>
       ${S.myCustomRequests.map(r=>`<div class="tcard active">
-        <div class="th"><span class="av">📦</span><span style="flex:1"><span class="n">${r.description}</span>
+        <div class="th"><span class="av">${crIcon(r)}</span><span style="flex:1"><span class="n">${r.description}</span>
           <span class="t">${r.customer_name}</span></span>
           <span class="bdg b-prog">${r.stage==='assigned'?'رايح يجيبها':'في الطريق للعميل'}</span></div>
         <div class="tb">
@@ -1697,7 +1701,7 @@ function vTasks(){
         </div></div>`).join('')}`:''}
     ${(S.availableCustomRequests||[]).length?`<div class="sec-t"><h3>📦 طلبات مخصّصة متاحة — أول واحد يقبل ياخدها</h3></div>
       ${S.availableCustomRequests.map(r=>`<div class="tcard">
-        <div class="th"><span class="av">📦</span><span style="flex:1"><span class="n">${r.description}</span></span><span class="bdg b-new">جديد</span></div>
+        <div class="th"><span class="av">${crIcon(r)}</span><span style="flex:1"><span class="n">${r.description}</span></span><span class="bdg b-new">جديد</span></div>
         <div class="tb">
           <div style="background:var(--surf2);border-radius:11px;padding:10px 12px;margin:4px 0">
             <div class="tiny muted" style="margin-bottom:3px">📍 عنوان العميل بالتفصيل</div>
@@ -1744,7 +1748,7 @@ function vTasks(){
         </div></div></div>`).join('')}
     ${(S.myCustomRequests||[]).length?`<div class="sec-t"><h3>📦 طلباتك المخصّصة</h3></div>
       ${S.myCustomRequests.map(r=>`<div class="tcard active">
-        <div class="th"><span class="av">📦</span><span style="flex:1"><span class="n">${r.description}</span>
+        <div class="th"><span class="av">${crIcon(r)}</span><span style="flex:1"><span class="n">${r.description}</span>
           <span class="t">${r.customer_name}</span></span>
           <span class="bdg b-prog">${r.stage==='assigned'?'رايح يجيبها':'في الطريق للعميل'}</span></div>
         <div class="tb">
@@ -1768,7 +1772,7 @@ function vTasks(){
         </div></div>`).join('')}`:''}
     ${(S.availableCustomRequests||[]).length?`<div class="sec-t"><h3>📦 طلبات مخصّصة متاحة — أول واحد يقبل ياخدها</h3></div>
       ${S.availableCustomRequests.map(r=>`<div class="tcard">
-        <div class="th"><span class="av">📦</span><span style="flex:1"><span class="n">${r.description}</span></span><span class="bdg b-new">جديد</span></div>
+        <div class="th"><span class="av">${crIcon(r)}</span><span style="flex:1"><span class="n">${r.description}</span></span><span class="bdg b-new">جديد</span></div>
         <div class="tb">
           <div style="background:var(--surf2);border-radius:11px;padding:10px 12px;margin:4px 0">
             <div class="tiny muted" style="margin-bottom:3px">📍 عنوان العميل بالتفصيل</div>
@@ -1863,7 +1867,7 @@ function vHistory(){
     ${Object.entries(groups).map(([day,items])=>`
       <div class="sec-t"><h3>${day}</h3><span class="num">${items.length}</span></div>
       ${items.map(t=>`<div class="tcard">
-        <div class="th"><span class="av">${t.isCustom?'📦':'✓'}</span>
+        <div class="th"><span class="av">${t.isCustom?(t.desc&&t.desc.startsWith(TUKTUK_MARKER)?'🛺':'📦'):'✓'}</span>
           <span style="flex:1"><span class="n">${t.isCustom?'طلب مخصّص':'طلب'} <span class="num">${shortId(t.id)}</span></span>
           <span class="t">${t.isCustom&&t.desc?t.desc+' · ':''}${t.name} · ربحك <span class="num" style="color:var(--ac-d)">${M(t.netEarning)}</span> ج</span></span>
           <span class="bdg b-ok">اتسلّم</span></div>
