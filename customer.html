@@ -92,6 +92,7 @@ input,select{font-family:inherit;font-size:16px}
 .vhero-foodIll .o2{--tx:64px;--ty:36px;transform:translate(calc(-50% + var(--tx)),calc(-50% + var(--ty)));animation:foodFloat 3.4s ease-in-out .6s infinite}
 .vhero-foodIll .o3{--tx:-64px;--ty:-36px;transform:translate(calc(-50% + var(--tx)),calc(-50% + var(--ty)));animation:foodFloat 3.2s ease-in-out .4s infinite}
 .vhero-foodIll .o4{--tx:-64px;--ty:36px;transform:translate(calc(-50% + var(--tx)),calc(-50% + var(--ty)));animation:foodFloat 3.6s ease-in-out .8s infinite}
+.vhero-foodIll .o5{--tx:0px;--ty:-52px;transform:translate(calc(-50% + var(--tx)),calc(-50% + var(--ty)));animation:foodFloat 3.1s ease-in-out .3s infinite}
 @keyframes foodFloat{0%,100%{margin-top:0}50%{margin-top:-9px}}
 .vhero-in{position:relative;z-index:2}
 .vhero-top{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:6px}
@@ -338,6 +339,21 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
 .callUsBar .callTxt{flex:1;text-align:right}
 .callUsBar .callTxt b{font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-weight:800;font-size:12.5px;color:#1F7A45;display:block}
 .callUsBar .callTxt span{font-size:10.5px;color:#3D8A5E;display:block;margin-top:2px;line-height:1.5}
+.tuktukBar{display:flex;align-items:center;gap:11px;width:calc(100% - 32px);margin:9px 16px 0;
+  padding:13px 14px;border-radius:15px;background:linear-gradient(120deg,#062A29,#0B4A45);
+  box-shadow:0 10px 24px -10px rgba(6,42,41,.5);border:1px solid rgba(45,212,191,.35);
+  position:relative;overflow:hidden}
+.tuktukBar::before{content:"";position:absolute;top:0;bottom:0;width:60%;
+  background:linear-gradient(100deg,transparent,rgba(45,212,191,.22),transparent);
+  animation:anyShine 3.2s ease-in-out infinite}
+.tuktukBar .anyIc{font-size:26px;flex:0 0 auto;animation:tukWiggle 1.6s ease-in-out infinite;position:relative;z-index:1}
+@keyframes tukWiggle{0%,100%{transform:translateX(0) rotate(0)}25%{transform:translateX(-2px) rotate(-5deg)}75%{transform:translateX(2px) rotate(5deg)}}
+.tuktukBar .anyBadge{position:absolute;top:-1px;left:-1px;background:#0EA5A0;color:#fff;font-family:'Cairo','Segoe UI','Tahoma',sans-serif;
+  font-weight:800;font-size:8.5px;padding:2.5px 8px;border-radius:0 0 10px 0;z-index:1;letter-spacing:.3px}
+.tuktukBar .anyTxt{flex:1;text-align:right;position:relative;z-index:1}
+.tuktukBar .anyTxt b{font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-weight:800;font-size:13.5px;color:#5EEAD4;display:block}
+.tuktukBar .anyTxt span{font-size:10.5px;color:#A7D8D4;display:block;margin-top:2px}
+.tuktukBar .anyArrow{font-size:18px;color:#5EEAD4;flex:0 0 auto;position:relative;z-index:1}
 .searchBar{display:flex;align-items:center;gap:10px;margin:14px 16px 0;padding:13px 16px;border-radius:16px;
   background:var(--surf);border:1.5px solid var(--line);box-shadow:var(--sh)}
 .searchBar input{flex:1;border:0;background:none;outline:0;font-size:13.5px;color:var(--txt)}
@@ -520,6 +536,7 @@ p.asub{color:var(--txt2);text-align:center;margin:10px 0 0;font-size:14px;line-h
           <div class="vhero-foodIll">
             <span class="orb o1">💊</span><span class="orb o2">🛒</span>
             <span class="orb o3">☕</span><span class="orb o4">🥖</span>
+            <span class="orb o5">🛺</span>
             <span class="center">🍔</span>
           </div>
           <h2 id="heroHeadline">طلبك يوصلك <b>في معاده بالظبط</b><br>وإلا بنعوّضك تلقائيًا</h2>
@@ -1685,6 +1702,11 @@ function vHome(){
       <span class="anyIc">📦</span>
       <span class="anyTxt"><b>اطلب أي حاجة!</b><span>أنبوبة، دوا، حاجة نسيتها — أي حاجة عايزها من بره</span></span>
       <span class="anyArrow">›</span></button>
+    <button class="tuktukBar" onclick="openTukTukSheet()">
+      <span class="anyBadge">🆕 جديد</span>
+      <span class="anyIc">🛺</span>
+      <span class="anyTxt"><b>اطلب توك توك!</b><span>محتاج توصيلة لمكان؟ مندوب هياخدك بنفسه</span></span>
+      <span class="anyArrow">›</span></button>
     <button class="callUsBar" onclick="window.open('https://wa.me/201015974104?text='+encodeURIComponent('عايز أطلب بس مش عارف أستخدم التطبيق'),'_blank')">
       <span class="ic">📞</span>
       <span class="callTxt"><b>مش عارف تستخدم التطبيق؟</b><span>ابعتلنا واتساب وهنطلب لك إحنا بنفسنا بالتليفون</span></span></button>
@@ -1840,6 +1862,7 @@ function addressFieldHtml(fieldId,currentValue){
   const len=(currentValue||'').trim().length;
   const strength=len===0?0:len<15?1:len<35?2:3;
   const chips=['جنب الجامع','جنب الفرن','جنب الصيدلية','جنب المدرسة','جنب المحول','بيت لوحده'];
+  const hasGeo=!!S.co.geo;
   return `<div class="fld" style="background:var(--ac-l);border-radius:14px;padding:14px;border:1.5px solid var(--ac)">
     <div style="display:flex;align-items:center;gap:7px">
       <span style="font-size:17px">📍</span>
@@ -1855,7 +1878,18 @@ function addressFieldHtml(fieldId,currentValue){
     </div>
     <span id="${fieldId}-hint" style="font-size:10.5px;display:block;margin-top:5px;color:${strength>=2?'#1F7A45':'var(--ac-d)'};font-weight:600">
       ${strength>=2?'✓ ممتاز! العنوان ده واضح كفاية':'✍️ اكتب علامات واضحة — المندوب هيعتمد على كلامك عشان يوصلّك'}</span>
+    <div class="geoStatusRow" style="border-top:1px solid rgba(0,0,0,.08);margin-top:11px;padding-top:10px;display:flex;align-items:center;gap:9px">
+      ${geoStatusInnerHtml()}
+    </div>
   </div>`;
+}
+function geoStatusInnerHtml(){
+  const hasGeo=!!S.co.geo;
+  return hasGeo?`<span style="font-size:16px">✅</span>
+        <span style="flex:1;font-size:11px;font-weight:700;color:#1F7A45">موقعك الدقيق متفعّل كمان — هيساعد المندوب يوصلك أسرع</span>`:
+      `<span style="font-size:16px">📡</span>
+        <span style="flex:1;font-size:11px;color:var(--txt2)">حابب تزود الدقة بموقعك الحالي؟ (اختياري)</span>
+        <button type="button" class="btn2 btn-o2" style="flex:0 0 auto;font-size:10.5px;padding:6px 10px" onclick="requestLocation()">📍 فعّله</button>`;
 }
 function handleAddressInput(el,targetKey){
   const val=el.value;
@@ -1897,22 +1931,10 @@ function feeBreakdownHtml(){
 }
 function vCheckout(){
   const c=S.co,fee=estimateFee(),tot=cSub()+fee;
-  const hasGeo=!!S.co.geo;
   return `<div class="pad" style="padding-top:14px">
     <h3 class="mb">بيانات التوصيل</h3>
     ${ftaCheckoutTipHtml()}
     ${addressFieldHtml('addrInput',c.addr)}
-    <div class="card mb" style="padding:12px 14px;${hasGeo?'':'border-style:dashed'}">
-      ${hasGeo?`<div style="display:flex;align-items:center;gap:10px">
-        <span style="font-size:18px">✅</span>
-        <span><b style="display:block;font-size:12.5px">موقعك متفعّل كمان</b>
-        <span class="tiny muted">هيساعد المندوب أكتر، بالإضافة للعنوان</span></span></div>`:
-      `<div style="display:flex;align-items:center;gap:10px">
-        <span style="font-size:18px">📡</span>
-        <span style="flex:1"><b style="display:block;font-size:12.5px">حابب تفعّل موقعك كمان؟ (اختياري)</b>
-        <span class="tiny muted">مش شرط — العنوان اللي كتبته فوق يكفي لوحده</span></span>
-        <button class="btn2 btn-o2" style="flex:0 0 auto;font-size:11px;padding:7px 10px" onclick="requestLocation()">فعّله</button></div>`}
-    </div>
     <div class="fld"><label>عايز طلبك إمتى؟</label>
       <select id="deliverySlot">
         <option value="now">دلوقتي — أسرع ما يمكن</option>
@@ -1935,6 +1957,8 @@ function requestLocation(thenPlace){
     pos=>{
       S.co.geo={lat:+pos.coords.latitude.toFixed(5),lng:+pos.coords.longitude.toFixed(5)};
       toast('✓ اتحدد موقعك بنجاح');
+      // نحدّث أي كارت عنوان ظاهر دلوقتي على طول — سواء في صفحة كاملة (بيتحدّث بالـ render) أو جوه شيت مفتوح (بيتحدّث مباشرة هنا)
+      document.querySelectorAll('.geoStatusRow').forEach(el=>{ el.innerHTML=geoStatusInnerHtml(); });
       if(thenPlace) placeOrder(); else render();
     },
     ()=>{ toast('محتاجين إذن الموقع عشان نقدر نوصّلك — فعّله من إعدادات المتصفح'); render(); },
@@ -2189,7 +2213,7 @@ function vOrders(){
   return `<div class="pad" style="padding-top:14px">
     ${hasCustom?`<div class="sec-t" style="margin-top:0"><h3>📦 طلباتك المخصّصة</h3></div>
     ${S.customRequests.map(r=>`<button class="card mb" style="padding:13px;border-color:#F0A93B;width:100%;text-align:right;cursor:pointer" onclick="go('trackCustom','${r.id}')">
-      <div class="row"><b class="kufi">${shortId(r.id)}</b>
+      <div class="row"><b class="kufi">${isTukTukRequest(r)?'🛺 ':''}${shortId(r.id)}</b>
         <span class="bdg ${r.stage==='delivered'?'b-ac':'b-w'}">${CR_STAGE_LABEL[r.stage]||r.stage}</span></div>
       <div class="tiny muted mt">${r.description}</div>
       <div class="tiny muted mt">رسوم التوصيل <span class="num">${M(r.delivery_fee)}</span> ج
@@ -2303,6 +2327,10 @@ function subscribeOrderChat(orderId){
 /* ═══ عمولة عادلة للطلبات المخصّصة — المندوب بياخد ٨٠٪ من رسوم التوصيل (٢٠ من ٢٥ج) عشان بيتعب أكتر في الجلب بنفسه ═══ */
 const CUSTOM_REQUEST_FEE=25;
 const CUSTOM_REQUEST_COMMISSION=5;
+/* ═══ اطلب توك توك — نفس بنية الطلب المخصّص بالظبط (نفس الجدول، نفس مسار الموافقة والتعيين)،
+   لكن بعلامة مميزة في الوصف عشان المنصة والمندوب يعرفوا إنه توصيلة شخص مش جلب حاجة ═══ */
+const TUKTUK_MARKER='🛺 توك توك';
+function isTukTukRequest(r){ return !!(r&&r.description&&r.description.startsWith(TUKTUK_MARKER)); }
 async function loadMyCustomRequests(){
   if(!sb||!S.co.id)return;
   const {data}=await sb.from('custom_requests').select('*').eq('customer_id',S.co.id).order('created_at',{ascending:false});
@@ -2425,7 +2453,7 @@ function vTrackCustom(){
   const cur=CR_STAGES.indexOf(r.stage);
   return `<div class="pad" style="padding-top:14px">
     <div class="card mb" style="padding:15px;text-align:center">
-      <div class="tiny muted">طلب مخصّص — احتفظ برقمه لو حصلت مشكلة</div>
+      <div class="tiny muted">${isTukTukRequest(r)?'🛺 طلب توك توك — احتفظ برقمه لو حصلت مشكلة':'طلب مخصّص — احتفظ برقمه لو حصلت مشكلة'}</div>
       <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:2px">
         <div class="kufi" style="font-size:20px">${shortId(r.id)}</div>
         <button style="background:var(--surf2);border:0;border-radius:8px;padding:5px 9px;font-size:12px;cursor:pointer" onclick="copyOrderId('${r.id}')">📋 نسخ</button>
@@ -2486,41 +2514,120 @@ function subscribeMyComplaintUpdates(){
     })
     .subscribe();
 }
+const ANY_CATS=[{k:'pharmacy',i:'💊',n:'صيدلية'},{k:'grocery',i:'🛒',n:'بقالة'},{k:'bakery',i:'🥖',n:'مخبز/فرن'},{k:'other',i:'📋',n:'حاجة تانية'}];
 function openCustomRequestSheet(){
-  openSheet('📦 اطلب أي حاجة',`
-    <p class="tiny muted mb">اكتب اللي عايزه بالظبط — أي حاجة من بره، ومندوب هيجيبهالك</p>
-    <div class="fld"><label>عايز إيه بالظبط؟</label>
-      <textarea id="anyDesc" rows="3" placeholder="مثلاً: أنبوبة بنادول من الصيدلية، أو علبة سجاير من الكشك"></textarea></div>
+  S._anyItems=[]; S._anyCategory=null;
+  S._anyAddrDraft=S.co.addr||''; S._anyNotesDraft=''; S._anyBudgetDraft='';
+  openSheet('📦 اطلب أي حاجة',renderAnyRequestBody());
+}
+function renderAnyRequestBody(){
+  return `
+    <p class="tiny muted mb">اختار نوع الحاجة، وضيف كل صنف عايزه لوحده — كده هتوصل واضحة للمندوب من غير لخبطة</p>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+      ${ANY_CATS.map(c=>`<button type="button" onclick="setAnyCategory('${c.k}')" style="flex:1;min-width:70px;background:${S._anyCategory===c.k?'var(--ac)':'var(--surf2)'};color:${S._anyCategory===c.k?'#fff':'var(--txt)'};
+        border:0;border-radius:12px;padding:10px 6px;text-align:center;font-weight:700;font-size:11.5px;cursor:pointer">
+        <div style="font-size:19px;margin-bottom:3px">${c.i}</div>${c.n}</button>`).join('')}
+    </div>
+    <div class="fld">
+      <label>ضيف صنف عايزه</label>
+      <div style="display:flex;gap:7px">
+        <input id="anyItemInput" placeholder="مثلاً: أنبوبة بنادول" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();addAnyItem();}">
+        <button type="button" onclick="addAnyItem()" style="flex:0 0 auto;background:var(--ac);color:#fff;border:0;border-radius:11px;padding:0 18px;font-weight:800;font-size:19px;cursor:pointer">+</button>
+      </div>
+    </div>
+    <div id="anyItemsList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px">${anyItemsListHtml()}</div>
+    <div class="fld"><label>أي تفاصيل إضافية؟ (اختياري)</label>
+      <textarea id="anyNotes" rows="2" placeholder="مثلاً: ماركة معينة، أو أي تفاصيل تانية" oninput="S._anyNotesDraft=this.value">${S._anyNotesDraft||''}</textarea></div>
     <div class="fld"><label>تقريبًا هيكلّف كام؟ (اختياري)</label>
-      <input id="anyBudget" type="number" placeholder="مثلاً 50"></div>
-    ${addressFieldHtml('anyAddr',S.co.addr)}
+      <input id="anyBudget" type="number" placeholder="مثلاً 50" value="${S._anyBudgetDraft||''}" oninput="S._anyBudgetDraft=this.value"></div>
+    ${addressFieldHtml('anyAddr',S._anyAddrDraft)}
     <div class="alert info" style="margin-top:4px">رسوم التوصيل <span class="num">${CUSTOM_REQUEST_FEE}</span> ج + تكلفة الحاجة نفسها كاش وقت الاستلام</div>
     <div class="tiny" style="background:#FFF3DE;color:#8A5E10;border-radius:11px;padding:9px 11px;margin-top:8px;line-height:1.7">
       ⏱️ لو طلبك كبير أو بعيد (زي إحضار أنبوبة، أو مشوار لمدينة تانية) ممكن ياخد وقت أطول من الطلب العادي عشان المندوب لازم يروح ويجيبهولك بنفسه — هنفكّرك بالتحديثات أول بأول</div>
-    <button class="btn btn-p mt" onclick="submitCustomRequest()">ابعت الطلب</button>`);
+    <button class="btn btn-p mt" onclick="submitCustomRequest()">ابعت الطلب</button>`;
+}
+function anyItemsListHtml(){
+  if(!S._anyItems||!S._anyItems.length) return `<div class="tiny muted" style="padding:2px 2px 0">لسه معملتش أصناف — ضيف واحد فوق 👆 (أو سيبها فاضية واكتب كل حاجة في التفاصيل الإضافية)</div>`;
+  return S._anyItems.map((it,i)=>`<div style="display:flex;align-items:center;gap:8px;background:var(--surf2);border-radius:10px;padding:8px 11px">
+    <span style="flex:1;font-size:12.5px;font-weight:600">• ${it}</span>
+    <button type="button" onclick="removeAnyItem(${i})" style="background:none;border:0;color:var(--danger);font-size:15px;cursor:pointer;padding:2px 4px">✕</button></div>`).join('');
+}
+function setAnyCategory(k){ S._anyCategory=(S._anyCategory===k?null:k); refreshAnySheet(); }
+function addAnyItem(){
+  const el=document.getElementById('anyItemInput'); const v=el.value.trim();
+  if(!v){toast('اكتب اسم الصنف الأول');return}
+  S._anyItems=S._anyItems||[]; S._anyItems.push(v); el.value=''; refreshAnySheet();
+}
+function removeAnyItem(i){ S._anyItems.splice(i,1); refreshAnySheet(); }
+function refreshAnySheet(){
+  // نحفظ اللي العميل كاتبه دلوقتي قبل ما نعيد بناء الشيت، عشان مايتمسحش لما يضيف صنف جديد
+  const addrEl=document.getElementById('anyAddr'); if(addrEl) S._anyAddrDraft=addrEl.value;
+  const notesEl=document.getElementById('anyNotes'); if(notesEl) S._anyNotesDraft=notesEl.value;
+  const budgetEl=document.getElementById('anyBudget'); if(budgetEl) S._anyBudgetDraft=budgetEl.value;
+  const body=document.getElementById('shB'); if(body) body.innerHTML=renderAnyRequestBody();
+  const inp=document.getElementById('anyItemInput'); if(inp) inp.focus();
 }
 async function submitCustomRequest(){
-  const desc=document.getElementById('anyDesc').value.trim();
+  const items=S._anyItems||[];
+  const notes=(document.getElementById('anyNotes').value||'').trim();
   const budget=+document.getElementById('anyBudget').value||null;
   const addr=document.getElementById('anyAddr').value.trim();
-  if(!desc){toast('اكتب عايز إيه بالظبط');return}
+  if(!items.length&&!notes){toast('ضيف صنف واحد على الأقل أو اكتب التفاصيل');return}
   if(!addr){toast('اكتب عنوانك');return}
+  const catLabel=S._anyCategory?(ANY_CATS.find(c=>c.k===S._anyCategory)||{}).n:null;
+  const descParts=[];
+  if(catLabel) descParts.push(`[${catLabel}]`);
+  if(items.length) descParts.push(items.map(it=>'• '+it).join('\n'));
+  if(notes) descParts.push(notes);
+  const desc=descParts.join('\n').trim();
   closeSheet();
   const row={customer_id:S.co.id,customer_name:S.co.name,customer_phone:S.co.ph||'01015974104',
     description:desc,budget_estimate:budget,address:addr,delivery_lat:S.co.geo?S.co.geo.lat:null,delivery_lng:S.co.geo?S.co.geo.lng:null,
     delivery_fee:CUSTOM_REQUEST_FEE,platform_commission:CUSTOM_REQUEST_COMMISSION,
     driver_net_earning:CUSTOM_REQUEST_FEE-CUSTOM_REQUEST_COMMISSION,
     village_id:S.co.villageId,stage:'placed'};
+  await insertCustomRequestRow(row,'✓ اتبعت طلبك — هنلاقيلك مندوب أقرب وقت');
+}
+/* ═══ حفظ طلب مخصّص في قاعدة البيانات — مشترك بين "اطلب أي حاجة" و"اطلب توك توك" ═══ */
+async function insertCustomRequestRow(row,successMsg){
   if(sb){
     const {data,error}=await sb.from('custom_requests').insert(row).select().single();
-    if(error){ console.error('basita: فشل إرسال الطلب المخصّص',error); toast('حصلت مشكلة — جرّب تاني'); return; }
+    if(error){ console.error('basita: فشل إرسال الطلب المخصّص',error); toast('حصلت مشكلة — جرّب تاني'); return false; }
     S.customRequests=S.customRequests||[]; S.customRequests.unshift({...row,id:data.id});
   }else{
     row.id='CR'+Math.floor(1000+Math.random()*9000);
     S.customRequests=S.customRequests||[]; S.customRequests.unshift(row);
   }
-  toast('✓ اتبعت طلبك — هنلاقيلك مندوب أقرب وقت');
+  toast(successMsg);
   render();
+  return true;
+}
+function openTukTukSheet(){
+  openSheet('🛺 اطلب توك توك',`
+    <p class="tiny muted mb">هنبعتلك أقرب مندوب متاح عنده مركبة يوصّلك بنفسه</p>
+    <div class="fld"><label>هتركب منين؟</label>
+      <input id="tukFrom" placeholder="مثلاً: قدام بيتي، جنب الجامع الكبير" value="${S.co.addr||''}"></div>
+    <div class="fld"><label>هتنزل فين؟</label>
+      <input id="tukTo" placeholder="مثلاً: المستشفى، السوق، محطة الأتوبيس"></div>
+    <div class="fld"><label>أي تفاصيل تانية؟ (اختياري)</label>
+      <textarea id="tukNotes" rows="2" placeholder="مثلاً: معايا شنطة كبيرة، أو محتاج حد يساعدني أنزل"></textarea></div>
+    <div class="alert info" style="margin-top:4px">رسوم الطلب <span class="num">${CUSTOM_REQUEST_FEE}</span> ج + أجرة التوصيلة نفسها تتحدد مع المندوب مباشرة</div>
+    <button class="btn btn-p mt" onclick="submitTukTukRequest()">اطلب التوك توك</button>`);
+}
+async function submitTukTukRequest(){
+  const from=document.getElementById('tukFrom').value.trim();
+  const to=document.getElementById('tukTo').value.trim();
+  const notes=document.getElementById('tukNotes').value.trim();
+  if(!from){toast('اكتب هتركب منين');return}
+  if(!to){toast('اكتب هتنزل فين');return}
+  closeSheet();
+  const desc=`${TUKTUK_MARKER}: من ${from} — لحد ${to}`+(notes?` — ${notes}`:'');
+  const row={customer_id:S.co.id,customer_name:S.co.name,customer_phone:S.co.ph||'01015974104',
+    description:desc,budget_estimate:null,address:from,delivery_lat:S.co.geo?S.co.geo.lat:null,delivery_lng:S.co.geo?S.co.geo.lng:null,
+    delivery_fee:CUSTOM_REQUEST_FEE,platform_commission:CUSTOM_REQUEST_COMMISSION,
+    driver_net_earning:CUSTOM_REQUEST_FEE-CUSTOM_REQUEST_COMMISSION,
+    village_id:S.co.villageId,stage:'placed'};
+  await insertCustomRequestRow(row,'✓ اتبعت طلب التوك توك — هنلاقيلك مندوب أقرب وقت');
 }
 function openSupportSheet(prefillOrderId){
   openSheet('تواصل مع الدعم الفني',`
