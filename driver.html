@@ -1001,6 +1001,16 @@ let S={view:'tasks',avail:true,tasks:[],history:[],shiftTotal:0,settling:false,p
 const TUKTUK_MARKER='🛺 توك توك';
 function isTukTukRequest(r){ return !!(r&&r.description&&r.description.startsWith(TUKTUK_MARKER)); }
 function crIcon(r){ return isTukTukRequest(r)?'🛺':'📦'; }
+/* ═══ حساب صافي ربح المندوب بأمان — لو الحقل الأساسي (driver_net_earning) موجود، بنستخدمه زي ما هو دايمًا.
+   لو مش موجود (سجلات قديمة من قبل ما الحقل ده يتضاف)، بنحسبه من رسوم التوصيل ناقص عمولة المنصة —
+   إلا في حالة واحدة: لو الاتنين صفر مع بعض، ده معناه الطلب كان وقت عرض "التوصيل مجاني"، وبالتالي
+   المفروض المندوب ياخد أجر التوصيل الأساسي جوه القرية (مش صفر)، لأن المنصة هي اللي بتتنازل عن نصيبها مش المندوب ═══ */
+function estimateDriverEarning(deliveryFee,platformCommission,storedNet){
+  if(storedNet!=null) return +storedNet;
+  const fee=+deliveryFee||0, comm=(platformCommission??1.5);
+  if(fee===0&&comm===0) return 10;
+  return fee-comm;
+}
 const STATE_KEY='basita_state_'+ROLE;
 function loadState(){ try{return JSON.parse(localStorage.getItem(STATE_KEY)||'null')}catch(e){return null} }
 function saveState(){ try{localStorage.setItem(STATE_KEY,JSON.stringify(S));}catch(e){ console.warn('basita: تعذّر الحفظ المحلي',e); } }
@@ -1832,13 +1842,13 @@ async function loadMyHistory(){
   if(crError){ console.error('basita: فشل تحميل سجل الطلبات المخصّصة',crError); }
   const fromOrders=(data||[]).map(o=>({id:o.id,name:o.customer_name,total:+o.total,deliveryFee:+o.delivery_fee,
     commission:+o.platform_commission||1.5,
-    netEarning:o.driver_net_earning!=null?+o.driver_net_earning:(+o.delivery_fee||0)-(+o.platform_commission||1.5),
+    netEarning:estimateDriverEarning(o.delivery_fee,o.platform_commission,o.driver_net_earning),
     ph:o.customer_phone,addr:o.address,isCustom:false,
     closedAt:o.closed_at?new Date(o.closed_at).toLocaleString('ar-EG',{hour:'2-digit',minute:'2-digit',day:'numeric',month:'short'}):'',
     closedAtRaw:o.closed_at}));
   const fromCustom=(crData||[]).map(r=>({id:r.id,name:r.customer_name,total:+(r.budget_estimate||0),deliveryFee:+r.delivery_fee,
     commission:+r.platform_commission||1.5,
-    netEarning:r.driver_net_earning!=null?+r.driver_net_earning:(+r.delivery_fee||0)-(+r.platform_commission||1.5),
+    netEarning:estimateDriverEarning(r.delivery_fee,r.platform_commission,r.driver_net_earning),
     ph:r.customer_phone,addr:r.address,isCustom:true,desc:r.description,
     closedAt:r.created_at?new Date(r.created_at).toLocaleString('ar-EG',{hour:'2-digit',minute:'2-digit',day:'numeric',month:'short'}):'',
     closedAtRaw:r.created_at}));
@@ -1956,7 +1966,7 @@ function mapTaskRow(o,items){
   return {id:o.id,merchantId:o.merchant_id,name:o.customer_name,ph:o.customer_phone,addr:o.address,
     geo:(o.delivery_lat!=null)?{lat:o.delivery_lat,lng:o.delivery_lng}:null,total:+o.total,stage:o.stage,
     deliveryFee:+o.delivery_fee||0,commission:+o.platform_commission||1.5,
-    netEarning:o.driver_net_earning!=null?+o.driver_net_earning:(+o.delivery_fee||0)-(+o.platform_commission||1.5),
+    netEarning:estimateDriverEarning(o.delivery_fee,o.platform_commission,o.driver_net_earning),
     notes:o.notes||'',
     accepted:false,items:(items||[]).map(i=>({n:i.name,q:+i.qty,p:+i.unit_price,u:i.unit,sellBy:i.sell_by}))};
 }
