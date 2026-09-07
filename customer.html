@@ -2063,7 +2063,8 @@ function vTrack(){
       </div>`:''}</div>`:''}
     ${o.stage==='delivered'&&o.deliveryPhoto?`<div class="sec-t"><h3>صورة إثبات التسليم</h3></div>
       <div class="card" style="padding:10px;text-align:center">
-        <img src="${o.deliveryPhoto}" style="width:100%;border-radius:12px;max-height:220px;object-fit:cover">
+        <img src="${o.deliveryPhoto}" style="width:100%;border-radius:12px;max-height:220px;object-fit:cover"
+          onerror="this.closest('.card').innerHTML='<div class=&quot;tiny muted&quot; style=&quot;padding:14px&quot;>⏳ الصورة لسه بترفع أو حصلت مشكلة في تحميلها — جرّب رجّع الصفحة بعد شوية</div>'">
         <div class="tiny muted mt">صوّرها المندوب وقت التسليم لضمان وصول طلبك صح</div></div>`:''}
     ${o.stage==='delivered'&&!o.feedbackSubmitted?`
       <div class="sec-t"><h3>قيّم تجربتك</h3></div>
@@ -2107,6 +2108,8 @@ function vTrack(){
       <b class="num" style="color:${o.fee===0?'var(--ok)':'var(--txt)'}">${o.fee===0?'مجانًا 🎉':M(o.fee)+' ج'}</b></div>
       <div class="row" style="border-top:1px solid var(--line);padding-top:9px"><b>الإجمالي شامل التوصيل</b>
       <b class="num kufi" style="color:var(--ac-d);font-size:16px">${M(o.total)} ج</b></div></div>
+    <button class="btn2" style="width:100%;margin-top:10px;background:var(--surf2);color:var(--txt2);justify-content:center;display:flex;gap:7px;align-items:center;padding:11px;border-radius:12px;font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-weight:700;font-size:12.5px" onclick="openSupportSheet('${o.id}')">
+      <span style="font-size:15px">🚩</span> في مشكلة في الطلب ده؟ بلّغنا</button>
     <div style="height:14px"></div></div>`;
 }
 function toggleRecurring(id){
@@ -2454,7 +2457,8 @@ function vTrackCustom(){
       </div>`:''}</div>`:''}
     ${r.stage==='delivered'&&r.delivery_photo_url?`<div class="sec-t"><h3>صورة إثبات التسليم</h3></div>
       <div class="card" style="padding:10px;text-align:center">
-        <img src="${r.delivery_photo_url}" style="width:100%;border-radius:12px;max-height:220px;object-fit:cover"></div>`:''}
+        <img src="${r.delivery_photo_url}" style="width:100%;border-radius:12px;max-height:220px;object-fit:cover"
+          onerror="this.closest('.card').innerHTML='<div class=&quot;tiny muted&quot; style=&quot;padding:14px&quot;>⏳ الصورة لسه بترفع أو حصلت مشكلة في تحميلها — جرّب رجّع الصفحة بعد شوية</div>'"></div>`:''}
     ${r.stage==='delivered'&&!r.feedback_submitted?`
       <div class="sec-t"><h3>قيّم المندوب</h3></div>
       <div class="card" style="padding:16px">
@@ -2470,6 +2474,8 @@ function vTrackCustom(){
       <div class="row"><span class="tiny muted">العنوان</span><b class="tiny">${r.address}</b></div>
       <div class="row" style="border-top:1px solid var(--line);padding-top:9px"><b>رسوم التوصيل</b>
       <b class="num kufi" style="color:var(--ac-d)">${M(r.delivery_fee)} ج</b></div></div>
+    <button class="btn2" style="width:100%;margin-top:10px;background:var(--surf2);color:var(--txt2);justify-content:center;display:flex;gap:7px;align-items:center;padding:11px;border-radius:12px;font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-weight:700;font-size:12.5px" onclick="openSupportSheet('${r.id}')">
+      <span style="font-size:15px">🚩</span> في مشكلة في الطلب ده؟ بلّغنا</button>
     <div style="height:14px"></div></div>`;
 }
 function subscribeMyComplaintUpdates(){
@@ -2516,15 +2522,15 @@ async function submitCustomRequest(){
   toast('✓ اتبعت طلبك — هنلاقيلك مندوب أقرب وقت');
   render();
 }
-function openSupportSheet(){
+function openSupportSheet(prefillOrderId){
   openSheet('تواصل مع الدعم الفني',`
     <button class="btn2" style="width:100%;margin-bottom:16px;background:#25D366;color:#fff;justify-content:center;display:flex;gap:8px;align-items:center;padding:13px;border-radius:13px;font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-weight:800;font-size:14px" onclick="window.open('https://wa.me/201015974104','_blank')">
       <span style="font-size:19px">💬</span> كلّمنا مباشرة على واتساب</button>
     <div class="tiny muted" style="text-align:center;margin-bottom:14px">أو ابعتلنا تذكرة وهنرد عليك</div>
     <div class="fld"><label>نوع المشكلة</label><select id="supCat">
-      <option>مشكلة في طلب</option><option>مشكلة في الدفع</option><option>مشكلة تقنية</option><option>اقتراح</option><option>تانى</option></select></div>
+      <option${prefillOrderId?' selected':''}>مشكلة في طلب</option><option>مشكلة في الدفع</option><option>مشكلة تقنية</option><option>اقتراح</option><option>تانى</option></select></div>
     <div class="fld" style="margin-bottom:10px"><label>اكتب مشكلتك</label>
-      <textarea id="supMsg" rows="4" class="sup-fld"></textarea></div>
+      <textarea id="supMsg" rows="4" class="sup-fld">${prefillOrderId?'بخصوص الطلب رقم '+shortId(prefillOrderId)+':\n':''}</textarea></div>
     <button class="btn btn-o" onclick="submitTicket()">إرسال تذكرة للدعم الفني</button>`);
 }
 async function submitTicket(){
