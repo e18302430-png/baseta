@@ -347,6 +347,16 @@ const BIZ_ICONS_O={grocery:'🛒',pharmacy:'💊',restaurant:'🍔',cafe:'☕',b
 const TUKTUK_MARKER='🛺 توك توك';
 function isTukTukRequest(r){ return !!(r&&r.description&&r.description.startsWith(TUKTUK_MARKER)); }
 function crIcon(r){ return isTukTukRequest(r)?'🛺':'📦'; }
+/* ═══ حساب صافي ربح المندوب بأمان — لو الحقل الأساسي (driver_net_earning) موجود، بنستخدمه زي ما هو دايمًا.
+   لو مش موجود (سجلات قديمة من قبل ما الحقل ده يتضاف)، بنحسبه من رسوم التوصيل ناقص عمولة المنصة —
+   إلا في حالة واحدة: لو الاتنين صفر مع بعض، ده معناه الطلب كان وقت عرض "التوصيل مجاني"، وبالتالي
+   المفروض المندوب ياخد أجر التوصيل الأساسي جوه القرية (مش صفر)، لأن المنصة هي اللي بتتنازل عن نصيبها مش المندوب ═══ */
+function estimateDriverEarning(deliveryFee,platformCommission,storedNet){
+  if(storedNet!=null) return +storedNet;
+  const fee=+deliveryFee||0, comm=(platformCommission??1.5);
+  if(fee===0&&comm===0) return 10;
+  return fee-comm;
+}
 function subscribePendingDB(){
   if(!sb)return;
   sb.channel('owner-pending')
@@ -1521,14 +1531,14 @@ async function refreshAnalytics(){
     byMerchant[o.merchant_id]=(byMerchant[o.merchant_id]||0)+ +o.total;
     totalCommission+=+o.platform_commission||1.5;
     if(o.driver_id){ byDriver[o.driver_id]=byDriver[o.driver_id]||{deliveries:0,earnings:0};
-      const net=o.driver_net_earning!=null?+o.driver_net_earning:(+o.delivery_fee||0)-(+o.platform_commission||1.5);
+      const net=estimateDriverEarning(o.delivery_fee,o.platform_commission,o.driver_net_earning);
       byDriver[o.driver_id].deliveries++; byDriver[o.driver_id].earnings+=net; }
   });
-  const {data:deliveredCR}=await sb.from('custom_requests').select('driver_id,driver_net_earning,delivery_fee').eq('stage','delivered');
+  const {data:deliveredCR}=await sb.from('custom_requests').select('driver_id,driver_net_earning,delivery_fee,platform_commission').eq('stage','delivered');
   (deliveredCR||[]).forEach(r=>{
     if(!r.driver_id)return;
     byDriver[r.driver_id]=byDriver[r.driver_id]||{deliveries:0,earnings:0};
-    byDriver[r.driver_id].deliveries++; byDriver[r.driver_id].earnings+=+(r.driver_net_earning!=null?r.driver_net_earning:r.delivery_fee||0);
+    byDriver[r.driver_id].deliveries++; byDriver[r.driver_id].earnings+=estimateDriverEarning(r.delivery_fee,r.platform_commission,r.driver_net_earning);
   });
   S.merchants.forEach(m=>{ m.salesTotal=byMerchant[m.id]||0; });
   S.driverApplications.forEach(a=>{ const s=byDriver[a.driverId]; if(s){ a.deliveries=s.deliveries; a.earnings=s.earnings; } });
