@@ -2330,6 +2330,8 @@ const CUSTOM_REQUEST_COMMISSION=5;
 /* ═══ اطلب توك توك — نفس بنية الطلب المخصّص بالظبط (نفس الجدول، نفس مسار الموافقة والتعيين)،
    لكن بعلامة مميزة في الوصف عشان المنصة والمندوب يعرفوا إنه توصيلة شخص مش جلب حاجة ═══ */
 const TUKTUK_MARKER='🛺 توك توك';
+const TUKTUK_FEE=15;
+const TUKTUK_COMMISSION=3;
 function isTukTukRequest(r){ return !!(r&&r.description&&r.description.startsWith(TUKTUK_MARKER)); }
 async function loadMyCustomRequests(){
   if(!sb||!S.co.id)return;
@@ -2542,6 +2544,7 @@ function renderAnyRequestBody(){
       <input id="anyBudget" type="number" placeholder="مثلاً 50" value="${S._anyBudgetDraft||''}" oninput="S._anyBudgetDraft=this.value"></div>
     ${addressFieldHtml('anyAddr',S._anyAddrDraft)}
     <div class="alert info" style="margin-top:4px">رسوم التوصيل <span class="num">${CUSTOM_REQUEST_FEE}</span> ج + تكلفة الحاجة نفسها كاش وقت الاستلام</div>
+    ${fixedFeeNoteHtml()}
     <div class="tiny" style="background:#FFF3DE;color:#8A5E10;border-radius:11px;padding:9px 11px;margin-top:8px;line-height:1.7">
       ⏱️ لو طلبك كبير أو بعيد (زي إحضار أنبوبة، أو مشوار لمدينة تانية) ممكن ياخد وقت أطول من الطلب العادي عشان المندوب لازم يروح ويجيبهولك بنفسه — هنفكّرك بالتحديثات أول بأول</div>
     <button class="btn btn-p mt" onclick="submitCustomRequest()">ابعت الطلب</button>`;
@@ -2611,8 +2614,15 @@ function openTukTukSheet(){
       <input id="tukTo" placeholder="مثلاً: المستشفى، السوق، محطة الأتوبيس"></div>
     <div class="fld"><label>أي تفاصيل تانية؟ (اختياري)</label>
       <textarea id="tukNotes" rows="2" placeholder="مثلاً: معايا شنطة كبيرة، أو محتاج حد يساعدني أنزل"></textarea></div>
-    <div class="alert info" style="margin-top:4px">رسوم الطلب <span class="num">${CUSTOM_REQUEST_FEE}</span> ج + أجرة التوصيلة نفسها تتحدد مع المندوب مباشرة</div>
+    <div class="alert info" style="margin-top:4px">رسوم التوصيلة <span class="num">${TUKTUK_FEE}</span> ج ثابتة كاش للمندوب وقت الوصول</div>
+    ${fixedFeeNoteHtml()}
     <button class="btn btn-p mt" onclick="submitTukTukRequest()">اطلب التوك توك</button>`);
+}
+/* ═══ رسالة واضحة وهادئة للعميل: التوصيلات الخاصة دي (توك توك / اطلب أي حاجة) سعرها ثابت ومفيش عليها كوبونات خصم —
+   عشان نضمن للمندوب أجره كامل في المشاوير اللي بياخد فيها وقت ومجهود إضافي بنفسه ═══ */
+function fixedFeeNoteHtml(){
+  return `<div class="tiny" style="background:var(--surf2);color:var(--txt2);border-radius:11px;padding:9px 11px;margin-top:6px;line-height:1.7">
+    ℹ️ سعر ثابت مش بيتغيّر ومش بيتطبّق عليه كوبونات أو عروض الخصم — عشان نضمن للمندوب أجره كامل على المشوار اللي بيعمله بنفسه</div>`;
 }
 async function submitTukTukRequest(){
   const from=document.getElementById('tukFrom').value.trim();
@@ -2624,8 +2634,8 @@ async function submitTukTukRequest(){
   const desc=`${TUKTUK_MARKER}: من ${from} — لحد ${to}`+(notes?` — ${notes}`:'');
   const row={customer_id:S.co.id,customer_name:S.co.name,customer_phone:S.co.ph||'01015974104',
     description:desc,budget_estimate:null,address:from,delivery_lat:S.co.geo?S.co.geo.lat:null,delivery_lng:S.co.geo?S.co.geo.lng:null,
-    delivery_fee:CUSTOM_REQUEST_FEE,platform_commission:CUSTOM_REQUEST_COMMISSION,
-    driver_net_earning:CUSTOM_REQUEST_FEE-CUSTOM_REQUEST_COMMISSION,
+    delivery_fee:TUKTUK_FEE,platform_commission:TUKTUK_COMMISSION,
+    driver_net_earning:TUKTUK_FEE-TUKTUK_COMMISSION,
     village_id:S.co.villageId,stage:'placed'};
   await insertCustomRequestRow(row,'✓ اتبعت طلب التوك توك — هنلاقيلك مندوب أقرب وقت');
 }
