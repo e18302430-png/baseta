@@ -914,6 +914,7 @@ function clearSignupBanner(){
 }
 async function finishSignup(){
   S.inbox=[]; S.orders=[]; try{localStorage.removeItem(INBOX_KEY);}catch(e){} // حساب جديد يبدأ بصفحة نظيفة تمامًا، مش وارث بيانات حساب قديم على نفس الجهاز
+  S.fta={dismissed:false,seenShopTip:false,seenCheckoutTip:false,seenAutoGuide:false}; // ولا وارث علم "شاف الإرشادات قبل كده" من حساب تجريبي قديم على نفس الجهاز
   const nm=document.getElementById('nmInput').value.trim()||'صديقنا';
   document.getElementById('hiName').textContent=nm.split(' ')[0];
   S.co.name=nm;
@@ -1063,7 +1064,7 @@ function haversineKm(a,b){
 /* ═══ عرض الإطلاق: توصيل مجاني أول أسبوعين — أسبوع في شاشة الترحيب، وأسبوع تاني جوه التطبيق بس ═══ */
 const LAUNCH_DATE=new Date('2026-09-05T00:00:00'); // غيّرها لتاريخ الإطلاق الفعلي وقت ما ترفع المنصة للجمهور
 function daysSinceLaunch(){ return Math.floor((Date.now()-LAUNCH_DATE.getTime())/86400000); }
-function isFreeDeliveryPromo(){ const d=daysSinceLaunch(); return d>=0&&d<14; }
+function isFreeDeliveryPromo(){ const d=daysSinceLaunch(); return d>=0&&d<7; }
 function isWelcomePromoBanner(){ const d=daysSinceLaunch(); return d>=0&&d<7; }
 async function loadWeatherAlert(){
   if(!sb)return;
@@ -1079,7 +1080,6 @@ function subscribeWeatherAlert(){
     })
     .subscribe();
 }
-function isInAppPromoBanner(){ const d=daysSinceLaunch(); return d>=7&&d<14; }
 /* ═══ تنبيه موسمي بسيط — حسب الوقت والشهر، وتنبيه طقس يدوي من المالك (أدق من أي توقع تلقائي) ═══ */
 function seasonalHint(){
   const now=new Date(), month=now.getMonth()+1, hour=now.getHours();
@@ -1186,6 +1186,7 @@ function saveState(){ try{localStorage.setItem(STATE_KEY,JSON.stringify({orders:
 { const _saved=loadState(); if(_saved){ if(_saved.fta) S.fta=_saved.fta; } }
 const $=s=>document.querySelector(s);
 const M=n=>Math.round(n).toLocaleString('en');
+function shortId(id){ return '#'+String(id||'').replace(/-/g,'').slice(-6).toUpperCase(); }
 function shopProducts(shopId){ return (SHOPS[shopId]&&SHOPS[shopId].products)||[]; }
 function P(id){
   const inCart=S.cartShop&&shopProducts(S.cartShop).find(x=>x.id===id);
@@ -1478,8 +1479,12 @@ async function placeOrder(){
   const items=cItems();
   const sameVillage=!!(shop.villageId&&shop.villageId===S.co.villageId);
   const km=villageDistanceKm(VILLAGES.find(v=>v.id===c.villageId),VILLAGES.find(v=>v.id===shop.villageId));
-  const fee=computeDeliveryFee(km,sameVillage);
-  const commission=computePlatformCommission(km,sameVillage);
+  const isPromo=isFreeDeliveryPromo();
+  // وقت عرض التوصيل المجاني: العميل مايدفعش حاجة في التوصيل، لكن المندوب لازم ياخد نفس أجره الطبيعي بالكامل —
+  // المنصة هي اللي بتتنازل عن عمولتها وتتحمّل الفرق كمصروف تسويقي، مش المندوب يخسر
+  const normalFee=sameVillage?10:(km==null?12:km<=3?12:km<=6?15:km<=10?20:km<=15?25:Math.round(25+(km-15)*1.5));
+  const commission=isPromo?0:computePlatformCommission(km,sameVillage);
+  const customerFee=isPromo?0:normalFee; // اللي العميل فعليًا بيدفعه ويتحسب في إجمالي فاتورته
   const addr=c.addr.trim();
   const changeNote=S.changeAmount&&+S.changeAmount>0?`💵 معاه فكة من ${Math.round(+S.changeAmount)} ج`:'';
   const slotLabels={now:'',1:'⏰ العميل عايز الطلب بعد ساعة تقريبًا','1h':'⏰ العميل عايز الطلب بعد ساعة تقريبًا','2h':'⏰ العميل عايز الطلب بعد ساعتين تقريبًا',evening:'🌙 العميل عايز الطلب النهارده بالليل',tomorrow_morning:'🌅 العميل عايز الطلب بكرة الصبح'};
@@ -1488,13 +1493,13 @@ async function placeOrder(){
   const fullNotes=[slotNote,S.cartNotes,changeNote].filter(Boolean).join(' — ')||null;
   let order;
   if(sb&&c.id){
-    const netEarning=+(fee-commission).toFixed(2);
+    const netEarning=+(normalFee-commission).toFixed(2);
     const {data:orderRow,error}=await sb.from('orders').insert({
       merchant_id:shop.id, customer_id:c.id, customer_name:c.name, customer_phone:c.ph||'01015974104',
-      address:addr, delivery_lat:c.geo?c.geo.lat:null, delivery_lng:c.geo?c.geo.lng:null, delivery_fee:fee,
+      address:addr, delivery_lat:c.geo?c.geo.lat:null, delivery_lng:c.geo?c.geo.lng:null, delivery_fee:customerFee,
       origin_village_id:shop.villageId||null, dest_village_id:c.villageId||null,
       platform_commission:commission, driver_net_earning:netEarning,
-      total:cSub()+fee, stage:'placed', is_recurring:false, feedback_submitted:false, notes:fullNotes
+      total:cSub()+customerFee, stage:'placed', is_recurring:false, feedback_submitted:false, notes:fullNotes
     }).select().single();
     if(error){ console.error('basita: فشل إرسال الطلب لقاعدة البيانات',error); toast('حصلت مشكلة في إرسال الطلب — جرّب تاني'); return; }
     const itemsPayload=items.map(({p,q})=>({order_id:orderRow.id,product_id:p.id,name:p.n,qty:q,unit_price:p.p,unit:p.u,sell_by:p.sellBy||'unit'}));
@@ -1655,9 +1660,7 @@ function vHome(){
       .sort((a,b)=>(a._dist??999)-(b._dist??999));
   }
   const total=mine.length+others.length;
-  const priorityBanner=isInAppPromoBanner()?
-    {cls:'promoLaunch',ic:'🎉',b:'لسه توصيل مجاني للأسبوع ده بس!',s:`باقي ${14-daysSinceLaunch()} ${14-daysSinceLaunch()===1?'يوم':'أيام'} على العرض`}:
-    S.weatherAlert?{cls:'seasonBar',ic:'🌧️',b:S.weatherAlert,s:''}:
+  const priorityBanner=S.weatherAlert?{cls:'seasonBar',ic:'🌧️',b:S.weatherAlert,s:''}:
     (()=>{const h=seasonalHint(); return h?{cls:'seasonBar',ic:h.ic,b:h.txt,s:''}:null;})();
   return `<div class="searchBar"><span class="ic">🔍</span>
       <input id="shopSearchInput" placeholder="دوّر على محل أو صنف..." value="${S.searchQuery||''}" oninput="handleSearchInput(this)"></div>
@@ -1820,6 +1823,44 @@ function estimateFee(){
   const km=villageDistanceKm(myVillage,shopVillage);
   return computeDeliveryFee(km,false);
 }
+function addressFieldHtml(fieldId,currentValue){
+  const len=(currentValue||'').trim().length;
+  const strength=len===0?0:len<15?1:len<35?2:3;
+  const chips=['جنب الجامع','جنب الفرن','جنب الصيدلية','جنب المدرسة','جنب المحول','بيت لوحده'];
+  return `<div class="fld" style="background:var(--ac-l);border-radius:14px;padding:14px;border:1.5px solid var(--ac)">
+    <div style="display:flex;align-items:center;gap:7px">
+      <span style="font-size:17px">📍</span>
+      <label style="font-size:14px;font-weight:800;margin:0">عنوانك بالتفصيل — أهم خطوة!</label>
+    </div>
+    <textarea id="${fieldId}" rows="3" placeholder="مثلاً: شارع المدرسة، بيت رقم ١٢، الدور التاني، جنب فرن العسل" oninput="handleAddressInput(this,'${fieldId}')" style="background:#fff;margin-top:8px">${currentValue||''}</textarea>
+    <div style="display:flex;gap:5px;margin-top:9px;flex-wrap:wrap">
+      ${chips.map(c=>`<button type="button" onclick="appendToAddress('${fieldId}','${c}')" style="background:#fff;border:1px solid var(--ac);color:var(--ac-d);
+        font-size:10.5px;font-weight:700;padding:5px 10px;border-radius:20px;white-space:nowrap">+ ${c}</button>`).join('')}
+    </div>
+    <div id="${fieldId}-meter" style="display:flex;align-items:center;gap:6px;margin-top:10px">
+      ${[1,2,3].map(i=>`<span style="flex:1;height:4px;border-radius:3px;background:${i<=strength?'var(--ac-d)':'#E8DFC8'}"></span>`).join('')}
+    </div>
+    <span id="${fieldId}-hint" style="font-size:10.5px;display:block;margin-top:5px;color:${strength>=2?'#1F7A45':'var(--ac-d)'};font-weight:600">
+      ${strength>=2?'✓ ممتاز! العنوان ده واضح كفاية':'✍️ اكتب علامات واضحة — المندوب هيعتمد على كلامك عشان يوصلّك'}</span>
+  </div>`;
+}
+function handleAddressInput(el,targetKey){
+  const val=el.value;
+  if(targetKey==='addrInput') S.co.addr=val;
+  const len=val.trim().length;
+  const strength=len===0?0:len<15?1:len<35?2:3;
+  const meter=document.getElementById(targetKey+'-meter');
+  if(meter) meter.innerHTML=[1,2,3].map(i=>`<span style="flex:1;height:4px;border-radius:3px;background:${i<=strength?'var(--ac-d)':'#E8DFC8'}"></span>`).join('');
+  const hint=document.getElementById(targetKey+'-hint');
+  if(hint){ hint.style.color=strength>=2?'#1F7A45':'var(--ac-d)';
+    hint.textContent=strength>=2?'✓ ممتاز! العنوان ده واضح كفاية':'✍️ اكتب علامات واضحة — المندوب هيعتمد على كلامك عشان يوصلّك'; }
+}
+function appendToAddress(fieldId,phrase){
+  const el=document.getElementById(fieldId); if(!el)return;
+  el.value=(el.value.trim()?el.value.trim()+'، ':'')+phrase;
+  el.dispatchEvent(new Event('input',{bubbles:true}));
+  el.focus();
+}
 function feeBreakdownHtml(){
   const shop=SHOPS[S.activeShop]; if(!shop)return '';
   const sameVillage=!!(shop.villageId&&shop.villageId===S.co.villageId);
@@ -1847,10 +1888,7 @@ function vCheckout(){
   return `<div class="pad" style="padding-top:14px">
     <h3 class="mb">بيانات التوصيل</h3>
     ${ftaCheckoutTipHtml()}
-    <div class="fld" style="background:var(--ac-l);border-radius:14px;padding:14px;border:1.5px solid var(--ac)">
-      <label style="font-size:14px;font-weight:800">📍 عنوانك بالتفصيل — أهم خطوة!</label>
-      <textarea id="addrInput" rows="3" placeholder="مثلاً: شارع المدرسة، بيت رقم ١٢، الدور التاني، جنب فرن العسل" oninput="S.co.addr=this.value" style="background:#fff">${c.addr||''}</textarea>
-      <span class="tiny" style="display:block;margin-top:6px;color:var(--ac-d);font-weight:600">✍️ اكتب علامات واضحة — المندوب هيعتمد على كلامك عشان يوصلّك، حتى لو مفعّلتش الموقع</span></div>
+    ${addressFieldHtml('addrInput',c.addr)}
     <div class="card mb" style="padding:12px 14px;${hasGeo?'':'border-style:dashed'}">
       ${hasGeo?`<div style="display:flex;align-items:center;gap:10px">
         <span style="font-size:18px">✅</span>
@@ -1977,7 +2015,7 @@ function vTrack(){
   startEtaTick();
   return `<div class="pad" style="padding-top:14px">
     <div class="card mb" style="padding:15px;text-align:center">
-      <div class="tiny muted">رقم الطلب</div><div class="kufi" style="font-size:20px">${o.id}</div>
+      <div class="tiny muted">رقم الطلب</div><div class="kufi" style="font-size:20px">${shortId(o.id)}</div>
       ${o.driver?`<div class="bdg b-ac mt">المندوب: ${o.driver}</div>`:''}
       <button class="btn2" style="width:100%;margin-top:11px;background:#25D366;color:#fff;justify-content:center;display:flex;gap:7px;align-items:center;padding:10px;border-radius:11px;font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-weight:700" onclick="shareTrackOnWhatsapp('${o.id}')">
         <span style="font-size:16px">💬</span> ابعت رابط التتبع على واتساب</button></div>
@@ -2136,7 +2174,7 @@ function vOrders(){
     ${S.orders.map(o=>{
     return `<div class="card mb" style="padding:13px">
     <button style="width:100%;text-align:right;background:none;border:0;padding:0;cursor:pointer" onclick="go('track','${o.id}')">
-    <div class="row"><b class="kufi">${o.id}</b>
+    <div class="row"><b class="kufi">${shortId(o.id)}</b>
       <span class="bdg ${o.stage==='delivered'?'b-ac':'b-w'}">${SLABEL[o.stage]}</span></div>
     <div class="tiny muted mt">${o.items.length} أصناف · <span class="num">${M(o.total)}</span> ج
       ${o.recurring?' · 🔁 متكرر أسبوعيًا':''}</div></button>
@@ -2273,9 +2311,7 @@ function openCustomRequestSheet(){
       <textarea id="anyDesc" rows="3" placeholder="مثلاً: أنبوبة بنادول من الصيدلية، أو علبة سجاير من الكشك"></textarea></div>
     <div class="fld"><label>تقريبًا هيكلّف كام؟ (اختياري)</label>
       <input id="anyBudget" type="number" placeholder="مثلاً 50"></div>
-    <div class="fld"><label>عنوانك بالتفصيل الكامل</label>
-      <textarea id="anyAddr" rows="3" placeholder="مثلاً: شارع المدرسة، بيت رقم ١٢، جنب فرن العسل — اكتب علامات تساعد المندوب يوصلّك">${S.co.addr||''}</textarea>
-      <span class="tiny muted" style="display:block;margin-top:5px">اكتب بالتفصيل الكفاية — المندوب هيعتمد على العنوان ده يلاقيك</span></div>
+    ${addressFieldHtml('anyAddr',S.co.addr)}
     <div class="alert info" style="margin-top:4px">رسوم التوصيل <span class="num">${CUSTOM_REQUEST_FEE}</span> ج + تكلفة الحاجة نفسها كاش وقت الاستلام</div>
     <button class="btn btn-p mt" onclick="submitCustomRequest()">ابعت الطلب</button>`);
 }
