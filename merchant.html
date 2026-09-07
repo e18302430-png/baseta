@@ -1046,6 +1046,7 @@ function saveState(){ try{localStorage.setItem(STATE_KEY,JSON.stringify({
 // محليًا كان بيسبب ظهور بيانات متجر أو حساب قديم بالغلط على نفس الجهاز.
 const $=s=>document.querySelector(s);
 const M=n=>Math.round(n).toLocaleString('en');
+function shortId(id){ return '#'+String(id||'').replace(/-/g,'').slice(-6).toUpperCase(); }
 const weightLabel=kg=>kg<1?Math.round(kg*1000)+' جم':(kg%1===0?kg:kg.toFixed(2))+' كجم';
 const qtyLabel=i=>i.sellBy==='weight'?weightLabel(i.q):i.q+'×';
 
@@ -1418,10 +1419,10 @@ function vProducts(){
 function viewInvoice(id){
   const o=S.orders.find(x=>x.id===id); if(!o)return;
   const sub=o.items.reduce((s,i)=>s+i.p*i.q,0);
-  const waMsg=encodeURIComponent(`فاتورة ${BIZ().name} — طلب ${o.id}\n`+o.items.map(i=>`${i.n} ×${qtyLabel(i)} = ${Math.round(i.p*i.q)} ج`).join('\n')+`\nالتوصيل: ${o.fee} ج\nالإجمالي: ${sub+o.fee} ج`);
+  const waMsg=encodeURIComponent(`فاتورة ${BIZ().name} — طلب ${shortId(o.id)}\n`+o.items.map(i=>`${i.n} ×${qtyLabel(i)} = ${Math.round(i.p*i.q)} ج`).join('\n')+`\nالتوصيل: ${o.fee} ج\nالإجمالي: ${sub+o.fee} ج`);
   const waPhone=(o.ph||'').replace(/^0/,'20').replace(/\D/g,'');
   const html=`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
-    <title>فاتورة ${o.id}</title>
+    <title>فاتورة ${shortId(o.id)}</title>
     <style>body{font-family:'Cairo',Arial,sans-serif;padding:30px;color:#1A1710}
     h1{font-size:20px}table{width:100%;border-collapse:collapse;margin-top:16px}
     td,th{padding:9px;border-bottom:1px solid #EAE3D8;text-align:right;font-size:14px}
@@ -1430,7 +1431,7 @@ function viewInvoice(id){
       border-radius:10px;text-decoration:none;font-weight:700;margin-top:20px;font-size:14px}
     @media print{.waBtn{display:none}}</style></head><body>
     <h1>${BIZ().name}</h1>
-    <div>فاتورة رقم <b>${o.id}</b> — العميل: ${o.name}</div>
+    <div>فاتورة رقم <b>${shortId(o.id)}</b> — العميل: ${o.name}</div>
     <table><tr><th>الصنف</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th></tr>
     ${o.items.map(i=>`<tr><td>${i.n}</td><td>${qtyLabel(i)}</td><td>${i.p} ج</td><td>${Math.round(i.p*i.q)} ج</td></tr>`).join('')}
     <tr><td colspan="3">التوصيل</td><td>${o.fee} ج</td></tr>
@@ -1837,7 +1838,7 @@ function oCard(o){
   return `<div class="ocard ${o._flash?'flash':''}" style="${o.urgent?'border-color:#EF4A3E;box-shadow:0 0 0 2px rgba(239,74,62,.25)':''}">
     <div class="oh"><span class="av">${(o.name||'ع')[0]}</span>
       <span style="flex:1"><span class="n">${o.name}${o.loyal?' <span class="bdg" style="background:#FDF1DD;color:#B87610">⭐ عميل دائم</span>':''}</span>
-      <span class="t">طلب <span class="num">${o.id}</span>${o.urgent?' · <b style="color:#C23327">⏰ متأخر عن المعتاد</b>':''}</span></span>
+      <span class="t">طلب <span class="num">${shortId(o.id)}</span>${o.urgent?' · <b style="color:#C23327">⏰ متأخر عن المعتاد</b>':''}</span></span>
       <span class="bdg ${badge}">${SLABEL[o.stage]}</span></div>
     <div class="ob">
       ${o.items.map(i=>`<div class="oitem"><span class="num">${qtyLabel(i)}</span><span>${i.n}</span>
@@ -2043,7 +2044,7 @@ function vInvoices(){
     </div>
     <div class="card">${delivered.map(o=>`<div class="row">
       <span class="av">🧾</span>
-      <span style="flex:1"><span class="n">${o.name}</span><span class="s">طلب <span class="num">${o.id}</span> · ${o.items.length} أصناف</span></span>
+      <span style="flex:1"><span class="n">${o.name}</span><span class="s">طلب <span class="num">${shortId(o.id)}</span> · ${o.items.length} أصناف</span></span>
       <span class="end"><b class="num" style="display:block">${M(o.total)} ج</b>
         <button class="btn2 btn-o2" style="padding:5px 10px;font-size:11px;margin-top:4px" onclick="viewInvoice('${o.id}')">عرض</button></span>
     </div>`).join('')}</div>
