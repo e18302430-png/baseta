@@ -1089,6 +1089,48 @@ function isFreeDeliveryPromo(sameVillage){
   const days=Math.floor((Date.now()-new Date(S.co.createdAt).getTime())/86400000);
   return days>=0&&days<7;
 }
+/* ═══ عد تنازلي حي يبان للعميل نفسه (بعد ما يسجّل) يوضحله إمتى بالظبط عرض التوصيل المجاني بتاعه بيخلص —
+   بيتحسب من تاريخ تسجيله هو بالظبط، مش من تاريخ إطلاق المنصة، عشان كل عميل ياخد أسبوعه الكامل مهما سجّل إمتى ═══ */
+function freeDeliveryRemainingMs(){
+  if(!S.co.createdAt)return null;
+  const deadline=new Date(S.co.createdAt).getTime()+7*86400000;
+  const remain=deadline-Date.now();
+  return remain>0?remain:null;
+}
+function freeDeliveryCountdownParts(remainMs){
+  const days=Math.floor(remainMs/86400000);
+  const hours=Math.floor((remainMs%86400000)/3600000);
+  const minutes=Math.floor((remainMs%3600000)/60000);
+  const parts=[];
+  if(days>0) parts.push(days+' يوم');
+  if(days>0||hours>0) parts.push(hours+' ساعة');
+  parts.push(minutes+' دقيقة');
+  return parts.join(' و');
+}
+function freeDeliveryCountdownHtml(){
+  const remainMs=freeDeliveryRemainingMs();
+  if(remainMs==null)return '';
+  return `<div class="card mb" id="freeDeliveryCountdownCard" style="margin:9px 16px 0;width:calc(100% - 32px);padding:13px 15px;
+      background:linear-gradient(120deg,#241A05,#3A2E14);border:1px solid rgba(240,169,59,.3);border-radius:15px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="font-size:22px">🎉</span>
+      <span style="flex:1"><b style="color:#F0A93B;font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-size:13px;display:block">توصيل مجاني على طلبات قريتك — هدية أول أسبوع ليك</b>
+      <span style="color:#D9C9A3;font-size:11px" id="freeDeliveryCountdownText">باقي ${freeDeliveryCountdownParts(remainMs)} وهيخلص العرض</span></span>
+    </div>
+  </div>`;
+}
+let freeDeliveryTickT=null;
+function startFreeDeliveryTick(){
+  clearInterval(freeDeliveryTickT);
+  if(freeDeliveryRemainingMs()==null)return;
+  freeDeliveryTickT=setInterval(()=>{
+    const el=document.getElementById('freeDeliveryCountdownText');
+    if(!el){ clearInterval(freeDeliveryTickT); return; }
+    const remainMs=freeDeliveryRemainingMs();
+    if(remainMs==null){ clearInterval(freeDeliveryTickT); render(); return; }
+    el.textContent='باقي '+freeDeliveryCountdownParts(remainMs)+' وهيخلص العرض';
+  },30000);
+}
 function isWelcomePromoBanner(){ const d=daysSinceLaunch(); return d>=0&&d<7; }
 async function loadWeatherAlert(){
   if(!sb)return;
@@ -1692,7 +1734,9 @@ function vHome(){
   const total=mine.length+others.length;
   const priorityBanner=S.weatherAlert?{cls:'seasonBar',ic:'🌧️',b:S.weatherAlert,s:''}:
     (()=>{const h=seasonalHint(); return h?{cls:'seasonBar',ic:h.ic,b:h.txt,s:''}:null;})();
-  return `<div class="searchBar"><span class="ic">🔍</span>
+  startFreeDeliveryTick();
+  return `${freeDeliveryCountdownHtml()}
+    <div class="searchBar"><span class="ic">🔍</span>
       <input id="shopSearchInput" placeholder="دوّر على محل أو صنف..." value="${S.searchQuery||''}" oninput="handleSearchInput(this)"></div>
     ${priorityBanner?`<div class="${priorityBanner.cls}" style="margin:9px 16px 0;width:calc(100% - 32px)">
       <span class="ic">${priorityBanner.ic}</span>
@@ -1852,6 +1896,7 @@ function clearCart(){
 function estimateFee(){
   const shop=SHOPS[S.activeShop]; if(!shop)return 10;
   const sameVillage=!!(shop.villageId&&shop.villageId===S.co.villageId);
+  if(isFreeDeliveryPromo(sameVillage))return 0;
   if(sameVillage)return 10;
   const myVillage=VILLAGES.find(v=>v.id===S.co.villageId);
   const shopVillage=VILLAGES.find(v=>v.id===shop.villageId);
@@ -1911,20 +1956,21 @@ function appendToAddress(fieldId,phrase){
 function feeBreakdownHtml(){
   const shop=SHOPS[S.activeShop]; if(!shop)return '';
   const sameVillage=!!(shop.villageId&&shop.villageId===S.co.villageId);
+  const isPromo=isFreeDeliveryPromo(sameVillage);
   const fee=estimateFee();
   const myVillage=VILLAGES.find(v=>v.id===S.co.villageId);
   const shopVillage=VILLAGES.find(v=>v.id===shop.villageId);
   const km=villageDistanceKm(myVillage,shopVillage);
   const sub=cSub(), tot=sub+fee;
   return `<div class="card mb" style="padding:16px;overflow:hidden;position:relative">
-    <div style="position:absolute;top:0;left:0;width:4px;height:100%;background:${sameVillage?'var(--ac)':'var(--warn)'}"></div>
+    <div style="position:absolute;top:0;left:0;width:4px;height:100%;background:${isPromo?'#1F7A45':sameVillage?'var(--ac)':'var(--warn)'}"></div>
     <div style="display:flex;align-items:center;gap:9px;margin-bottom:12px">
-      <span style="font-size:20px">${sameVillage?'🏘️':'🚴'}</span>
-      <span style="flex:1"><b style="font-size:13.5px;display:block">${sameVillage?'توصيل داخل قريتك':'توصيل من قرية تانية'}</b>
-        <span class="tiny muted">${sameVillage?'سعر ثابت مهما كانت المسافة جوه القرية':(km!=null?'حوالي '+km.toFixed(1)+' كم — السعر بيتحسب حسب المسافة الفعلية':'سعر تقديري حسب المسافة')}</span></span>
+      <span style="font-size:20px">${isPromo?'🎉':sameVillage?'🏘️':'🚴'}</span>
+      <span style="flex:1"><b style="font-size:13.5px;display:block">${isPromo?'توصيل مجاني — هدية أول أسبوع ليك!':sameVillage?'توصيل داخل قريتك':'توصيل من قرية تانية'}</b>
+        <span class="tiny muted">${isPromo?'من غير ما تدفع جنيه توصيل واحد — العرض شغال أول أسبوع من تسجيلك':sameVillage?'سعر ثابت مهما كانت المسافة جوه القرية':(km!=null?'حوالي '+km.toFixed(1)+' كم — السعر بيتحسب حسب المسافة الفعلية':'سعر تقديري حسب المسافة')}</span></span>
     </div>
     <div class="row" style="border:0;padding:3px 0"><span class="muted">قيمة الأصناف</span><b class="num">${M(sub)} ج</b></div>
-    <div class="row" style="border:0;padding:3px 0"><span class="muted">رسوم التوصيل</span><b class="num" style="color:${sameVillage?'var(--ac-d)':'var(--warn)'}">${fee} ج</b></div>
+    <div class="row" style="border:0;padding:3px 0"><span class="muted">رسوم التوصيل</span><b class="num" style="color:${isPromo?'#1F7A45':sameVillage?'var(--ac-d)':'var(--warn)'}">${isPromo?'مجانًا 🎉':fee+' ج'}</b></div>
     <div class="row" style="border-top:1px solid var(--line);margin-top:6px;padding-top:10px">
       <b style="font-size:14px">الإجمالي</b><b class="num kufi" style="font-size:19px;color:var(--ac-d)">${M(tot)} ج</b></div>
   </div>`;
@@ -2182,7 +2228,8 @@ async function submitFeedback(orderId){
     }
   }
   ratingShop=0; ratingDriver=0; tipAmount=0;
-  render(); toast(hadTip?'شكرًا لتقييمك وإكراميتك 🎁':'شكرًا لتقييمك 🙏');
+  render();
+  toast(complaint?'✓ استلمنا شكواك وهنراجعها — تقدر تتابع حالتها من "حسابي ← شكاواي"':(hadTip?'شكرًا لتقييمك وإكراميتك 🎁':'شكرًا لتقييمك 🙏'));
 }
 function repeatOrder(orderId){
   const o=S.orders.find(x=>x.id===orderId); if(!o)return;
@@ -2270,6 +2317,11 @@ function vAccount(){
       <button class="row" style="width:100%;text-align:right" onclick="openPinSheet()">
         <span class="av">🔒</span><span><span class="n">تغيير رمز الدخول السريع</span>
         <span class="s">بدل ما تدخل كود التحقق كل مرة</span></span><span class="end muted">‹</span></button>
+      <button class="row" style="width:100%;text-align:right" onclick="openMyComplaintsSheet()">
+        <span class="av">📢</span><span><span class="n">شكاواي</span>
+        <span class="s">تابع حالة أي شكوى بعتّها ورد الإدارة عليها</span></span>
+        ${(S.myComplaints||[]).filter(c=>!c.resolved).length?`<span class="bdg b-d" style="margin-inline-end:6px">${(S.myComplaints||[]).filter(c=>!c.resolved).length}</span>`:''}
+        <span class="end muted">‹</span></button>
       ${[['📍','عناويني'],['❤️','المفضلة'],['🔔','الإشعارات'],['🏪','سجّل محلك'],['☎️','الدعم']].map(([i,n])=>
       `<button class="row" style="width:100%;text-align:right" onclick="toast('${n}')">
         <span class="av">${i}</span><span class="n">${n}</span><span class="end muted">‹</span></button>`).join('')}
@@ -2508,11 +2560,30 @@ function vTrackCustom(){
       <span style="font-size:15px">🚩</span> في مشكلة في الطلب ده؟ بلّغنا</button>
     <div style="height:14px"></div></div>`;
 }
+async function loadMyComplaints(){
+  if(!sb||!S.co.id)return;
+  const {data}=await sb.from('reviews').select('*').eq('customer_id',S.co.id).not('complaint','is',null).order('created_at',{ascending:false});
+  S.myComplaints=data||[];
+}
+function openMyComplaintsSheet(){
+  const list=S.myComplaints||[];
+  openSheet('📢 شكاواي',`
+    <p class="tiny muted" style="margin:0 0 14px">أي شكوى بعتّها على طلب — وحالتها وردنا عليها هنا</p>
+    ${list.length?list.map(c=>`<div class="card mb" style="padding:12px;border-color:${c.resolved?'var(--line)':'#F5B5AE'}">
+      <div class="row" style="border:0;padding:0"><b style="font-size:13px">${c.complaint}</b>
+        <span class="bdg ${c.resolved?'b-ac':'b-w'}">${c.resolved?'✅ اتحلّت':'⏳ قيد المراجعة'}</span></div>
+      <div class="tiny muted mt">${c.created_at?new Date(c.created_at).toLocaleDateString('ar-EG'):''}</div>
+      ${c.resolution_note?`<div class="tiny mt" style="background:var(--surf2);border-radius:8px;padding:7px 9px">رد الإدارة: ${c.resolution_note}</div>`:''}
+    </div>`).join(''):'<div class="tiny muted" style="text-align:center;padding:20px 0">لسه معملتش أي شكوى 🙏</div>'}`);
+}
 function subscribeMyComplaintUpdates(){
   if(!sb||!S.co.id)return;
+  loadMyComplaints();
   sb.channel('customer-complaints-'+S.co.id)
-    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'reviews',filter:'customer_id=eq.'+S.co.id},payload=>{
-      if(payload.new.resolved) notify('✅ اتحلّت شكواك: '+(payload.new.resolution_note||'تم التواصل وحل المشكلة'),true);
+    .on('postgres_changes',{event:'*',schema:'public',table:'reviews',filter:'customer_id=eq.'+S.co.id},payload=>{
+      if(!payload.new||!payload.new.complaint)return;
+      loadMyComplaints().then(render);
+      if(payload.eventType==='UPDATE'&&payload.new.resolved) notify('✅ اتحلّت شكواك: '+(payload.new.resolution_note||'تم التواصل وحل المشكلة'),true);
     })
     .subscribe();
 }
