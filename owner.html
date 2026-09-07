@@ -1293,11 +1293,11 @@ function switchMembersTab(t){ S.membersTab=t; render(); }
 function openDetailSheet(title,rowsHtml){
   const el=document.createElement('div'); el.id='ownerDetailWrap';
   el.innerHTML=`<div style="position:absolute;inset:0;background:rgba(0,0,0,.45);z-index:80" onclick="closeDetailSheet()"></div>
-  <div style="position:absolute;inset-inline:0;bottom:0;background:#fff;border-radius:20px 20px 0 0;z-index:81;
-    max-height:85%;overflow-y:auto;padding:20px 18px 26px;box-shadow:0 -10px 40px rgba(0,0,0,.25)">
+  <div style="position:absolute;inset-inline:0;bottom:0;background:var(--surf);border-radius:20px 20px 0 0;z-index:81;
+    max-height:85%;overflow-y:auto;padding:20px 18px 26px;box-shadow:0 -10px 40px rgba(0,0,0,.45);border:1px solid var(--line);border-bottom:0">
     <div style="display:flex;align-items:center;margin-bottom:14px">
-      <h3 style="font-family:Cairo;font-size:16px">${title}</h3>
-      <button style="margin-inline-start:auto;width:32px;height:32px;border-radius:10px;background:var(--surf2);font-size:16px" onclick="closeDetailSheet()">✕</button></div>
+      <h3 style="font-family:Cairo;font-size:16px;color:var(--txt)">${title}</h3>
+      <button style="margin-inline-start:auto;width:32px;height:32px;border-radius:10px;background:var(--surf2);color:var(--txt);font-size:16px" onclick="closeDetailSheet()">✕</button></div>
     ${rowsHtml}
   </div>`;
   document.getElementById('app').appendChild(el);
@@ -1305,7 +1305,7 @@ function openDetailSheet(title,rowsHtml){
 function closeDetailSheet(){ document.getElementById('ownerDetailWrap')?.remove(); }
 function detailRow(label,value){
   return `<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line);font-size:13px">
-    <span style="color:var(--txt2)">${label}</span><span style="font-weight:700;text-align:left" dir="auto">${value||'—'}</span></div>`;
+    <span style="color:var(--txt2)">${label}</span><span style="font-weight:700;text-align:left;color:var(--txt)" dir="auto">${value||'—'}</span></div>`;
 }
 async function openOrderDetailAdmin(orderId){
   if(!sb)return;
