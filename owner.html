@@ -407,7 +407,7 @@ async function doLogin(){
     document.getElementById('mainApp').classList.add('show');render();
     emit({to:['merchant'],type:'vodafone:number_updated',number:S.vodafoneCash});
     if('Notification' in window && Notification.permission==='default') Notification.requestPermission();
-    if(sb){ loadPendingFromDB(); subscribePendingDB(); subscribeTipsDB(); subscribeTicketsDB(); subscribeCustomersDB(); refreshAnalytics();
+    if(sb){ loadPendingFromDB(); subscribePendingDB(); subscribeTipsDB(); subscribeTicketsDB(); subscribeCustomersDB(); subscribeOrdersDB(); refreshAnalytics();
       sb.from('platform_settings').select('weather_alert,vodafone_cash_number').eq('id',1).maybeSingle().then(({data})=>{
         if(data){ S.weatherAlert=data.weather_alert||null; if(data.vodafone_cash_number)S.vodafoneCash=data.vodafone_cash_number; render(); }
       });
@@ -823,7 +823,7 @@ async function requestReset(){
       if(error) console.error('basita: فشل حذف جدول '+t,error);
     }
   }
-  S.merchants=[]; S.customers=[]; S.driverApplications=[]; S.tickets=[]; S.tips=[]; S.events=[]; S.customRequests=[];
+  S.merchants=[]; S.customers=[]; S.driverApplications=[]; S.tickets=[]; S.tips=[]; S.events=[]; S.customRequests=[]; S.orders=[]; S.orderSearchQ='';
   emit({to:['customer','merchant','driver'],type:'platform:reset'});
   resetConfirmStep=false;
   render(); toast('🗑️ اتصفّرت كل بيانات المنصة بالكامل — عملاء وتجار ومناديب وكل حاجة');
@@ -1052,6 +1052,65 @@ async function loadCustomRequestsFromDB(){
   const {data}=await sb.from('custom_requests').select('*').order('created_at',{ascending:false}).limit(20);
   S.customRequests=data||[];
   render();
+}
+/* ═══ سجل الطلبات الموحّد — كل الطلبات (عادية ومخصّصة) في مكان واحد قابل للبحث، عشان أي مشكلة تبقى باينة فورًا ═══ */
+async function loadOrdersFromDB(){
+  if(!sb)return;
+  const {data}=await sb.from('orders').select('*').order('placed_at',{ascending:false}).limit(80);
+  S.orders=data||[];
+  renderAdminOrdersList();
+}
+function subscribeOrdersDB(){
+  if(!sb)return;
+  loadOrdersFromDB();
+  sb.channel('owner-orders-log')
+    .on('postgres_changes',{event:'*',schema:'public',table:'orders'},()=>loadOrdersFromDB())
+    .subscribe();
+}
+function adminOrderStageLabel(stage){
+  return {placed:'⏳ جديد',accepted:'✅ المحل قبل',assigned:'🛵 اتعيّن مندوب',picked:'📦 المندوب استلم',
+    delivering:'🚴 في الطريق',delivered:'✅ اتسلّم',rejected:'❌ مرفوض',cancelled:'❌ ملغي'}[stage]||stage;
+}
+function adminOrderStageBadge(stage){
+  if(stage==='delivered')return 'b-ac'; if(stage==='rejected'||stage==='cancelled')return 'b-d'; return 'b-prog';
+}
+function onAdminOrderSearch(v){ S.orderSearchQ=(v||'').trim(); renderAdminOrdersList(); }
+function renderAdminOrdersList(){
+  const el=document.getElementById('adminOrdersList'); if(!el)return;
+  const q=(S.orderSearchQ||'').toLowerCase();
+  const normal=(S.orders||[]).map(o=>({...o,_kind:'order',_at:o.placed_at}));
+  const custom=(S.customRequests||[]).map(r=>({...r,_kind:'cr',_at:r.created_at}));
+  let merged=[...normal,...custom].sort((a,b)=>new Date(b._at||0)-new Date(a._at||0));
+  if(q){
+    merged=merged.filter(x=>
+      String(x.id||'').toLowerCase().includes(q)||
+      String(x.customer_name||'').toLowerCase().includes(q)||
+      String(x.customer_phone||'').includes(q)||
+      String(x.address||'').toLowerCase().includes(q)||
+      String(x.description||'').toLowerCase().includes(q));
+  }
+  merged=merged.slice(0,80);
+  el.innerHTML=merged.length?`<div class="card">${merged.map(x=>`
+    <div class="row" style="cursor:pointer" onclick="${x._kind==='cr'?`openCRDetailAdmin('${x.id}')`:`openOrderDetailAdmin('${x.id}')`}">
+      <span class="av">${x._kind==='cr'?'📦':'🛍️'}</span>
+      <span style="flex:1">
+        <span class="n">${shortId(x.id)} · ${x.customer_name||'—'}</span>
+        <span class="s">${x._at?new Date(x._at).toLocaleString('ar-EG'):''} ${x.description?'· '+x.description:''}</span>
+      </span>
+      <span class="bdg ${adminOrderStageBadge(x.stage)}">${adminOrderStageLabel(x.stage)}</span>
+    </div>`).join('')}</div>`:
+    `<div class="tiny muted" style="padding:14px 4px">${q?'مفيش طلبات مطابقة للبحث':'لسه مفيش طلبات'}</div>`;
+}
+function vOrdersAdmin(){
+  setTimeout(renderAdminOrdersList,0);
+  return `<div class="pad" style="padding-top:14px">
+    <div class="sec-t" style="margin-top:0"><h3>سجل الطلبات الكامل</h3></div>
+    <div class="tiny muted" style="margin:-6px 0 12px">كل الطلبات (عادية ومخصّصة) في مكان واحد — دوس على أي طلب تشوف تفاصيله كاملة مع صورة التسليم والمحادثة بين العميل والمندوب</div>
+    <div class="fld" style="margin-bottom:12px">
+      <input id="adminOrderSearch" placeholder="ابحث برقم الطلب، اسم العميل، رقم موبايله، أو العنوان..." oninput="onAdminOrderSearch(this.value)" value="${S.orderSearchQ||''}">
+    </div>
+    <div id="adminOrdersList" class="tiny muted">بيتحمّل...</div>
+    <div style="height:14px"></div></div>`;
 }
 function vWallets(){
   const ids=[...new Set(S.tips.map(t=>t.driverId||t.driverName))];
@@ -1453,8 +1512,8 @@ function vAnalytics(){
       `<div class="alert info">🛵 لسه مفيش توصيلات كفاية نحدد بيها الأنشط</div>`}
     <div style="height:14px"></div></div>`;
 }
-const V={overview:vOverview,merchants:vMerchants,security:vSecurity,members:vMembers,analytics:vAnalytics,support:vSupport,wallets:vWallets,flags:vFlags,map:vMap,data:vData};
-const NAV=[['overview','📊','عامة'],['merchants','🏪','تجّار'],['security','🔒','الأمان'],['members','👥','الأعضاء'],['analytics','📈','تحليلات'],['support','🆘','دعم'],['wallets','🎁','إكراميات'],['flags','🎛️','إعدادات'],['map','🗺️','خريطة'],['data','🗄️','بيانات']];
+const V={overview:vOverview,orders:vOrdersAdmin,merchants:vMerchants,security:vSecurity,members:vMembers,analytics:vAnalytics,support:vSupport,wallets:vWallets,flags:vFlags,map:vMap,data:vData};
+const NAV=[['overview','📊','عامة'],['orders','🧾','الطلبات'],['merchants','🏪','تجّار'],['security','🔒','الأمان'],['members','👥','الأعضاء'],['analytics','📈','تحليلات'],['support','🆘','دعم'],['wallets','🎁','إكراميات'],['flags','🎛️','إعدادات'],['map','🗺️','خريطة'],['data','🗄️','بيانات']];
 function render(){
   saveState();
   const pending=S.merchants.filter(m=>['awaiting_approval','payment_review'].includes(m.status)).length;
