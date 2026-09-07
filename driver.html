@@ -1116,7 +1116,7 @@ function viewDriverInvoice(id){
     <table>
     ${(t.items||[]).map(i=>`<tr><td>${i.n}</td><td>${qtyLabel2(i)}</td><td>${i.p} ج</td><td>${Math.round(i.p*i.q)} ج</td></tr>`).join('')}
     <tr><td colspan="3">إجمالي المنتجات</td><td>${M(productsSub)} ج</td></tr>
-    <tr><td colspan="3">رسوم التوصيل (ربحك)</td><td>${M(t.deliveryFee)} ج</td></tr>
+    <tr><td colspan="3">صافي ربحك (بعد خصم العمولة)</td><td>${M(t.netEarning)} ج</td></tr>
     <tr><td colspan="3" class="neg">عمولة منصة بسيطة</td><td class="neg">− ${(t.commission!=null?t.commission:1.5).toFixed(2)} ج</td></tr>
     <tr><td colspan="3" class="tot">إجمالي المطلوب تحصيله كاش</td><td class="tot">${M(t.total)} ج</td></tr></table>
     <p style="margin-top:30px;color:#999;font-size:12px">بسيطة — شبكة توصيل موثّقة</p>
@@ -1566,8 +1566,8 @@ function renderFullTaskCard(t,i,activeLen){
           <div class="card" style="padding:11px;margin:8px 0;background:var(--surf2);border:0">
             <div class="row" style="border:0;padding:2px 0"><span class="muted tiny">قيمة المنتجات</span>
               <b class="end num tiny">${M(t.total-t.deliveryFee)} ج</b></div>
-            <div class="row" style="border:0;padding:2px 0"><span class="muted tiny">رسوم التوصيل (ربحك)</span>
-              <b class="end num tiny" style="color:var(--ac-d)">${M(t.deliveryFee)} ج</b></div>
+            <div class="row" style="border:0;padding:2px 0"><span class="muted tiny">صافي ربحك من التوصيلة دي</span>
+              <b class="end num tiny" style="color:var(--ac-d)">${M(t.netEarning)} ج</b></div>
             <div class="row" style="border:0;padding:2px 0"><span class="muted tiny">عمولة منصة بسيطة</span>
               <b class="end num tiny" style="color:var(--danger)">− ${(t.commission!=null?t.commission:1.5).toFixed(2)} ج</b></div>
             <div class="row" style="border-top:1px solid var(--line);margin-top:4px;padding-top:6px">
@@ -1621,8 +1621,41 @@ function vTasks(){
       <div style="height:6px;background:rgba(255,255,255,.14);border-radius:4px;overflow:hidden">
         <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#7C8CF8,#5FD4E8);border-radius:4px;transition:width .6s"></div></div>
     </div></div>`;
-  if(!S.tasks.length)return goalBanner+`<div class="empty" style="padding-top:0"><div class="e">🛵</div><h4>مفيش مهام دلوقتي</h4>
+  const hasCustomReqs=(S.myCustomRequests||[]).length||(S.availableCustomRequests||[]).length;
+  if(!S.tasks.length&&!hasCustomReqs)return goalBanner+`<div class="empty" style="padding-top:0"><div class="e">🛵</div><h4>مفيش مهام دلوقتي</h4>
     <p class="tiny">لما التاجر يعيّنك، هتظهر هنا فورًا</p></div>`;
+  if(!S.tasks.length)return goalBanner+`<div class="pad" style="padding-top:0">
+    ${(S.myCustomRequests||[]).length?`<div class="sec-t"><h3>📦 طلباتك المخصّصة</h3></div>
+      ${S.myCustomRequests.map(r=>`<div class="tcard active">
+        <div class="th"><span class="av">📦</span><span style="flex:1"><span class="n">${r.description}</span>
+          <span class="t">${r.customer_name}</span></span>
+          <span class="bdg b-prog">${r.stage==='assigned'?'رايح يجيبها':'في الطريق للعميل'}</span></div>
+        <div class="tb">
+          <div style="background:var(--ac-l);border-radius:11px;padding:10px 12px;margin:4px 0">
+            <div class="tiny muted" style="margin-bottom:3px">📍 عنوان العميل بالتفصيل</div>
+            <b style="font-size:13.5px;color:var(--ac-d);line-height:1.6">${r.address}</b></div>
+          ${r.delivery_lat!=null?`<button onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${r.delivery_lat},${r.delivery_lng}','_blank')"
+            style="display:flex;align-items:center;gap:8px;width:100%;text-align:right;border:0;cursor:pointer;background:var(--surf2);color:var(--txt);
+            padding:9px 12px;border-radius:11px;font-size:12.5px;font-weight:700;margin:6px 0;font-family:inherit">🗺️ افتح خرائط جوجل</button>`:
+            `<div class="tiny" style="background:#FFF3DE;color:#8A5E10;border-radius:9px;padding:7px 9px;margin:6px 0">⚠️ العميل مفعّلش الموقع — اعتمد على العنوان المكتوب فوق واتصل بيه لو محتاج توضيح</div>`}
+          ${r.budget_estimate?`<div class="tiny muted">تقريبًا هتكلّف: <span class="num">${M(r.budget_estimate)}</span> ج (كاش من العميل)</div>`:''}
+          <div class="tiny muted mt">صافي ربحك: <span class="num" style="color:var(--ac-d)">${M(r.driver_net_earning||r.delivery_fee)} ج</span></div>
+          <div class="taddr"><span class="k">📞</span><span class="num" dir="ltr">${maskPhone(r.customer_phone)}</span></div>
+          ${r.stage==='assigned'?
+            `<button class="btn2 btn-p2" style="width:100%;margin-top:8px" onclick="advanceCustomRequest('${r.id}','delivering')">✓ جبت الحاجة — في الطريق للعميل</button>`:
+            `<button class="btn2 btn-p2" style="width:100%;margin-top:8px" onclick="advanceCustomRequest('${r.id}','delivered')">✓ سلّمت الطلب</button>`}
+        </div></div>`).join('')}`:''}
+    ${(S.availableCustomRequests||[]).length?`<div class="sec-t"><h3>📦 طلبات مخصّصة متاحة — أول واحد يقبل ياخدها</h3></div>
+      ${S.availableCustomRequests.map(r=>`<div class="tcard">
+        <div class="th"><span class="av">📦</span><span style="flex:1"><span class="n">${r.description}</span></span><span class="bdg b-new">جديد</span></div>
+        <div class="tb">
+          <div style="background:var(--surf2);border-radius:11px;padding:10px 12px;margin:4px 0">
+            <div class="tiny muted" style="margin-bottom:3px">📍 عنوان العميل بالتفصيل</div>
+            <b style="font-size:13px;line-height:1.6">${r.address}</b></div>
+          ${r.budget_estimate?`<div class="tiny muted">تقريبًا هتكلّف: <span class="num">${M(r.budget_estimate)}</span> ج</div>`:''}
+          <button class="btn2 btn-ok2" style="width:100%;margin-top:8px" onclick="acceptCustomRequest('${r.id}')">اقبل الطلب ده</button>
+        </div></div>`).join('')}`:''}
+    <div style="height:12px"></div></div>`;
   // ترتيب ذكي: المهام اللي معاك فيها بضاعة فعلًا (delivering) الأول عشان تخلّصها،
   // وبعدين المهام اللي لسه محتاجة استلام (assigned)، والمهام من نفس المحل مجمّعة مع بعض
   const stageOrder={delivering:0,picked:1,assigned:2};
@@ -1696,12 +1729,14 @@ async function loadMyHistory(){
   const {data,error}=await sb.from('orders').select('*').eq('driver_id',S.driverId).eq('stage','delivered').order('closed_at',{ascending:false}).limit(100);
   if(error){ console.error('basita: فشل تحميل سجل التوصيلات',error); return; }
   S.history=(data||[]).map(o=>({id:o.id,name:o.customer_name,total:+o.total,deliveryFee:+o.delivery_fee,
-    commission:+o.platform_commission||1.5,ph:o.customer_phone,addr:o.address,
+    commission:+o.platform_commission||1.5,
+    netEarning:o.driver_net_earning!=null?+o.driver_net_earning:(+o.delivery_fee||0)-(+o.platform_commission||1.5),
+    ph:o.customer_phone,addr:o.address,
     closedAt:o.closed_at?new Date(o.closed_at).toLocaleString('ar-EG',{hour:'2-digit',minute:'2-digit',day:'numeric',month:'short'}):'',
     closedAtRaw:o.closed_at}));
-  // نحسب إجمالي أرباح المندوب وعمولة المنصة من نفس بيانات السجل الحقيقية —
-  // مش من عدّاد محلي بيتصفّر مع أي جلسة جديدة
-  S.deliveryEarnings=S.history.reduce((s,t)=>s+(t.deliveryFee||0),0);
+  // نحسب صافي ربح المندوب الحقيقي من نفس بيانات السجل — بيفضل صحيح حتى وقت عروض التوصيل المجاني
+  // (لما تكون رسوم التوصيل نفسها صفر للعميل، بس المندوب لسه بياخد أجره كامل والمنصة هي اللي بتتنازل عن عمولتها)
+  S.deliveryEarnings=S.history.reduce((s,t)=>s+(t.netEarning||0),0);
   S.commissionOwed=S.history.reduce((s,t)=>s+(t.commission||0),0);
   render();
 }
@@ -1725,7 +1760,7 @@ function vHistory(){
       ${items.map(t=>`<div class="tcard">
         <div class="th"><span class="av">✓</span>
           <span style="flex:1"><span class="n">طلب <span class="num">${shortId(t.id)}</span></span>
-          <span class="t">${t.name} · ربحك <span class="num" style="color:var(--ac-d)">${M(t.deliveryFee)}</span> ج</span></span>
+          <span class="t">${t.name} · ربحك <span class="num" style="color:var(--ac-d)">${M(t.netEarning)}</span> ج</span></span>
           <span class="bdg b-ok">اتسلّم</span></div>
         <div class="tb" style="padding-top:0"><div class="tiny muted">🕐 اتسلّم الساعة <span class="num">${t.closedAt||'—'}</span></div>
         </div></div>`).join('')}`).join('')}
@@ -1736,16 +1771,15 @@ function vWallet(){
   const paid=S.tips.filter(t=>t.status==='paid');
   const pendingTotal=pending.reduce((s,t)=>s+t.amount,0);
   const paidTotal=paid.reduce((s,t)=>s+t.amount,0);
-  const net=(S.deliveryEarnings||0)-(S.commissionOwed||0);
+  const net=S.deliveryEarnings||0; // بقى بيمثّل صافي الربح مباشرة (بعد خصم عمولة المنصة، ومحسوب صح حتى وقت عروض التوصيل المجاني)
   return `<div class="pad" style="padding-top:14px">
     <div class="card" style="padding:18px">
-      <div class="tiny muted mb">أرباح التوصيل (المناوبة الحالية)</div>
-      <div class="row" style="border:0;padding:4px 0"><span class="muted">إجمالي رسوم التوصيل اللي جمعتها</span>
-        <b class="end num">${(S.deliveryEarnings||0).toFixed(2)} ج</b></div>
-      <div class="row" style="border:0;padding:4px 0"><span class="muted">عمولة منصة بسيطة</span>
+      <div class="tiny muted mb">أرباح التوصيل (كل تاريخك)</div>
+      <div class="row" style="border:0;padding:4px 0"><span class="muted">عمولة منصة بسيطة المستحقة</span>
         <b class="end num" style="color:var(--danger)">− ${(S.commissionOwed||0).toFixed(2)} ج</b></div>
       <div class="row" style="border-top:1px solid var(--line);margin-top:5px;padding-top:9px">
         <b>صافي ربحك من التوصيل</b><b class="end num kufi" style="font-size:17px;color:var(--ac-d)">${net.toFixed(2)} ج</b></div>
+      <div class="tiny muted mt" style="line-height:1.6">💡 وقت عروض "التوصيل مجاني"، المنصة بتتنازل عن عمولتها بالكامل عشانك تاخد أجرك الطبيعي كامل من غير ما العميل يدفع حاجة</div>
     </div>
     <div class="card mt" style="padding:20px;text-align:center;background:linear-gradient(135deg,var(--ac-l),#fff)">
       <div class="tiny muted">إكراميات معلّقة</div>
@@ -1812,7 +1846,9 @@ function setAvail(v){
 function mapTaskRow(o,items){
   return {id:o.id,merchantId:o.merchant_id,name:o.customer_name,ph:o.customer_phone,addr:o.address,
     geo:(o.delivery_lat!=null)?{lat:o.delivery_lat,lng:o.delivery_lng}:null,total:+o.total,stage:o.stage,
-    deliveryFee:+o.delivery_fee||0,commission:+o.platform_commission||1.5,notes:o.notes||'',
+    deliveryFee:+o.delivery_fee||0,commission:+o.platform_commission||1.5,
+    netEarning:o.driver_net_earning!=null?+o.driver_net_earning:(+o.delivery_fee||0)-(+o.platform_commission||1.5),
+    notes:o.notes||'',
     accepted:false,items:(items||[]).map(i=>({n:i.name,q:+i.qty,p:+i.unit_price,u:i.unit,sellBy:i.sell_by}))};
 }
 function subscribeCustomRequests(){
