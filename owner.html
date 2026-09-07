@@ -845,12 +845,21 @@ async function requestReset(){
   }
   clearTimeout(resetConfirmT);
   if(sb){
-    const tables=['order_items','reviews','tips','driver_customer_messages','orders','support_tickets',
+    // ترتيب الحذف مهم جدًا: أي جدول عنده مفتاح خارجي (foreign key) بيشاور على جدول تاني، لازم يتحذف الأول —
+    // غير كده قاعدة البيانات بترفض حذف الجدول الأصلي (زي custom_requests) وتسيب بياناته زي ما هي من غير ما تدّي أي خطأ ظاهر للمستخدم
+    const tables=['order_items','reviews','tips','driver_customer_messages','wallet_transfers','orders','support_tickets',
       'subscription_payments','products','custom_requests','settlements','order_rejections','referrals',
       'merchants','drivers','customers','platform_events'];
+    let hadError=false;
     for(const t of tables){
       const {error}=await sb.from(t).delete().not('id','is',null);
-      if(error) console.error('basita: فشل حذف جدول '+t,error);
+      if(error){ console.error('basita: فشل حذف جدول '+t,error); hadError=true; }
+    }
+    if(hadError){
+      toast('⚠️ حصلت مشكلة في حذف بعض البيانات — افتح الـ Console وشوف تفاصيل الخطأ قبل ما تطلق التطبيقات');
+      S.merchants=[]; S.customers=[]; S.driverApplications=[]; S.tickets=[]; S.tips=[]; S.events=[]; S.customRequests=[]; S.orders=[]; S.orderSearchQ='';
+      resetConfirmStep=false; render();
+      return;
     }
   }
   S.merchants=[]; S.customers=[]; S.driverApplications=[]; S.tickets=[]; S.tips=[]; S.events=[]; S.customRequests=[]; S.orders=[]; S.orderSearchQ='';
