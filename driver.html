@@ -1336,10 +1336,21 @@ async function confirmDeliveryPhoto(){
     try{
       const blob=await (await fetch(capturedPhoto)).blob();
       const path=id+'-'+Date.now()+'.jpg';
-      await sb.storage.from('delivery-photos').upload(path,blob,{upsert:true});
-      const photoUrl=sb.storage.from('delivery-photos').getPublicUrl(path).data.publicUrl;
-      await sb.from('orders').update({stage:'delivered',delivery_photo_url:photoUrl,closed_at:new Date().toISOString()}).eq('id',id);
-    }catch(err){ console.error('basita: فشل رفع صورة التسليم',err); }
+      const {error:upErr}=await sb.storage.from('delivery-photos').upload(path,blob,{upsert:true});
+      // لازم نتأكد إن الرفع نجح فعلًا قبل ما نسجّل رابط الصورة — غير كده هيتسجّل رابط لصورة مش موجودة فعليًا والعميل هيشوف مربع فاضي
+      if(upErr){
+        console.error('basita: فشل رفع صورة التسليم فعليًا — هيتسجّل الطلب متسلّم من غير صورة',upErr);
+        await sb.from('orders').update({stage:'delivered',closed_at:new Date().toISOString()}).eq('id',id);
+        toast('⚠️ الطلب اتسجّل متسلّم، لكن الصورة ما اترفعتش (تأكد من النت) — جرّب ابعتها تاني من تفاصيل الطلب لو احتجت');
+      }else{
+        const photoUrl=sb.storage.from('delivery-photos').getPublicUrl(path).data.publicUrl;
+        await sb.from('orders').update({stage:'delivered',delivery_photo_url:photoUrl,closed_at:new Date().toISOString()}).eq('id',id);
+      }
+    }catch(err){
+      console.error('basita: فشل رفع صورة التسليم',err);
+      await sb.from('orders').update({stage:'delivered',closed_at:new Date().toISOString()}).eq('id',id).then(()=>{}).catch(()=>{});
+      toast('⚠️ الطلب اتسجّل متسلّم، لكن حصلت مشكلة في رفع الصورة');
+    }
   }else{
     emit({to:['customer','merchant'],type:'order:status',orderId:id,status:'delivered',photo:capturedPhoto,
       driverName:S.driverName||'كريم عبد الله',driverId:S.driverId,merchantId:t.merchantId,customerId:t.customerId,total:t.total,netEarning:t.netEarning});
@@ -1368,11 +1379,23 @@ async function confirmCustomDeliveryPhoto(id){
   if(sb){
     try{
       const blob=await (await fetch(capturedPhoto)).blob();
-      const path='CR-'+id+'-'+Date.now()+'.jpg';
-      await sb.storage.from('delivery-photos').upload(path,blob,{upsert:true});
-      const photoUrl=sb.storage.from('delivery-photos').getPublicUrl(path).data.publicUrl;
-      await sb.from('custom_requests').update({stage:'delivered',delivery_photo_url:photoUrl}).eq('id',id);
-    }catch(err){ console.error('basita: فشل رفع صورة تسليم الطلب المخصّص',err); }
+      // شيلنا بادئة "CR-" اللي كانت قبل رقم الطلب — لو فيه أي سياسة أمان (RLS) على الـ bucket بتتحقق من رقم الطلب
+      // في بداية اسم الملف، البادئة دي كانت ممكن تكسّرها وتمنع تحميل الصورة حتى لو اترفعت فعليًا
+      const path=id+'-custom-'+Date.now()+'.jpg';
+      const {error:upErr}=await sb.storage.from('delivery-photos').upload(path,blob,{upsert:true});
+      if(upErr){
+        console.error('basita: فشل رفع صورة تسليم الطلب المخصّص فعليًا',upErr);
+        await sb.from('custom_requests').update({stage:'delivered'}).eq('id',id);
+        toast('⚠️ الطلب اتسجّل متسلّم، لكن الصورة ما اترفعتش (تأكد من النت)');
+      }else{
+        const photoUrl=sb.storage.from('delivery-photos').getPublicUrl(path).data.publicUrl;
+        await sb.from('custom_requests').update({stage:'delivered',delivery_photo_url:photoUrl}).eq('id',id);
+      }
+    }catch(err){
+      console.error('basita: فشل رفع صورة تسليم الطلب المخصّص',err);
+      await sb.from('custom_requests').update({stage:'delivered'}).eq('id',id).then(()=>{}).catch(()=>{});
+      toast('⚠️ الطلب اتسجّل متسلّم، لكن حصلت مشكلة في رفع الصورة');
+    }
   }
   const earning=r?(r.driver_net_earning||r.delivery_fee||0):0;
   S.shiftTotal+=earning; S.deliveryEarnings=(S.deliveryEarnings||0)+earning;
@@ -1800,12 +1823,22 @@ async function loadMyHistory(){
   if(!sb||!S.driverId)return;
   const {data,error}=await sb.from('orders').select('*').eq('driver_id',S.driverId).eq('stage','delivered').order('closed_at',{ascending:false}).limit(100);
   if(error){ console.error('basita: فشل تحميل سجل التوصيلات',error); return; }
-  S.history=(data||[]).map(o=>({id:o.id,name:o.customer_name,total:+o.total,deliveryFee:+o.delivery_fee,
+  // الطلبات المخصّصة ("اطلب أي حاجة") كانت مفقودة من السجل بالكامل — لازم تتحسب هي كمان، مش بس طلبات المحلات
+  const {data:crData,error:crError}=await sb.from('custom_requests').select('*').eq('driver_id',S.driverId).eq('stage','delivered').order('created_at',{ascending:false}).limit(100);
+  if(crError){ console.error('basita: فشل تحميل سجل الطلبات المخصّصة',crError); }
+  const fromOrders=(data||[]).map(o=>({id:o.id,name:o.customer_name,total:+o.total,deliveryFee:+o.delivery_fee,
     commission:+o.platform_commission||1.5,
     netEarning:o.driver_net_earning!=null?+o.driver_net_earning:(+o.delivery_fee||0)-(+o.platform_commission||1.5),
-    ph:o.customer_phone,addr:o.address,
+    ph:o.customer_phone,addr:o.address,isCustom:false,
     closedAt:o.closed_at?new Date(o.closed_at).toLocaleString('ar-EG',{hour:'2-digit',minute:'2-digit',day:'numeric',month:'short'}):'',
     closedAtRaw:o.closed_at}));
+  const fromCustom=(crData||[]).map(r=>({id:r.id,name:r.customer_name,total:+(r.budget_estimate||0),deliveryFee:+r.delivery_fee,
+    commission:+r.platform_commission||1.5,
+    netEarning:r.driver_net_earning!=null?+r.driver_net_earning:(+r.delivery_fee||0)-(+r.platform_commission||1.5),
+    ph:r.customer_phone,addr:r.address,isCustom:true,desc:r.description,
+    closedAt:r.created_at?new Date(r.created_at).toLocaleString('ar-EG',{hour:'2-digit',minute:'2-digit',day:'numeric',month:'short'}):'',
+    closedAtRaw:r.created_at}));
+  S.history=[...fromOrders,...fromCustom].sort((a,b)=>new Date(b.closedAtRaw||0)-new Date(a.closedAtRaw||0));
   // نحسب صافي ربح المندوب الحقيقي من نفس بيانات السجل — بيفضل صحيح حتى وقت عروض التوصيل المجاني
   // (لما تكون رسوم التوصيل نفسها صفر للعميل، بس المندوب لسه بياخد أجره كامل والمنصة هي اللي بتتنازل عن عمولتها)
   S.deliveryEarnings=S.history.reduce((s,t)=>s+(t.netEarning||0),0);
@@ -1830,9 +1863,9 @@ function vHistory(){
     ${Object.entries(groups).map(([day,items])=>`
       <div class="sec-t"><h3>${day}</h3><span class="num">${items.length}</span></div>
       ${items.map(t=>`<div class="tcard">
-        <div class="th"><span class="av">✓</span>
-          <span style="flex:1"><span class="n">طلب <span class="num">${shortId(t.id)}</span></span>
-          <span class="t">${t.name} · ربحك <span class="num" style="color:var(--ac-d)">${M(t.netEarning)}</span> ج</span></span>
+        <div class="th"><span class="av">${t.isCustom?'📦':'✓'}</span>
+          <span style="flex:1"><span class="n">${t.isCustom?'طلب مخصّص':'طلب'} <span class="num">${shortId(t.id)}</span></span>
+          <span class="t">${t.isCustom&&t.desc?t.desc+' · ':''}${t.name} · ربحك <span class="num" style="color:var(--ac-d)">${M(t.netEarning)}</span> ج</span></span>
           <span class="bdg b-ok">اتسلّم</span></div>
         <div class="tb" style="padding-top:0"><div class="tiny muted">🕐 اتسلّم الساعة <span class="num">${t.closedAt||'—'}</span></div>
         </div></div>`).join('')}`).join('')}
