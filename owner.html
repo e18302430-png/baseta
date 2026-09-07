@@ -323,11 +323,14 @@ async function loadPendingFromDB(){
     if(existing) Object.assign(existing,mapped);
     else S.merchants.unshift(mapped);
   });
-  const {data:drivers}=await sb.from('drivers').select('*').eq('status','pending_review');
+  const {data:drivers}=await sb.from('drivers').select('*');
   (drivers||[]).forEach(d=>{
-    if(!S.driverApplications.some(x=>x.driverId===d.id)) S.driverApplications.unshift({driverId:d.id,driverName:d.name,
-      phone:d.phone,vehicle:d.vehicle,idCardPhoto:d.id_card_photo_url,selfiePhoto:d.selfie_photo_url,
-      agreementAccepted:d.agreement_accepted,status:'pending',at:new Date(d.created_at).toLocaleDateString('ar-EG')});
+    const mapped={driverId:d.id,driverName:d.name,phone:d.phone,vehicle:d.vehicle,
+      idCardPhoto:d.id_card_photo_url,selfiePhoto:d.selfie_photo_url,agreementAccepted:d.agreement_accepted,
+      status:d.status==='pending_review'?'pending':d.status,at:new Date(d.created_at).toLocaleDateString('ar-EG')};
+    const existing=S.driverApplications.find(x=>x.driverId===d.id);
+    if(existing) Object.assign(existing,mapped);
+    else S.driverApplications.unshift(mapped);
   });
   render();
 }
@@ -553,7 +556,7 @@ onBus(d=>{
     if(m){ m.salesTotal=(m.salesTotal||0)+(d.total||0); m.ordersDelivered=(m.ordersDelivered||0)+1; }
     if(d.driverId){
       const a=S.driverApplications.find(a=>a.driverId===d.driverId);
-      if(a){ a.deliveries=(a.deliveries||0)+1; a.earnings=(a.earnings||0)+(d.total||0); }
+      if(a){ a.deliveries=(a.deliveries||0)+1; a.earnings=(a.earnings||0)+(d.netEarning!=null?d.netEarning:(d.total||0)); }
     }
     render();
   }
@@ -1195,7 +1198,83 @@ function detailRow(label,value){
   return `<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line);font-size:13px">
     <span style="color:var(--txt2)">${label}</span><span style="font-weight:700;text-align:left" dir="auto">${value||'—'}</span></div>`;
 }
-function openCustomerDetail(id){
+async function openOrderDetailAdmin(orderId){
+  if(!sb)return;
+  const {data:o}=await sb.from('orders').select('*').eq('id',orderId).maybeSingle();
+  if(!o){ toast('الطلب مش موجود'); return; }
+  const {data:items}=await sb.from('order_items').select('*').eq('order_id',orderId);
+  const {data:chat}=await sb.from('driver_customer_messages').select('*').eq('order_id',orderId).order('created_at',{ascending:true});
+  const merchant=S.merchants.find(m=>m.id===o.merchant_id);
+  const driver=S.driverApplications.find(d=>d.driverId===o.driver_id);
+  openDetailSheet(`طلب ${shortId(o.id)}`,`
+    <div style="text-align:center;background:var(--surf2);border-radius:12px;padding:10px;margin-bottom:12px">
+      <div class="tiny muted">رقم الطلب الكامل (لو حصلت مشكلة اذكره ده بالظبط)</div>
+      <div class="kufi" style="font-size:15px;word-break:break-all;margin-top:3px" dir="ltr">${o.id}</div>
+    </div>
+    ${detailRow('الحالة',o.stage)}
+    ${detailRow('العميل',o.customer_name)}
+    ${detailRow('رقم العميل',o.customer_phone)}
+    ${detailRow('المحل',merchant?merchant.name:(o.merchant_id||'—'))}
+    ${detailRow('المندوب',driver?driver.driverName:(o.driver_id||'—'))}
+    ${detailRow('العنوان',o.address)}
+    ${detailRow('وقت الطلب',o.placed_at?new Date(o.placed_at).toLocaleString('ar-EG'):'—')}
+    ${detailRow('وقت التسليم',o.closed_at?new Date(o.closed_at).toLocaleString('ar-EG'):'—')}
+    ${(items||[]).length?`<div class="tiny muted mt mb" style="margin-top:12px">الأصناف</div>
+      ${items.map(i=>`<div style="display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0">
+        <span>${i.name} ×${i.qty}</span><span class="num">${M(i.unit_price*i.qty)} ج</span></div>`).join('')}`:''}
+    ${detailRow('رسوم التوصيل',M(o.delivery_fee||0)+' ج')}
+    ${detailRow('عمولة المنصة',M(o.platform_commission||0)+' ج')}
+    ${detailRow('صافي المندوب',M(o.driver_net_earning||0)+' ج')}
+    ${detailRow('الإجمالي',M(o.total||0)+' ج')}
+    ${o.delivery_photo_url?`<div class="tiny muted mt mb" style="margin-top:12px">صورة إثبات التسليم</div>
+      <img src="${o.delivery_photo_url}" style="width:100%;border-radius:10px" onclick="window.open('${o.delivery_photo_url}','_blank')">`:''}
+    ${(chat&&chat.length)?`<div class="tiny muted mt mb" style="margin-top:12px">المحادثة بين العميل والمندوب</div>
+      <div style="background:var(--surf2);border-radius:10px;padding:10px;max-height:220px;overflow-y:auto">
+      ${chat.map(m=>`<div style="padding:4px 0;font-size:12.5px"><b>${m.from_role==='driver'?'المندوب':'العميل'}:</b> ${m.message}
+        <span class="tiny muted" style="display:block">${new Date(m.created_at).toLocaleString('ar-EG')}</span></div>`).join('')}
+      </div>`:''}
+  `);
+}
+async function openCRDetailAdmin(requestId){
+  if(!sb)return;
+  const {data:r}=await sb.from('custom_requests').select('*').eq('id',requestId).maybeSingle();
+  if(!r){ toast('الطلب مش موجود'); return; }
+  const {data:chat}=await sb.from('driver_customer_messages').select('*').eq('order_id',requestId).order('created_at',{ascending:true});
+  const {data:transfers}=await sb.from('wallet_transfers').select('*').eq('custom_request_id',requestId).order('created_at',{ascending:false});
+  const driver=S.driverApplications.find(d=>d.driverId===r.driver_id);
+  const trLabel={pending:'⏳ في انتظار تأكيد المندوب',driver_confirmed:'✅ المندوب أكّد الاستلام',disputed:'⚠️ المندوب قال إنه ماوصلوش — يحتاج مراجعة'};
+  openDetailSheet(`طلب مخصّص ${shortId(r.id)}`,`
+    <div style="text-align:center;background:var(--surf2);border-radius:12px;padding:10px;margin-bottom:12px">
+      <div class="tiny muted">رقم الطلب الكامل (لو حصلت مشكلة اذكره ده بالظبط)</div>
+      <div class="kufi" style="font-size:15px;word-break:break-all;margin-top:3px" dir="ltr">${r.id}</div>
+    </div>
+    ${detailRow('الوصف',r.description)}
+    ${detailRow('الحالة',r.stage)}
+    ${detailRow('العميل',r.customer_name)}
+    ${detailRow('رقم العميل',r.customer_phone)}
+    ${detailRow('المندوب',driver?driver.driverName:(r.driver_id||'—'))}
+    ${detailRow('العنوان',r.address)}
+    ${detailRow('التكلفة التقريبية',r.budget_estimate?M(r.budget_estimate)+' ج':'—')}
+    ${detailRow('رسوم التوصيل',M(r.delivery_fee||0)+' ج')}
+    ${detailRow('عمولة المنصة',M(r.platform_commission||0)+' ج')}
+    ${detailRow('صافي المندوب',M(r.driver_net_earning||0)+' ج')}
+    ${detailRow('وقت الطلب',r.created_at?new Date(r.created_at).toLocaleString('ar-EG'):'—')}
+    ${r.delivery_photo_url?`<div class="tiny muted mt mb" style="margin-top:12px">صورة إثبات التسليم</div>
+      <img src="${r.delivery_photo_url}" style="width:100%;border-radius:10px" onclick="window.open('${r.delivery_photo_url}','_blank')">`:''}
+    ${(transfers&&transfers.length)?`<div class="tiny muted mt mb" style="margin-top:12px">تحويلات فلوس بين العميل والمندوب</div>
+      <div class="card">${transfers.map(t=>`<div class="row" style="flex-direction:column;align-items:stretch;gap:3px">
+        <div style="display:flex;justify-content:space-between"><b class="num">${M(t.amount)} ج</b>
+          <span class="bdg ${t.status==='driver_confirmed'?'b-ac':t.status==='disputed'?'b-d':'b-w'}">${trLabel[t.status]||t.status}</span></div>
+        ${t.note?`<span class="tiny muted">${t.note}</span>`:''}
+        <span class="tiny muted">${new Date(t.created_at).toLocaleString('ar-EG')}</span></div>`).join('')}</div>`:''}
+    ${(chat&&chat.length)?`<div class="tiny muted mt mb" style="margin-top:12px">المحادثة بين العميل والمندوب</div>
+      <div style="background:var(--surf2);border-radius:10px;padding:10px;max-height:220px;overflow-y:auto">
+      ${chat.map(m=>`<div style="padding:4px 0;font-size:12.5px"><b>${m.from_role==='driver'?'المندوب':'العميل'}:</b> ${m.message}
+        <span class="tiny muted" style="display:block">${new Date(m.created_at).toLocaleString('ar-EG')}</span></div>`).join('')}
+      </div>`:''}
+  `);
+}
+async function openCustomerDetail(id){
   const c=S.customers.find(x=>x.id===id); if(!c)return;
   openDetailSheet('بيانات العميل الكاملة',`
     ${detailRow('الاسم',c.name)}
@@ -1204,9 +1283,24 @@ function openCustomerDetail(id){
     ${detailRow('عدد الطلبات',c.orders||0)}
     ${detailRow('إجمالي الإنفاق',M(c.spent||0)+' ج')}
     ${detailRow('تاريخ التسجيل',c.createdAt||'—')}
+    <div class="tiny muted mt mb" style="margin-top:12px">سجل الطلبات — دوس على أي طلب لتفاصيله كاملة</div>
+    <div id="custOrdersList" class="tiny muted">بيتحمّل...</div>
   `);
+  if(!sb)return;
+  const {data:orders}=await sb.from('orders').select('id,total,stage,placed_at').eq('customer_id',id).order('placed_at',{ascending:false}).limit(50);
+  const {data:crs}=await sb.from('custom_requests').select('id,description,stage,created_at').eq('customer_id',id).order('created_at',{ascending:false}).limit(50);
+  const rows=[
+    ...(orders||[]).map(o=>`<div class="row" style="cursor:pointer" onclick="openOrderDetailAdmin('${o.id}')">
+      <span style="flex:1"><span class="n">${shortId(o.id)}</span><span class="s">${o.placed_at?new Date(o.placed_at).toLocaleDateString('ar-EG'):''} · ${o.stage}</span></span>
+      <b class="num end">${M(o.total||0)} ج</b></div>`),
+    ...(crs||[]).map(r=>`<div class="row" style="cursor:pointer" onclick="openCRDetailAdmin('${r.id}')">
+      <span style="flex:1"><span class="n">📦 ${shortId(r.id)}</span><span class="s">${r.description}</span></span>
+      <b class="num end">${r.stage}</b></div>`)
+  ];
+  const el=document.getElementById('custOrdersList');
+  if(el) el.outerHTML=rows.length?`<div class="card">${rows.join('')}</div>`:'<div class="tiny muted">مفيش طلبات لسه</div>';
 }
-function openMerchantDetail(id){
+async function openMerchantDetail(id){
   const m=S.merchants.find(x=>x.id===id); if(!m)return;
   openDetailSheet('بيانات التاجر الكاملة',`
     ${detailRow('اسم المتجر',m.name)}
@@ -1217,15 +1311,25 @@ function openMerchantDetail(id){
     ${detailRow('الأيام المتبقية',m.daysLeft!=null?m.daysLeft+' يوم':'—')}
     ${detailRow('إجمالي المبيعات',M(m.salesTotal||0)+' ج')}
     ${detailRow('مواعيد العمل',(m.openTime&&m.closeTime)?(m.openTime+' — '+m.closeTime):'—')}
+    <div class="tiny muted mt mb" style="margin-top:12px">سجل الطلبات — دوس على أي طلب لتفاصيله كاملة</div>
+    <div id="merchOrdersList" class="tiny muted">بيتحمّل...</div>
   `);
+  if(!sb)return;
+  const {data:orders}=await sb.from('orders').select('id,total,stage,placed_at').eq('merchant_id',id).order('placed_at',{ascending:false}).limit(100);
+  const el=document.getElementById('merchOrdersList');
+  if(el) el.outerHTML=(orders&&orders.length)?`<div class="card">${orders.map(o=>`<div class="row" style="cursor:pointer" onclick="openOrderDetailAdmin('${o.id}')">
+      <span style="flex:1"><span class="n">${shortId(o.id)}</span><span class="s">${o.placed_at?new Date(o.placed_at).toLocaleDateString('ar-EG'):''} · ${o.stage}</span></span>
+      <b class="num end">${M(o.total||0)} ج</b></div>`).join('')}</div>`:'<div class="tiny muted">مفيش طلبات لسه</div>';
 }
-function openDriverDetail(id){
+async function openDriverDetail(id){
   const a=S.driverApplications.find(x=>x.driverId===id); if(!a)return;
   openDetailSheet('بيانات المندوب الكاملة',`
     ${detailRow('الاسم',a.driverName)}
     ${detailRow('رقم الموبايل',a.phone)}
     ${detailRow('الوسيلة',a.vehicle)}
+    ${detailRow('تاريخ الانضمام للمنصة',a.at||'—')}
     ${detailRow('عدد التوصيلات',a.deliveries||0)}
+    ${detailRow('صافي أرباحه المسجّلة',M(a.earnings||0)+' ج')}
     ${detailRow('الحالة',a.status==='approved'?'موثّق ومعتمد':a.status)}
     <div style="margin-top:12px">
       <div class="tiny muted mb">صورة البطاقة الشخصية</div>
@@ -1233,7 +1337,31 @@ function openDriverDetail(id){
       <div class="tiny muted mb">الصورة الشخصية</div>
       ${a.selfiePhoto?`<img src="${a.selfiePhoto}" style="width:100%;border-radius:10px" onclick="window.open('${a.selfiePhoto}','_blank')">`:'<div class="tiny muted">مفيش صورة</div>'}
     </div>
+    <div class="tiny muted mt mb" style="margin-top:12px">سجل التوصيلات — من وقت ما اشتغل على المنصة</div>
+    <div id="driverOrdersList" class="tiny muted">بيتحمّل...</div>
+    <div class="tiny muted mt mb" style="margin-top:12px">شكاوى العملاء على المندوب ده</div>
+    <div id="driverComplaintsList" class="tiny muted">بيتحمّل...</div>
   `);
+  if(!sb)return;
+  const {data:orders}=await sb.from('orders').select('id,total,stage,closed_at').eq('driver_id',id).order('closed_at',{ascending:false}).limit(100);
+  const {data:crs}=await sb.from('custom_requests').select('id,description,stage,created_at').eq('driver_id',id).order('created_at',{ascending:false}).limit(50);
+  const rows=[
+    ...(orders||[]).map(o=>`<div class="row" style="cursor:pointer" onclick="openOrderDetailAdmin('${o.id}')">
+      <span style="flex:1"><span class="n">${shortId(o.id)}</span><span class="s">${o.closed_at?new Date(o.closed_at).toLocaleDateString('ar-EG'):''} · ${o.stage}</span></span>
+      <b class="num end">${M(o.total||0)} ج</b></div>`),
+    ...(crs||[]).map(r=>`<div class="row" style="cursor:pointer" onclick="openCRDetailAdmin('${r.id}')">
+      <span style="flex:1"><span class="n">📦 ${shortId(r.id)}</span><span class="s">${r.description}</span></span>
+      <b class="num end">${r.stage}</b></div>`)
+  ];
+  const el=document.getElementById('driverOrdersList');
+  if(el) el.outerHTML=rows.length?`<div class="card">${rows.join('')}</div>`:'<div class="tiny muted">مفيش توصيلات مسجّلة لسه</div>';
+  const {data:complaints}=await sb.from('reviews').select('*').eq('driver_id',id).not('complaint','is',null).order('created_at',{ascending:false});
+  const cEl=document.getElementById('driverComplaintsList');
+  if(cEl) cEl.outerHTML=(complaints&&complaints.length)?`<div class="card">${complaints.map(c=>`<div class="row" style="flex-direction:column;align-items:stretch;gap:4px">
+      <div style="display:flex;justify-content:space-between"><b style="font-size:12.5px">${c.complaint}</b>
+      <span class="bdg ${c.resolved?'b-ac':'b-w'}">${c.resolved?'اتحلّت':'مفتوحة'}</span></div>
+      <span class="tiny muted">${new Date(c.created_at).toLocaleDateString('ar-EG')}</span></div>`).join('')}</div>`:
+    '<div class="tiny muted">مفيش شكاوى — سجل نظيف 👍</div>';
 }
 function vMembers(){
   const t=S.membersTab||'customers';
@@ -1268,14 +1396,21 @@ function vMembers(){
 }
 async function refreshAnalytics(){
   if(!sb)return;
-  const {data:delivered}=await sb.from('orders').select('merchant_id,driver_id,total,platform_commission').eq('stage','delivered');
+  const {data:delivered}=await sb.from('orders').select('merchant_id,driver_id,total,platform_commission,driver_net_earning,delivery_fee').eq('stage','delivered');
   const byMerchant={}, byDriver={};
   let totalCommission=0;
   (delivered||[]).forEach(o=>{
     byMerchant[o.merchant_id]=(byMerchant[o.merchant_id]||0)+ +o.total;
     totalCommission+=+o.platform_commission||1.5;
     if(o.driver_id){ byDriver[o.driver_id]=byDriver[o.driver_id]||{deliveries:0,earnings:0};
-      byDriver[o.driver_id].deliveries++; byDriver[o.driver_id].earnings+=+o.total; }
+      const net=o.driver_net_earning!=null?+o.driver_net_earning:(+o.delivery_fee||0)-(+o.platform_commission||1.5);
+      byDriver[o.driver_id].deliveries++; byDriver[o.driver_id].earnings+=net; }
+  });
+  const {data:deliveredCR}=await sb.from('custom_requests').select('driver_id,driver_net_earning,delivery_fee').eq('stage','delivered');
+  (deliveredCR||[]).forEach(r=>{
+    if(!r.driver_id)return;
+    byDriver[r.driver_id]=byDriver[r.driver_id]||{deliveries:0,earnings:0};
+    byDriver[r.driver_id].deliveries++; byDriver[r.driver_id].earnings+=+(r.driver_net_earning!=null?r.driver_net_earning:r.delivery_fee||0);
   });
   S.merchants.forEach(m=>{ m.salesTotal=byMerchant[m.id]||0; });
   S.driverApplications.forEach(a=>{ const s=byDriver[a.driverId]; if(s){ a.deliveries=s.deliveries; a.earnings=s.earnings; } });
