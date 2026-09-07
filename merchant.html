@@ -410,6 +410,7 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
       <p class="asub">هنبعتلك كود تحقق سريع عليه</p>
       <div class="fld mt"><label>رقم الموبايل</label>
         <input id="mSignupPhone" type="tel" dir="ltr" placeholder="01xxxxxxxxx" style="text-align:center;font-family:'Cairo','Segoe UI','Tahoma',sans-serif;letter-spacing:1px"></div>
+      <div id="mPhoneCheckBanner" style="display:none"></div>
       <div class="spacer"></div>
       <button class="btn btn-p" onclick="mSendOtp()">متابعة</button>
     </div>
@@ -703,6 +704,24 @@ let mSignupPhone='';
 function mSendOtp(){
   const v=document.getElementById('mSignupPhone').value.trim();
   if(!/^01[0125]\d{8}$/.test(v)){toast('اكتب رقم موبايل مصري صحيح');return}
+  const bEl=document.getElementById('mPhoneCheckBanner'); if(bEl){bEl.style.display='none';bEl.innerHTML='';}
+  if(sb){
+    sb.from('merchants').select('id').eq('phone',v).maybeSingle().then(({data,error})=>{
+      if(error){ console.error('basita: تعذّر التحقق من الرقم',error); proceedMerchantOtp(v); return; }
+      if(data){
+        if(bEl){ bEl.style.display='block'; bEl.innerHTML=`<div class="card mt" style="padding:14px;background:#FDE8E6;border-color:#F5B5AE">
+          <b style="color:#C23327;font-size:13.5px;display:block">📱 الرقم ده مسجّل بحساب تاجر موجود بالفعل</b>
+          <button class="btn btn-p" style="width:100%;margin-top:10px" onclick="document.getElementById('mPhoneCheckBanner').style.display='none';mGoAuth('login')">سجّل دخول بدل كده</button></div>`;
+          if(bEl.scrollIntoView) bEl.scrollIntoView({behavior:'smooth',block:'center'}); }
+        return;
+      }
+      proceedMerchantOtp(v);
+    });
+  }else{
+    proceedMerchantOtp(v);
+  }
+}
+function proceedMerchantOtp(v){
   mSignupPhone=v;
   document.getElementById('mOtpPhone').textContent=v;
   mGoAuth('otp');
