@@ -702,7 +702,8 @@ function saveOwnerPin(){
 function vOverview(){
   const mrr=S.merchants.filter(m=>m.status==='active').reduce((s,m)=>s+m.price,0);
   const trialCount=S.merchants.filter(m=>m.status==='trial').length;
-  const pendingCR=(S.customRequests||[]).filter(r=>r.stage==='placed');
+  const pendingCR=(S.customRequests||[]).filter(r=>r.stage==='placed'&&!isTukTukRequest(r));
+  const pendingTuk=(S.customRequests||[]).filter(r=>r.stage==='placed'&&isTukTukRequest(r));
   return `<div class="pad" style="padding-top:14px">
     ${pendingCR.length?`<div style="background:linear-gradient(120deg,#241A05,#3A2E14);border-radius:16px;padding:14px 16px;margin-bottom:14px;
       box-shadow:0 10px 24px -10px rgba(36,26,5,.5)">
@@ -720,6 +721,22 @@ function vOverview(){
           </div></div>`).join('')}
       </div>
     </div>`:''}
+    ${pendingTuk.length?`<div style="background:linear-gradient(120deg,#062A29,#0B4A45);border-radius:16px;padding:14px 16px;margin-bottom:14px;
+      box-shadow:0 10px 24px -10px rgba(6,42,41,.5)">
+      <div style="display:flex;align-items:center;gap:9px">
+        <span style="font-size:20px">🔔</span>
+        <b style="color:#5EEAD4;font-family:'Cairo';font-size:14px">${pendingTuk.length} طلب "توك توك" محتاج موافقتك دلوقتي</b>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
+        ${pendingTuk.map(r=>`<div style="background:rgba(255,255,255,.07);border-radius:11px;padding:10px 12px">
+          <div style="color:#fff;font-size:12.5px;font-weight:700">${r.description}</div>
+          <div style="color:#A7D8D4;font-size:10.5px;margin-top:2px">${r.customer_name} · ${r.address||''}</div>
+          <div style="display:flex;gap:7px;margin-top:8px">
+            <button style="flex:1;background:#5EEAD4;color:#062A29;border:0;padding:8px;border-radius:9px;font-family:'Cairo';font-weight:800;font-size:11.5px" onclick="approveCustomRequest('${r.id}')">✓ وافق وابعته للمناديب</button>
+            <button style="flex:0 0 auto;background:rgba(255,255,255,.1);color:#FFD9D6;border:0;padding:8px 12px;border-radius:9px;font-family:'Cairo';font-weight:700;font-size:11px" onclick="rejectCustomRequest('${r.id}')">رفض</button>
+          </div></div>`).join('')}
+      </div>
+    </div>`:''}
     <div class="sec-t" style="margin-top:0"><h3>الإيراد الشهري (MRR)</h3></div>
     <div class="card" style="padding:18px;text-align:center">
       <div class="kufi num" style="font-size:32px;color:var(--ac)">${M(mrr)} ج</div>
@@ -728,12 +745,21 @@ function vOverview(){
     <div class="alert warn mt">⏰ <span>${trialCount} تاجر لسه في فترة التجربة المجانية — تابعهم قبل ما تخلص</span></div>
     <div class="sec-t"><h3>📦 الطلبات المخصّصة (اطلب أي حاجة)</h3></div>
     <div class="card mb">
-      ${(S.customRequests||[]).filter(r=>r.stage!=='placed').length?S.customRequests.filter(r=>r.stage!=='placed').slice(0,6).map(r=>`<div class="row">
+      ${(S.customRequests||[]).filter(r=>r.stage!=='placed'&&!isTukTukRequest(r)).length?S.customRequests.filter(r=>r.stage!=='placed'&&!isTukTukRequest(r)).slice(0,6).map(r=>`<div class="row">
         <span class="av">${crIcon(r)}</span><span style="flex:1"><span class="n">${r.description}</span>
         <span class="s">${r.customer_name} ${r.driver_name?'· المندوب: '+r.driver_name:'· ⏳ مستني مندوب'}</span></span>
         <span class="bdg ${r.stage==='delivered'?'b-ac':r.stage==='rejected'?'b-d':'b-prog'}">${
           {approved:'مستني مندوب',assigned:'المندوب في الطريق',delivering:'راجع للعميل',delivered:'اتسلّم',rejected:'مرفوض'}[r.stage]||r.stage}</span></div>`).join(''):
         `<div class="row"><span class="s muted" style="padding:8px 0">لسه مفيش طلبات موافَق عليها</span></div>`}
+    </div>
+    <div class="sec-t"><h3>🛺 طلبات التوك توك</h3></div>
+    <div class="card mb">
+      ${(S.customRequests||[]).filter(r=>r.stage!=='placed'&&isTukTukRequest(r)).length?S.customRequests.filter(r=>r.stage!=='placed'&&isTukTukRequest(r)).slice(0,6).map(r=>`<div class="row">
+        <span class="av">🛺</span><span style="flex:1"><span class="n">${r.description}</span>
+        <span class="s">${r.customer_name} ${r.driver_name?'· المندوب: '+r.driver_name:'· ⏳ مستني مندوب'}</span></span>
+        <span class="bdg ${r.stage==='delivered'?'b-ac':r.stage==='rejected'?'b-d':'b-prog'}">${
+          {approved:'مستني مندوب',assigned:'المندوب في الطريق',delivering:'راجع للعميل',delivered:'اتسلّم',rejected:'مرفوض'}[r.stage]||r.stage}</span></div>`).join(''):
+        `<div class="row"><span class="s muted" style="padding:8px 0">لسه مفيش طلبات توك توك موافَق عليها</span></div>`}
     </div>
     <div class="sec-t"><h3>آخر الأحداث</h3></div>
     <div class="card">
@@ -1079,12 +1105,18 @@ function adminOrderStageBadge(stage){
   if(stage==='delivered')return 'b-ac'; if(stage==='rejected'||stage==='cancelled')return 'b-d'; return 'b-prog';
 }
 function onAdminOrderSearch(v){ S.orderSearchQ=(v||'').trim(); renderAdminOrdersList(); }
+function setAdminOrderKindFilter(k){ S.orderKindFilter=(S.orderKindFilter===k?null:k); render(); }
+function classifyAdminOrderKind(x){
+  if(x._kind==='order')return 'store';
+  return isTukTukRequest(x)?'tuktuk':'custom';
+}
 function renderAdminOrdersList(){
   const el=document.getElementById('adminOrdersList'); if(!el)return;
   const q=(S.orderSearchQ||'').toLowerCase();
   const normal=(S.orders||[]).map(o=>({...o,_kind:'order',_at:o.placed_at}));
   const custom=(S.customRequests||[]).map(r=>({...r,_kind:'cr',_at:r.created_at}));
   let merged=[...normal,...custom].sort((a,b)=>new Date(b._at||0)-new Date(a._at||0));
+  if(S.orderKindFilter) merged=merged.filter(x=>classifyAdminOrderKind(x)===S.orderKindFilter);
   if(q){
     merged=merged.filter(x=>
       String(x.id||'').toLowerCase().includes(q)||
@@ -1103,13 +1135,27 @@ function renderAdminOrdersList(){
       </span>
       <span class="bdg ${adminOrderStageBadge(x.stage)}">${adminOrderStageLabel(x.stage)}</span>
     </div>`).join('')}</div>`:
-    `<div class="tiny muted" style="padding:14px 4px">${q?'مفيش طلبات مطابقة للبحث':'لسه مفيش طلبات'}</div>`;
+    `<div class="tiny muted" style="padding:14px 4px">${q||S.orderKindFilter?'مفيش طلبات مطابقة':'لسه مفيش طلبات'}</div>`;
 }
 function vOrdersAdmin(){
   setTimeout(renderAdminOrdersList,0);
+  const normalCount=(S.orders||[]).length;
+  const customCount=(S.customRequests||[]).filter(r=>!isTukTukRequest(r)).length;
+  const tuktukCount=(S.customRequests||[]).filter(r=>isTukTukRequest(r)).length;
+  const kinds=[
+    {k:null,i:'🗂️',n:'الكل',c:normalCount+customCount+tuktukCount},
+    {k:'store',i:'🛍️',n:'طلبات المتاجر',c:normalCount},
+    {k:'custom',i:'📦',n:'اطلب أي حاجة',c:customCount},
+    {k:'tuktuk',i:'🛺',n:'توك توك',c:tuktukCount},
+  ];
   return `<div class="pad" style="padding-top:14px">
     <div class="sec-t" style="margin-top:0"><h3>سجل الطلبات الكامل</h3></div>
-    <div class="tiny muted" style="margin:-6px 0 12px">كل الطلبات (عادية ومخصّصة) في مكان واحد — دوس على أي طلب تشوف تفاصيله كاملة مع صورة التسليم والمحادثة بين العميل والمندوب</div>
+    <div class="tiny muted" style="margin:-6px 0 12px">كل الطلبات في مكان واحد — دوس على أي طلب تشوف تفاصيله كاملة مع صورة التسليم والمحادثة بين العميل والمندوب</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+      ${kinds.map(k=>`<button type="button" onclick="setAdminOrderKindFilter(${k.k?`'${k.k}'`:'null'})" style="flex:1;min-width:76px;background:${S.orderKindFilter===k.k?'var(--ac)':'var(--surf2)'};color:${S.orderKindFilter===k.k?'#fff':'var(--txt)'};
+        border:0;border-radius:12px;padding:9px 6px;text-align:center;font-weight:700;font-size:11px;cursor:pointer">
+        <div style="font-size:16px;margin-bottom:2px">${k.i}</div>${k.n}<div class="tiny" style="opacity:.8;margin-top:1px">${k.c}</div></button>`).join('')}
+    </div>
     <div class="fld" style="margin-bottom:12px">
       <input id="adminOrderSearch" placeholder="ابحث برقم الطلب، اسم العميل، رقم موبايله، أو العنوان..." oninput="onAdminOrderSearch(this.value)" value="${S.orderSearchQ||''}">
     </div>
