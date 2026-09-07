@@ -2009,23 +2009,45 @@ async function loadMyActiveTasks(){
   if(!sb||!S.driverId)return;
   const {data:orders,error}=await sb.from('orders').select('*').eq('driver_id',S.driverId).in('stage',['assigned','picked','delivering']);
   if(error){ console.error('basita: فشل تحميل مهامك النشطة',error); return; }
+  let changed=false;
   for(const o of (orders||[])){
-    if(S.tasks.some(t=>t.id===o.id))continue;
+    const existing=S.tasks.find(t=>t.id===o.id);
+    if(existing){
+      // لو الـ Realtime فاته تحديث (نت اتقطع لحظة، أو التطبيق كان في الخلفية)، نرجّع الحالة الصح من القاعدة مباشرة
+      const dbStage=o.stage==='picked'?'delivering':o.stage; // نفس منطق التحويل التلقائي المستخدم في حدث الـ Realtime
+      if(existing.stage!==dbStage){
+        existing.stage=dbStage; changed=true;
+        if(o.stage==='picked') sb.from('orders').update({stage:'delivering'}).eq('id',o.id).then(()=>{});
+      }
+      continue;
+    }
     const {data:items}=await sb.from('order_items').select('*').eq('order_id',o.id);
     const {data:merchantRow}=await sb.from('merchants').select('shop_lat,shop_lng,name').eq('id',o.merchant_id).maybeSingle();
     const task=mapTaskRow(o,items);
     task.accepted=true; // كانت متعيّنة له قبل كده، يبقى قابلها فعلًا
     if(merchantRow&&merchantRow.shop_lat!=null) task.shopGeo={lat:merchantRow.shop_lat,lng:merchantRow.shop_lng};
     task.shopName=merchantRow?merchantRow.name:'';
-    S.tasks.push(task);
+    S.tasks.push(task); changed=true;
     subscribeTaskChat(o.id);
   }
-  render();
+  // أي مهمة عندنا محليًا اتقفلت فعليًا في القاعدة (اتسلّمت/اتلغت) من غير ما نلحق نحدّثها — نشيلها من الشاشة
+  const activeIds=new Set((orders||[]).map(o=>o.id));
+  const before=S.tasks.length;
+  S.tasks=S.tasks.filter(t=>activeIds.has(t.id));
+  if(S.tasks.length!==before) changed=true;
+  if(changed) render();
+}
+let _reconcileT=null;
+function startTaskReconciliation(){
+  if(_reconcileT)return;
+  _reconcileT=setInterval(()=>{ if(S.tasks.length) loadMyActiveTasks(); },25000);
+  document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'&&S.tasks.length) loadMyActiveTasks(); });
 }
 function subscribeMyTasks(){
   if(!sb||!S.driverId)return;
   loadMyTips();
   loadMyActiveTasks();
+  startTaskReconciliation();
   sb.channel('driver-tasks-'+S.driverId)
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'orders',filter:'driver_id=eq.'+S.driverId},async payload=>{
       if(payload.new.stage==='assigned'&&!S.tasks.some(t=>t.id===payload.new.id)){
