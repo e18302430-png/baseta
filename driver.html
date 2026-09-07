@@ -543,6 +543,8 @@ p.asub{color:var(--txt2);text-align:center;margin:9px 0 0;font-size:13.5px;line-
     <div id="settleTop"></div>
     <div class="body" id="screen"></div>
     <div id="alertBanner"></div>
+    <div id="complaintBanner"></div>
+    <div id="transferBanner"></div>
     <button class="float-support" onclick="openSupportSheet()" aria-label="الدعم الفني"><i>🆘</i><span>الدعم الفني</span></button>
     <div class="nav" id="nav"></div>
     <div class="toast" id="toast"></div>
@@ -908,7 +910,7 @@ function startShift(){
       document.getElementById('shiftStart').classList.remove('show');
       document.getElementById('mainApp').classList.add('show');
       render();
-      if(sb&&S.driverId){ sb.from('drivers').update({is_available:true,last_seen_at:new Date().toISOString()}).eq('id',S.driverId).then(()=>{}); subscribeMyTasks(); subscribeMyTickets(); subscribeMySettlements(); subscribeCustomRequests(); startHeartbeat(); loadMyHistory(); }
+      if(sb&&S.driverId){ sb.from('drivers').update({is_available:true,last_seen_at:new Date().toISOString()}).eq('id',S.driverId).then(()=>{}); subscribeMyTasks(); subscribeMyTickets(); subscribeMySettlements(); subscribeCustomRequests(); startHeartbeat(); loadMyHistory(); loadMyComplaints(); subscribeMyComplaints(); subscribeMyTransfers(); }
       else emit({to:['merchant','owner'],type:'driver:online',driverId:S.driverId,driverName:S.driverName||'كريم عبد الله',vehicle:S.vehicle||'🛵'});
       if('Notification' in window && Notification.permission==='default'){
         Notification.requestPermission().then(()=>renderNotifWarning());
@@ -1340,7 +1342,7 @@ async function confirmDeliveryPhoto(){
     }catch(err){ console.error('basita: فشل رفع صورة التسليم',err); }
   }else{
     emit({to:['customer','merchant'],type:'order:status',orderId:id,status:'delivered',photo:capturedPhoto,
-      driverName:S.driverName||'كريم عبد الله',driverId:S.driverId,merchantId:t.merchantId,customerId:t.customerId,total:t.total});
+      driverName:S.driverName||'كريم عبد الله',driverId:S.driverId,merchantId:t.merchantId,customerId:t.customerId,total:t.total,netEarning:t.netEarning});
   }
   S.shiftTotal+=(t.total||0);
   S.owedByMerchant=S.owedByMerchant||{};
@@ -1753,6 +1755,47 @@ function vTasks(){
         </div></div>`).join('')}`:''}
     <div style="height:12px"></div></div>`;
 }
+async function loadMyComplaints(){
+  if(!sb||!S.driverId)return;
+  const {data,error}=await sb.from('reviews').select('*').eq('driver_id',S.driverId).not('complaint','is',null).order('created_at',{ascending:false}).limit(30);
+  if(error){ console.error('basita: فشل تحميل الشكاوى',error); return; }
+  S.myComplaints=data||[];
+  render();
+}
+function subscribeMyComplaints(){
+  if(!sb||!S.driverId)return;
+  sb.channel('driver-complaints-'+S.driverId)
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'reviews',filter:'driver_id=eq.'+S.driverId},payload=>{
+      if(!payload.new.complaint)return;
+      S.myComplaints=S.myComplaints||[]; S.myComplaints.unshift(payload.new);
+      notify('⚠️ وصلت شكوى من عميل — دوس عشان تشوف التفاصيل');
+      render();
+    })
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'reviews',filter:'driver_id=eq.'+S.driverId},payload=>{
+      S.myComplaints=(S.myComplaints||[]).map(c=>c.id===payload.new.id?payload.new:c);
+      render();
+    })
+    .subscribe();
+}
+function complaintBannerHtml(){
+  const open=(S.myComplaints||[]).filter(c=>!c.resolved);
+  if(!open.length)return '';
+  return `<button onclick="openMyComplaintsSheet()" style="position:absolute;bottom:calc(var(--nav) + ${pendingAlertIds.size?'78px':'14px'});inset-inline:14px;z-index:44;
+    background:#C23327;color:#fff;border:0;border-radius:16px;padding:13px 16px;display:flex;align-items:center;gap:10px;
+    font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-weight:700;font-size:13.5px;box-shadow:0 14px 30px -8px rgba(194,51,39,.55);width:calc(100% - 28px)">
+    <span style="font-size:20px">⚠️</span><span>عندك ${open.length} شكوى من عميل لسه متحلّتش — دوس تشوف التفاصيل</span></button>`;
+}
+function openMyComplaintsSheet(){
+  const list=S.myComplaints||[];
+  openSheet('الشكاوى المُقدَّمة عليك',`
+    <p class="tiny muted" style="margin:0 0 14px">دي شكاوى وصلت من عملاء بخصوص طلبات وصّلتها — اطّلع عليها واحرص إنها ما تتكررش</p>
+    ${list.length?list.map(c=>`<div class="card mb" style="padding:12px;border-color:${c.resolved?'var(--line)':'#F5B5AE'}">
+      <div class="row"><b style="font-size:13px">${c.complaint}</b>
+        <span class="bdg ${c.resolved?'b-ac':'b-w'}">${c.resolved?'اتحلّت':'مفتوحة'}</span></div>
+      <div class="tiny muted mt">${new Date(c.created_at).toLocaleDateString('ar-EG')}</div>
+      ${c.resolution_note?`<div class="tiny mt" style="background:var(--surf2);border-radius:8px;padding:7px 9px">رد الإدارة: ${c.resolution_note}</div>`:''}
+    </div>`).join(''):'<div class="tiny muted">مفيش شكاوى — استمر كده 👍</div>'}`);
+}
 async function loadMyHistory(){
   if(!sb||!S.driverId)return;
   const {data,error}=await sb.from('orders').select('*').eq('driver_id',S.driverId).eq('stage','delivered').order('closed_at',{ascending:false}).limit(100);
@@ -1903,9 +1946,38 @@ function subscribeCustomRequests(){
     })
     .subscribe();
 }
+function subscribeMyTransfers(){
+  if(!sb||!S.driverId)return;
+  sb.channel('driver-transfers-'+S.driverId)
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'wallet_transfers',filter:'to_driver_id=eq.'+S.driverId},payload=>{
+      S.pendingTransfers=S.pendingTransfers||[]; S.pendingTransfers.unshift(payload.new);
+      notify('💸 العميل قال إنه حوّلك '+M(payload.new.amount)+' ج — استلمتها؟');
+      render();
+    }).subscribe();
+}
+async function confirmTransfer(id,received){
+  const t=(S.pendingTransfers||[]).find(x=>x.id===id); if(!t)return;
+  const status=received?'driver_confirmed':'disputed';
+  if(sb) await sb.from('wallet_transfers').update({status,confirmed_at:new Date().toISOString()}).eq('id',id);
+  S.pendingTransfers=(S.pendingTransfers||[]).filter(x=>x.id!==id);
+  toast(received?'✓ اتأكّد الاستلام':'✓ اتسجّل إن المبلغ لسه ما وصلش — هيتراجع من الإدارة');
+  render();
+}
+function transferBannerHtml(){
+  const t=(S.pendingTransfers||[])[0]; if(!t)return '';
+  const openComplaints=(S.myComplaints||[]).filter(c=>!c.resolved).length;
+  const offset=14+(pendingAlertIds.size?64:0)+(openComplaints?64:0);
+  return `<div style="position:absolute;bottom:calc(var(--nav) + ${offset}px);inset-inline:14px;z-index:46;
+    background:#fff;border:1.5px solid var(--ac);border-radius:16px;padding:14px;box-shadow:0 14px 30px -8px rgba(0,0,0,.25)">
+    <b style="font-size:13.5px;display:block;margin-bottom:8px">💸 العميل قال إنه حوّلك ${M(t.amount)} ج${t.note?' — '+t.note:''}. استلمتها؟</b>
+    <div style="display:flex;gap:8px">
+      <button class="btn2 btn-ok2" style="flex:1" onclick="confirmTransfer('${t.id}',true)">✓ أيوه استلمت</button>
+      <button class="btn2 btn-o2" style="flex:1" onclick="confirmTransfer('${t.id}',false)">لسه ما وصلنيش</button>
+    </div></div>`;
+}
 async function acceptCustomRequest(id){
   if(!sb||!S.driverId)return;
-  const {data,error}=await sb.from('custom_requests').update({stage:'assigned',driver_id:S.driverId,driver_name:S.driverName||'مندوب'})
+  const {data,error}=await sb.from('custom_requests').update({stage:'assigned',driver_id:S.driverId,driver_name:S.driverName||'مندوب',driver_phone:S.phone||''})
     .eq('id',id).eq('stage','approved').select().maybeSingle();
   if(!data){ toast('للأسف مندوب تاني سبقك بالطلب ده'); S.availableCustomRequests=(S.availableCustomRequests||[]).filter(r=>r.id!==id); render(); return; }
   S.availableCustomRequests=(S.availableCustomRequests||[]).filter(r=>r.id!==id);
@@ -2025,6 +2097,8 @@ function render(){
       ${bn}<span class="i">${i}</span><span>${n}</span></button>`}).join('');
   renderSettleTop();
   const ab=document.getElementById('alertBanner'); if(ab) ab.innerHTML=pendingAlertBannerHtml();
+  const cb=document.getElementById('complaintBanner'); if(cb) cb.innerHTML=complaintBannerHtml();
+  const tb=document.getElementById('transferBanner'); if(tb) tb.innerHTML=transferBannerHtml();
 }
 
 /* ═══ اقتراح تثبيت التطبيق على الشاشة الرئيسية ═══ */
