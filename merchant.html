@@ -929,6 +929,26 @@ const BIZ_TYPES={
   bakery:{name:'مخبز النور',icon:'🥖',label:'مخبز'},
   other:{name:'محلي',icon:'🏪',label:'نشاط عام'},
 };
+/* ═══ كل نشاط تجاري له أقسام ووحدات بيع مختلفة عن التاني — لما التاجر يختار نوع نشاطه وقت التسجيل،
+   شاشة "ضيف منتج" المفروض تفهم ده وتقترحله أقسام ووحدات مناسبة لمجاله هو بالظبط، مش قايمة عامة واحدة للكل ═══ */
+const BIZ_CATEGORIES={
+  grocery:['مواد غذائية','منظفات ومستلزمات المنزل','ألبان وأجبان','معلبات','مشروبات','خضار وفاكهة','عناية شخصية','حلويات وسناكس'],
+  pharmacy:['أدوية','مسكنات وخافض حرارة','فيتامينات ومكملات','عناية بالبشرة','أدوات ومستلزمات طبية','رعاية أطفال وحفاضات','عناية شخصية'],
+  restaurant:['أطباق رئيسية','مقبلات وسلطات','ساندوتشات','أطباق جانبية','مشروبات','حلويات'],
+  cafe:['مشروبات ساخنة','مشروبات باردة','عصائر طازة','حلويات وكيك','سناكس خفيفة'],
+  bakery:['خبز طازة','معجنات وفطاير','كيك وتورت','حلويات شرقية','بسكويت وبقسماط'],
+  other:['المنتج الرئيسي','إضافات وخدمات'],
+};
+const BIZ_UNITS={
+  grocery:['قطعة','كيس','بيكيت','علبة','كرتونة','لتر'],
+  pharmacy:['شريط','علبة','قطعة','زجاجة','أنبوبة'],
+  restaurant:['طبق','صحن','قطعة','علبة'],
+  cafe:['كوب صغير','كوب وسط','كوب كبير','قطعة'],
+  bakery:['رغيف','قطعة','علبة'],
+  other:['قطعة','علبة','كيس'],
+};
+function bizCategories(){ return BIZ_CATEGORIES[S.bizType]||BIZ_CATEGORIES.other; }
+function bizUnits(){ return BIZ_UNITS[S.bizType]||BIZ_UNITS.other; }
 function BIZ(){
   const base=BIZ_TYPES[S.bizType||'grocery'];
   return S.customStoreName?{...base,name:S.customStoreName}:base;
@@ -1076,13 +1096,9 @@ async function loadMyProducts(){
   if(!sb||!S.merchantId)return;
   const {data,error}=await sb.from('products').select('*').eq('merchant_id',S.merchantId);
   if(error){ console.error('basita: فشل تحميل منتجاتك',error); return; }
-  if(!data||!data.length){
-    const seed=S.products.map(p=>({merchant_id:S.merchantId,name:p.n,brand:p.br,icon:p.i,price:p.p,unit:p.u,sell_by:'unit',stock:p.s}));
-    const {data:inserted}=await sb.from('products').insert(seed).select();
-    S.products=(inserted||[]).map(mapProductRow);
-  }else{
-    S.products=data.map(mapProductRow);
-  }
+  // متجر جديد لسه ملوش منتجات؟ يبدأ بصفحة فاضية تمامًا عشان التاجر يضيف منتجاته الحقيقية بنفسه —
+  // من غير ما نحطله منتجات تجريبية جاهزة (كانت بتتحط تلقائيًا قبل كده حتى لو نشاطه مش بقالة أصلًا)
+  S.products=(data||[]).map(mapProductRow);
   render();
 }
 function mapOrderRow(o,items){
@@ -1325,15 +1341,22 @@ function openProductForm(id){
   const isPharm=S.bizType==='pharmacy';
   const isGrocery=S.bizType==='grocery';
   const sellBy=p&&p.sellBy==='weight'?'weight':'unit';
+  const suggestedCats=bizCategories();
+  const units=bizUnits();
   openSheet(p?'تعديل المنتج':'ضيف منتج جديد',`
-    <div class="fld"><label>اسم المنتج</label><input id="pfName" value="${p?p.n:''}" placeholder="مثلاً: بانادول"></div>
-    <div class="fld"><label>القسم</label><input id="pfCategory" value="${p&&p.category||''}" placeholder="مثلاً: مواد غذائية، منظفات، مشروبات" list="catSuggestions">
-      <datalist id="catSuggestions">${[...new Set(S.products.map(x=>x.category).filter(Boolean))].map(c=>`<option value="${c}">`).join('')}</datalist></div>
+    <div class="fld"><label>اسم المنتج</label><input id="pfName" value="${p?p.n:''}" placeholder="مثلاً: ${BIZ().label==='بقالة'?'بانادول':BIZ().label==='كافيه'?'قهوة تركي':'اسم المنتج'}"></div>
+    <div class="fld"><label>القسم</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+        ${suggestedCats.map(c=>`<button type="button" onclick="document.getElementById('pfCategory').value='${c}'" style="background:var(--surf2);border:1px solid var(--line);color:var(--txt);
+          font-size:10.5px;font-weight:700;padding:6px 11px;border-radius:20px;white-space:nowrap;cursor:pointer">${c}</button>`).join('')}
+      </div>
+      <input id="pfCategory" value="${p&&p.category||''}" placeholder="اختار من فوق أو اكتب قسم تاني" list="catSuggestions">
+      <datalist id="catSuggestions">${[...new Set([...suggestedCats,...S.products.map(x=>x.category).filter(Boolean)])].map(c=>`<option value="${c}">`).join('')}</datalist></div>
     <div class="fld"><label>طريقة البيع</label><select id="pfSellBy" onchange="toggleSellByUI()">
-      <option value="unit" ${sellBy==='unit'?'selected':''}>بالوحدة (قطعة / كيس / بيكيت / علبة)</option>
+      <option value="unit" ${sellBy==='unit'?'selected':''}>بالوحدة (${units.slice(0,3).join(' / ')})</option>
       <option value="weight" ${sellBy==='weight'?'selected':''}>بالوزن سايب (تسعير بالكيلو)</option></select></div>
     <div class="fld" id="pfUnitWrap"><label>الوحدة</label><select id="pfUnit">
-      ${['قطعة','كيس','بيكيت','علبة','شريط','لتر'].map(u=>`<option ${p&&p.u===u?'selected':''}>${u}</option>`).join('')}</select></div>
+      ${units.map(u=>`<option ${p&&p.u===u?'selected':''}>${u}</option>`).join('')}</select></div>
     <div class="fld"><label id="pfPriceLabel">السعر (جنيه)</label><input id="pfPrice" type="number" value="${p?p.p:''}"></div>
     <div class="fld"><label>الكمية بالمخزون ${sellBy==='weight'?'(بالكيلو)':''}</label><input id="pfStock" type="number" step="any" value="${p?p.s:''}"></div>
     ${isPharm?`
@@ -1420,6 +1443,11 @@ function vProducts(){
   const catNames=Object.keys(grouped).sort((a,b)=>a==='من غير قسم'?1:b==='من غير قسم'?-1:a.localeCompare(b,'ar'));
   return `<div class="pad" style="padding-top:14px">
     <button class="btn btn-p mb" style="width:100%" onclick="openProductForm()">+ ضيف منتج جديد</button>
+    ${!S.products.length?`<div class="card mb" style="padding:26px 20px;text-align:center">
+      <div style="font-size:38px;margin-bottom:10px">${BIZ().icon}</div>
+      <b style="font-size:14.5px;display:block">متجرك لسه فاضي — يلا نبدأ!</b>
+      <div class="tiny muted mt" style="line-height:1.8">ضيف أول منتج بتاعك دلوقتي، واختار من الأقسام الجاهزة اللي مناسبة لنشاطك عشان يبقى منظم من الأول</div>
+    </div>`:''}
     ${bestSellers.length?`<div class="alert info mb"><span>🔥 الأكثر مبيعًا الأسبوع ده: ${bestSellers.join(' · ')}</span></div>`:''}
     ${catNames.map(cat=>`
       <div class="sec-t" style="${cat===catNames[0]?'margin-top:0':''}"><h3>${cat==='من غير قسم'?'📦 '+cat:'🏷️ '+cat}</h3><span class="num">${grouped[cat].length}</span></div>
