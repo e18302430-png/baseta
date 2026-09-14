@@ -1195,6 +1195,7 @@ function subscribeMyOrders(){
       o.stage=payload.new.stage; o.driver=payload.new.driver_name||(nowUnassigned?null:o.driver);
       if(payload.new.total!=null) o.total=+payload.new.total;
       if(payload.new.notes!=null) o.notes=payload.new.notes;
+      if(payload.new.prescription_photo_url) o.prescriptionPhoto=payload.new.prescription_photo_url;
       o._flash=true; render();
       if(wasAssigned&&nowUnassigned&&payload.new.stage==='accepted'){
         toast('⚠️ المندوب اعتذر عن الطلب — بندوّر على مندوب تاني تلقائيًا');
