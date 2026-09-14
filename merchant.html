@@ -905,7 +905,9 @@ function proceedToStoreOpen(){
         emit({to:['owner','customer'],type:'merchant:online',merchantId:S.merchantId,merchantName:BIZ().name,
           bizLabel:BIZ().label,bizIcon:BIZ().icon,bizTypeKey:S.bizType});
         if('Notification' in window && Notification.permission==='default'){
-          Notification.requestPermission().then(()=>renderNotifWarning());
+          Notification.requestPermission().then(p=>{ renderNotifWarning(); if(p==='granted') setupRealPushNotifications('merchant',S.merchantId); });
+        }else if(Notification.permission==='granted'){
+          setupRealPushNotifications('merchant',S.merchantId);
         }
         renderNotifWarning();
         if(sb&&S.merchantId){ loadMyProducts(); subscribeMyOrders(); subscribeMyReviews(); subscribeMyTickets(); subscribeMySettlements(); }
@@ -1040,7 +1042,7 @@ function renderNotifWarning(){
       <span style="font-size:20px">🔔</span>
       <span><b>فعّل الإشعارات عشان توصلك الطلبات دايمًا</b>
       <span>حتى لو فتحت تطبيق تاني — ده أهم حاجة عشان طلب ما يفوتكش</span></span>
-      <button onclick="Notification.requestPermission().then(renderNotifWarning)">تفعيل</button></div>`;
+      <button onclick="Notification.requestPermission().then(p=>{renderNotifWarning();if(p==='granted')setupRealPushNotifications('merchant',S.merchantId);})">تفعيل</button></div>`;
   }
 }
 function pushNotify(m){
@@ -1049,6 +1051,30 @@ function pushNotify(m){
       new Notification('بسيطة · لوحة التاجر',{body:m,icon:''});
     }
   }catch(e){}
+}
+/* ═══ الإشعارات الحقيقية (Web Push) — دي اللي بتوصل حتى والتطبيق مقفول تمامًا أو انت فاتح تطبيق تاني،
+   بعكس التنبيهات العادية اللي محتاجة التطبيق يكون شغال في الخلفية عشان تظهر ═══ */
+const VAPID_PUBLIC_KEY='BJlAnXEwUIkU7FQD5iWN94V92WKJkcfciLH449U28a5lVdcSYY0oKAiOJdhxM3YgnI7kYUqLeOaJl0Wu0reC9Yo';
+function urlBase64ToUint8Array(base64String){
+  const padding='='.repeat((4-base64String.length%4)%4);
+  const base64=(base64String+padding).replace(/-/g,'+').replace(/_/g,'/');
+  const raw=window.atob(base64);
+  return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)));
+}
+async function setupRealPushNotifications(role,ownerId){
+  try{
+    if(!('serviceWorker' in navigator)||!('PushManager' in window)||!sb||!ownerId)return;
+    if(Notification.permission!=='granted')return;
+    const reg=await navigator.serviceWorker.register('/sw.js');
+    let sub=await reg.pushManager.getSubscription();
+    if(!sub){
+      sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(VAPID_PUBLIC_KEY)});
+    }
+    const json=sub.toJSON();
+    await sb.from('push_subscriptions').upsert({
+      role,owner_id:String(ownerId),endpoint:json.endpoint,p256dh:json.keys.p256dh,auth:json.keys.auth
+    },{onConflict:'endpoint'});
+  }catch(e){ console.error('basita: تعذّر تفعيل الإشعارات الحقيقية',e); }
 }
 function toast(m){playNotifySound();pushNotify(m);const t=document.getElementById('toast');if(!t)return;t.textContent=m;t.classList.add('show');
   clearTimeout(window._tT);window._tT=setTimeout(()=>t.classList.remove('show'),2600)}
@@ -1091,7 +1117,7 @@ const qtyLabel=i=>i.sellBy==='weight'?weightLabel(i.q):i.q+'×';
 
 /* ═══ منتجات ومبيعات حقيقية من قاعدة البيانات ═══ */
 function mapProductRow(p){ return {id:p.id,n:p.name,br:p.brand||'',u:p.unit,p:+p.price,i:p.icon||BIZ().icon,s:+p.stock,
-  sellBy:p.sell_by,batch:p.batch_number,expiry:p.expiry_date,wholesale:p.wholesale_price?+p.wholesale_price:undefined,category:p.category||null}; }
+  sellBy:p.sell_by,batch:p.batch_number,expiry:p.expiry_date,wholesale:p.wholesale_price?+p.wholesale_price:undefined,category:p.category||null,photoUrl:p.photo_url||null}; }
 async function loadMyProducts(){
   if(!sb||!S.merchantId)return;
   const {data,error}=await sb.from('products').select('*').eq('merchant_id',S.merchantId);
@@ -1105,6 +1131,7 @@ function mapOrderRow(o,items){
   return {id:o.id,merchantId:o.merchant_id,name:o.customer_name,ph:o.customer_phone,addr:o.address,
     geo:(o.delivery_lat!=null)?{lat:o.delivery_lat,lng:o.delivery_lng}:null,fee:+o.delivery_fee,total:+o.total,
     stage:o.stage,driver:o.driver_name||null,placedTs:new Date(o.placed_at).getTime(),notes:o.notes||'',
+    prescriptionPhoto:o.prescription_photo_url||null,
     items:(items||[]).map(i=>({n:i.name,q:+i.qty,p:+i.unit_price,u:i.unit,sellBy:i.sell_by}))};
 }
 async function loadMyOrders(){
@@ -1343,8 +1370,10 @@ function openProductForm(id){
   const sellBy=p&&p.sellBy==='weight'?'weight':'unit';
   const suggestedCats=bizCategories();
   const units=bizUnits();
+  S._productPhotoLocal=p&&p.photoUrl||null;
   openSheet(p?'تعديل المنتج':'ضيف منتج جديد',`
     <div class="fld"><label>اسم المنتج</label><input id="pfName" value="${p?p.n:''}" placeholder="مثلاً: ${BIZ().label==='بقالة'?'بانادول':BIZ().label==='كافيه'?'قهوة تركي':'اسم المنتج'}"></div>
+    ${productPhotoBoxHtml()}
     <div class="fld"><label>القسم</label>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
         ${suggestedCats.map(c=>`<button type="button" onclick="document.getElementById('pfCategory').value='${c}'" style="background:var(--surf2);border:1px solid var(--line);color:var(--txt);
@@ -1368,6 +1397,31 @@ function openProductForm(id){
     ${p?`<button class="btn" style="width:100%;background:#FDE8E6;color:#C23327;margin-top:8px" onclick="deleteProduct('${id}')">حذف المنتج</button>`:''}
   `);
   setTimeout(toggleSellByUI,0);
+}
+/* ═══ صورة المنتج اختيارية تمامًا — بس بنفكّر التاجر بيها لأنها بتخلي العميل يثق في طلبه أكتر ═══ */
+function productPhotoBoxHtml(){
+  return `<div class="fld" id="productPhotoBox">
+    <label>📸 صورة المنتج (اختياري)</label>
+    <div class="tiny muted mb" style="margin-top:-4px">💡 صورة حقيقية للمنتج بتطمّن العميل وبتزوّد ثقته في طلبه — بس مش إجباري خالص</div>
+    <input type="file" accept="image/*" capture="environment" id="productPhotoFile" style="display:none" onchange="handleProductPhoto(this)">
+    ${S._productPhotoLocal?`<div style="position:relative;margin-top:6px">
+      <img src="${S._productPhotoLocal}" style="width:100%;max-height:180px;object-fit:cover;border-radius:12px">
+      <button type="button" onclick="removeProductPhoto()" style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,.6);color:#fff;border:0;
+        width:30px;height:30px;border-radius:50%;font-size:15px;cursor:pointer">✕</button></div>`:
+      `<button type="button" onclick="document.getElementById('productPhotoFile').click()" class="btn2 btn-o2" style="width:100%;margin-top:6px">
+        📷 ضيف صورة للمنتج</button>`}
+  </div>`;
+}
+function handleProductPhoto(input){
+  const file=input.files&&input.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{ S._productPhotoLocal=e.target.result; S._productPhotoChanged=true; refreshProductPhotoBox(); };
+  reader.readAsDataURL(file);
+}
+function removeProductPhoto(){ S._productPhotoLocal=null; S._productPhotoChanged=true; refreshProductPhotoBox(); }
+function refreshProductPhotoBox(){
+  const wrap=document.getElementById('productPhotoBox');
+  if(wrap) wrap.outerHTML=productPhotoBoxHtml();
 }
 function toggleSellByUI(){
   const sel=document.getElementById('pfSellBy'); if(!sel)return;
@@ -1397,16 +1451,39 @@ async function saveProduct(id){
       const {error}=await sb.from('products').update(row).eq('id',id);
       if(error){ console.error('basita:',error); toast('حصلت مشكلة في التعديل');return }
       Object.assign(S.products.find(x=>x.id===id),{n,p:price,u:unit,s:stock,sellBy,batch:row.batch_number,expiry:row.expiry_date,wholesale:row.wholesale_price});
+      await uploadProductPhotoIfNeeded(id);
     }else{
       const {data,error}=await sb.from('products').insert({...row,merchant_id:S.merchantId,icon:BIZ().icon,brand:''}).select().single();
       if(error){ console.error('basita:',error); toast('حصلت مشكلة في الإضافة');return }
       S.products.push(mapProductRow(data));
+      await uploadProductPhotoIfNeeded(data.id);
     }
   }else{
-    if(id){ Object.assign(S.products.find(x=>x.id===id),{n,p:price,u:unit,s:stock,sellBy}); }
-    else{ S.products.push({id:Date.now()%100000,i:BIZ().icon,br:'',n,p:price,u:unit,s:stock,sellBy}); }
+    if(id){ Object.assign(S.products.find(x=>x.id===id),{n,p:price,u:unit,s:stock,sellBy,photoUrl:S._productPhotoLocal}); }
+    else{ S.products.push({id:Date.now()%100000,i:BIZ().icon,br:'',n,p:price,u:unit,s:stock,sellBy,photoUrl:S._productPhotoLocal}); }
   }
+  S._productPhotoChanged=false; S._productPhotoLocal=null;
   closeSheet(); render(); toast(id?'اتحدّث المنتج — العميل شايف التغيير فورًا':'اتضاف المنتج وظهر للعملاء فورًا');
+}
+/* ═══ رفع صورة المنتج بعد ما يتضاف/يتحدّث في قاعدة البيانات — لأننا محتاجين رقم المنتج الأول عشان نسمّي بيه الصورة ═══ */
+async function uploadProductPhotoIfNeeded(productId){
+  if(!S._productPhotoChanged)return;
+  const p=S.products.find(x=>x.id===productId);
+  if(!S._productPhotoLocal){
+    // التاجر شال الصورة اللي كانت موجودة
+    await sb.from('products').update({photo_url:null}).eq('id',productId);
+    if(p) p.photoUrl=null;
+    return;
+  }
+  try{
+    const blob=await (await fetch(S._productPhotoLocal)).blob();
+    const path='PROD-'+productId+'-'+Date.now()+'.jpg';
+    const {error:upErr}=await sb.storage.from('delivery-photos').upload(path,blob,{upsert:true});
+    if(upErr){ console.error('basita: فشل رفع صورة المنتج',upErr); return; }
+    const photoUrl=sb.storage.from('delivery-photos').getPublicUrl(path).data.publicUrl;
+    await sb.from('products').update({photo_url:photoUrl}).eq('id',productId);
+    if(p) p.photoUrl=photoUrl;
+  }catch(e){ console.error('basita: فشل رفع صورة المنتج',e); }
 }
 async function deleteProduct(id){
   if(sb&&S.merchantId){
@@ -1452,7 +1529,7 @@ function vProducts(){
     ${catNames.map(cat=>`
       <div class="sec-t" style="${cat===catNames[0]?'margin-top:0':''}"><h3>${cat==='من غير قسم'?'📦 '+cat:'🏷️ '+cat}</h3><span class="num">${grouped[cat].length}</span></div>
       <div class="card mb">${grouped[cat].map(p=>`<div class="row" style="${p.s<=0?'opacity:.55':''}">
-        <span class="av">${p.i||BIZ().icon}</span>
+        <span class="av" style="${p.photoUrl?'padding:0;overflow:hidden':''}">${p.photoUrl?`<img src="${p.photoUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">`:(p.i||BIZ().icon)}</span>
         <span style="flex:1;min-width:0"><span class="n">${p.n}${bestSellers.includes(p.n)?' <span class="bdg b-new">🔥</span>':''}</span>
           <span class="s">${p.u} · مخزون <span class="num">${p.s}</span>
           ${p.expiry?` · صلاحية <span class="num">${p.expiry}</span>`:''}
@@ -1465,9 +1542,14 @@ function vProducts(){
 
 function viewInvoice(id){
   const o=S.orders.find(x=>x.id===id); if(!o)return;
-  const sub=o.items.reduce((s,i)=>s+i.p*i.q,0);
-  const waMsg=encodeURIComponent(`فاتورة ${BIZ().name} — طلب ${shortId(o.id)}\n`+o.items.map(i=>`${i.n} ×${qtyLabel(i)} = ${Math.round(i.p*i.q)} ج`).join('\n')+`\nالتوصيل: ${o.fee} ج\nالإجمالي: ${sub+o.fee} ج`);
+  const sub=o.items.length?o.items.reduce((s,i)=>s+i.p*i.q,0):Math.max(0,(+o.total||0)-(+o.fee||0));
+  const itemsTextPlain=o.items.length?o.items.map(i=>`${i.n} ×${qtyLabel(i)} = ${Math.round(i.p*i.q)} ج`).join('\n'):
+    (o.notes||'').split('\n').filter(l=>l.trim().startsWith('•')).map(l=>l.replace(/^•\s*/,'')).join('\n');
+  const waMsg=encodeURIComponent(`فاتورة ${BIZ().name} — طلب ${shortId(o.id)}\n`+itemsTextPlain+`\nإجمالي الأصناف: ${sub} ج\nالتوصيل: ${o.fee} ج\nالإجمالي: ${sub+o.fee} ج`);
   const waPhone=(o.ph||'').replace(/^0/,'20').replace(/\D/g,'');
+  const itemsRowsHtml=o.items.length?o.items.map(i=>`<tr><td>${i.n}</td><td>${qtyLabel(i)}</td><td>${i.p} ج</td><td>${Math.round(i.p*i.q)} ج</td></tr>`).join(''):
+    `<tr><td colspan="4" style="white-space:pre-line">${(o.notes||'').split('\n').filter(l=>l.trim().startsWith('•')).map(l=>l.replace(/^•\s*/,'')).join('\n')||'—'}</td></tr>
+     <tr><td colspan="3">إجمالي الأصناف</td><td>${sub} ج</td></tr>`;
   const html=`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
     <title>فاتورة ${shortId(o.id)}</title>
     <style>body{font-family:'Cairo',Arial,sans-serif;padding:30px;color:#1A1710}
@@ -1479,8 +1561,8 @@ function viewInvoice(id){
     @media print{.waBtn{display:none}}</style></head><body>
     <h1>${BIZ().name}</h1>
     <div>فاتورة رقم <b>${shortId(o.id)}</b> — العميل: ${o.name}</div>
-    <table><tr><th>الصنف</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th></tr>
-    ${o.items.map(i=>`<tr><td>${i.n}</td><td>${qtyLabel(i)}</td><td>${i.p} ج</td><td>${Math.round(i.p*i.q)} ج</td></tr>`).join('')}
+    <table>${o.items.length?'<tr><th>الصنف</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th></tr>':''}
+    ${itemsRowsHtml}
     <tr><td colspan="3">التوصيل</td><td>${o.fee} ج</td></tr>
     <tr><td colspan="3" class="tot">الإجمالي</td><td class="tot">${sub+o.fee} ج</td></tr></table>
     ${o.ph?`<a class="waBtn" href="https://wa.me/${waPhone}?text=${waMsg}" target="_blank">💬 ابعت الفاتورة للعميل على واتساب</a>`:''}
@@ -1868,11 +1950,48 @@ async function autoAssignDriver(id){
 }
 function accept(id){
   if(S.sub.status==='expired'){toast('🔴 اشتراكك خلص — جدده الأول عشان تقدر تقبل طلبات');return}
+  const o=S.orders.find(x=>x.id===id);
+  // طلبات المنيو (مطاعم/كافيهات) سعرها معروف ومحسوب من الكتالوج وقت الطلب — مفيش داعي نأكده تاني.
+  // بس طلبات "اكتب طلبك" (بقالة/صيدلية) هي اللي محتاجة التاجر يشوف ويحدد السعر الحقيقي بنفسه
+  if(o.items&&o.items.length){ acceptDirectly(id); return; }
+  openPriceConfirmSheet(o);
+}
+function acceptDirectly(id){
   const o=S.orders.find(x=>x.id===id); o.stage='accepted';
   pendingAlertIds.delete(id);
   if(sb) sb.from('orders').update({stage:'accepted'}).eq('id',id).then(()=>{});
   else emit({to:['customer'],type:'order:accept',orderId:id});
   render(); toast('اتبعت موافقة للعميل — جاري تعيين أقرب مندوب تلقائيًا 🤖');
+  autoAssignDriver(id);
+}
+/* ═══ مفيش كتالوج منتجات بيحسب السعر تلقائي للبقالة والصيدلية — التاجر هو اللي بيقرأ طلب العميل المكتوب
+   ويأكد السعر الحقيقي وقت ما يوافق على الطلب، وده اللي بيتسجل كإجمالي الفاتورة ═══ */
+function openPriceConfirmSheet(o){
+  openSheet('تأكيد السعر وقبول الطلب',`
+    <div class="tiny muted mb" style="font-weight:700">اللي طلبه العميل:</div>
+    <div class="card mb" style="padding:12px">${shopOrderItemsHtml(o)}</div>
+    ${o.prescriptionPhoto?`<div class="tiny muted mb" style="font-weight:700">📎 صورة الروشتة:</div>
+      <div class="card mb" style="padding:8px;text-align:center"><img src="${o.prescriptionPhoto}" style="width:100%;border-radius:10px;max-height:260px;object-fit:contain;cursor:pointer" onclick="window.open('${o.prescriptionPhoto}','_blank')"></div>`:''}
+    <div class="fld"><label>الإجمالي الحقيقي للأصناف (جنيه)</label>
+      <input id="priceConfirmInput" type="number" placeholder="مثلاً 85" autofocus></div>
+    <button class="btn btn-p" style="width:100%" onclick="confirmAcceptWithPrice('${o.id}')">تأكيد وقبول الطلب</button>`);
+}
+function shopOrderItemsHtml(o){
+  const lines=(o.notes||'').split('\n').filter(Boolean);
+  if(!lines.length) return `<div class="tiny muted">لم يكتب العميل تفاصيل</div>`;
+  return lines.map(line=>line.trim().startsWith('•')?
+    `<div class="oitem"><span>${line.replace(/^•\s*/,'')}</span></div>`:
+    `<div class="tiny muted mt">${line}</div>`).join('');
+}
+async function confirmAcceptWithPrice(id){
+  const price=+document.getElementById('priceConfirmInput').value;
+  if(!price||price<=0){toast('اكتب السعر الحقيقي للأصناف');return}
+  const o=S.orders.find(x=>x.id===id); o.stage='accepted'; o.total=price+(+o.fee||0);
+  pendingAlertIds.delete(id);
+  closeSheet();
+  if(sb) sb.from('orders').update({stage:'accepted',total:o.total}).eq('id',id).then(()=>{});
+  else emit({to:['customer'],type:'order:accept',orderId:id,total:o.total});
+  render(); toast('اتبعت موافقة للعميل بالسعر — جاري تعيين أقرب مندوب تلقائيًا 🤖');
   autoAssignDriver(id);
 }
 function tabOrders(){
@@ -1888,10 +2007,11 @@ function oCard(o){
       <span class="t">طلب <span class="num">${shortId(o.id)}</span>${o.urgent?' · <b style="color:#C23327">⏰ متأخر عن المعتاد</b>':''}</span></span>
       <span class="bdg ${badge}">${SLABEL[o.stage]}</span></div>
     <div class="ob">
-      ${o.items.map(i=>`<div class="oitem"><span class="num">${qtyLabel(i)}</span><span>${i.n}</span>
-        <b class="num">${M(i.p*i.q)}</b></div>`).join('')}
+      ${o.items.length?o.items.map(i=>`<div class="oitem"><span class="num">${qtyLabel(i)}</span><span>${i.n}</span>
+        <b class="num">${M(i.p*i.q)}</b></div>`).join(''):shopOrderItemsHtml(o)}
       <div class="oaddr">📍 ${o.addr} · <span class="num" dir="ltr">${o.ph}</span></div>
-      ${o.notes?`<div class="tiny" style="background:#FFF3DE;color:#8A5E10;border-radius:9px;padding:8px 10px;margin-top:6px">📝 ملاحظة العميل: ${o.notes}</div>`:''}
+      ${o.items.length&&o.notes?`<div class="tiny" style="background:#FFF3DE;color:#8A5E10;border-radius:9px;padding:8px 10px;margin-top:6px">📝 ملاحظة العميل: ${o.notes}</div>`:''}
+      ${o.prescriptionPhoto?`<div class="tiny" style="background:#E8EEFE;color:#4353D6;border-radius:9px;padding:7px 10px;margin-top:6px;display:flex;align-items:center;gap:6px;cursor:pointer" onclick="window.open('${o.prescriptionPhoto}','_blank')">📎 عندك صورة روشتة مرفقة — دوس تشوفها</div>`:''}
       ${o.stage==='placed'?`<div class="oactions">
         <button class="btn2 btn-p2" onclick="accept('${o.id}')">قبول الطلب</button>
         <button class="btn-d2" onclick="rejectO('${o.id}')">اعتذار</button></div>`:''}
@@ -2098,7 +2218,13 @@ function vInvoices(){
     <div style="height:14px"></div></div>`;
 }
 const V={list:vList,products:vProducts,acct:vAcct,invoices:vInvoices,qr:vQR,stats:vStats};
-const NAV=[['list','📥','الطلبات'],['products','🏷️','منتجاتي'],['acct','🧮','المحاسبة'],['invoices','🧾','فواتير'],['qr','🔗','متجرك'],['stats','📊','إحصائيات']];
+/* ═══ إدارة المنتجات مفيدة للمطاعم والكافيهات (منيو ثابت وأسعار واضحة)، أما البقالة والصيدلية
+   فأصنافهم بتتغيّر كل يوم فمش محتاجين يسجلوا كتالوج — العميل بيكتب طلبه مباشرة ═══ */
+function navItems(){
+  const base=[['list','📥','الطلبات']];
+  if(['restaurant','cafe'].includes(S.bizType)) base.push(['products','🏷️','منتجاتي']);
+  return [...base,['acct','🧮','المحاسبة'],['invoices','🧾','فواتير'],['qr','🔗','متجرك'],['stats','📊','إحصائيات']];
+}
 function render(){
   saveState();
   renderBell();
@@ -2107,7 +2233,7 @@ function render(){
     <div class="kpi"><div class="l">طلبات جديدة</div><div class="v ${nw?'warn':''} num">${nw}</div></div>
     <div class="kpi"><div class="l">إجمالي اليوم</div><div class="v num">${S.orders.length}</div></div>`;
   $('#screen').innerHTML=(V[S.view||'list']||vList)();
-  $('#nav').innerHTML=NAV.map(([v,i,n])=>{
+  $('#nav').innerHTML=navItems().map(([v,i,n])=>{
     const bn=(v==='list'&&nw)?`<span class="bn num">${nw}</span>`:'';
     return `<button aria-pressed="${(S.view||'list')===v}" onclick="S.view='${v}';render()">
       ${bn}<span class="i">${i}</span><span>${n}</span></button>`}).join('');
