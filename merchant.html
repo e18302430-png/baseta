@@ -1190,11 +1190,21 @@ function subscribeMyOrders(){
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'orders',filter:'merchant_id=eq.'+S.merchantId},payload=>{
       const o=S.orders.find(x=>x.id===payload.new.id);
       if(!o)return;
+      const prevStage=o.stage, prevTotal=+o.total||0;
       const wasAssigned=!!o.driver, nowUnassigned=!payload.new.driver_id;
-      o.stage=payload.new.stage; o.driver=payload.new.driver_name||(nowUnassigned?null:o.driver); o._flash=true; render();
+      o.stage=payload.new.stage; o.driver=payload.new.driver_name||(nowUnassigned?null:o.driver);
+      if(payload.new.total!=null) o.total=+payload.new.total;
+      if(payload.new.notes!=null) o.notes=payload.new.notes;
+      o._flash=true; render();
       if(wasAssigned&&nowUnassigned&&payload.new.stage==='accepted'){
         toast('⚠️ المندوب اعتذر عن الطلب — بندوّر على مندوب تاني تلقائيًا');
         autoAssignDriver(o.id);
+      }else if(prevStage==='placed'&&payload.new.stage==='accepted'&&!payload.new.driver_id){
+        // العميل نفسه وافق على السعر اللي بعتناهولك — دلوقتي بس نبدأ نلاقيله مندوب
+        toast('✅ العميل وافق على السعر — بندوّر على أقرب مندوب تلقائيًا');
+        autoAssignDriver(o.id);
+      }else if(prevStage==='placed'&&payload.new.stage==='placed'&&prevTotal>0&&+payload.new.total===0){
+        toast('❌ العميل رفض السعر اللي بعتّه — راجع طلبه وابعت سعر جديد');
       }
     })
     .subscribe();
@@ -1986,13 +1996,14 @@ function shopOrderItemsHtml(o){
 async function confirmAcceptWithPrice(id){
   const price=+document.getElementById('priceConfirmInput').value;
   if(!price||price<=0){toast('اكتب السعر الحقيقي للأصناف');return}
-  const o=S.orders.find(x=>x.id===id); o.stage='accepted'; o.total=price+(+o.fee||0);
+  const o=S.orders.find(x=>x.id===id); o.total=price+(+o.fee||0);
+  // الطلب فاضل "قيد الانتظار" لحد ما العميل نفسه يوافق على السعر — يومها بس هيتحول لمقبول
+  // وتتبدأ رحلة البحث عن مندوب، عشان منجبرش العميل على سعر مش موافق عليه
   pendingAlertIds.delete(id);
   closeSheet();
-  if(sb) sb.from('orders').update({stage:'accepted',total:o.total}).eq('id',id).then(()=>{});
-  else emit({to:['customer'],type:'order:accept',orderId:id,total:o.total});
-  render(); toast('اتبعت موافقة للعميل بالسعر — جاري تعيين أقرب مندوب تلقائيًا 🤖');
-  autoAssignDriver(id);
+  if(sb) sb.from('orders').update({total:o.total}).eq('id',id).then(()=>{});
+  else emit({to:['customer'],type:'order:price_set',orderId:id,total:o.total});
+  render(); toast('✓ اتبعت السعر للعميل — مستنيين موافقته عليه دلوقتي');
 }
 function tabOrders(){
   if(S.tab==='new')return S.orders.filter(o=>o.stage==='placed');
@@ -2012,9 +2023,12 @@ function oCard(o){
       <div class="oaddr">📍 ${o.addr} · <span class="num" dir="ltr">${o.ph}</span></div>
       ${o.items.length&&o.notes?`<div class="tiny" style="background:#FFF3DE;color:#8A5E10;border-radius:9px;padding:8px 10px;margin-top:6px">📝 ملاحظة العميل: ${o.notes}</div>`:''}
       ${o.prescriptionPhoto?`<div class="tiny" style="background:#E8EEFE;color:#4353D6;border-radius:9px;padding:7px 10px;margin-top:6px;display:flex;align-items:center;gap:6px;cursor:pointer" onclick="window.open('${o.prescriptionPhoto}','_blank')">📎 عندك صورة روشتة مرفقة — دوس تشوفها</div>`:''}
-      ${o.stage==='placed'?`<div class="oactions">
+      ${o.stage==='placed'&&(o.items.length||!o.total)?`<div class="oactions">
         <button class="btn2 btn-p2" onclick="accept('${o.id}')">قبول الطلب</button>
         <button class="btn-d2" onclick="rejectO('${o.id}')">اعتذار</button></div>`:''}
+      ${o.stage==='placed'&&!o.items.length&&o.total>0?`<div class="driverpick" style="text-align:center">
+        <div class="tiny" style="color:var(--ac-d);font-weight:700">⏳ بعتّنا السعر (${M(o.total-(+o.fee||0))} ج) للعميل — مستنيين موافقته</div>
+        <div class="tiny muted mt">هيتحول للمرحلة اللي بعدها تلقائيًا أول ما يوافق</div></div>`:''}
       ${o.stage==='accepted'&&o._waitingDriver?`<div class="driverpick" style="text-align:center">
         <div class="tiny" style="color:var(--ac-d);font-weight:700">⏳ مفيش مندوب متاح دلوقتي</div>
         <div class="tiny muted mt">هنعيّن أقرب واحد تلقائيًا أول ما حد يفضى — من غير ما تعمل حاجة</div></div>`:''}
