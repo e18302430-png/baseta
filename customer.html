@@ -1897,7 +1897,7 @@ function openShop(id){
   S.activeShop=id; S._crossVillageConfirmed=false;
   const s=SHOPS[id];
   if(s&&['restaurant','cafe'].includes(s.typeKey)){ PRODS=s.products; }
-  else{ S._shopItems=[]; S._shopNotesDraft=''; S._shopBudgetDraft=''; S._shopAddrDraft=S.co.addr||''; S._rxPhoto=null; }
+  else{ S._shopItemsTextDraft=''; S._shopNotesDraft=''; S._shopBudgetDraft=''; S._shopAddrDraft=S.co.addr||''; S._rxPhoto=null; }
   go('shop');
 }
 function backHome(){ go('home'); }
@@ -1976,14 +1976,12 @@ function vShopWriteOrder(s){
       <div style="font-size:22px">🔒</div><b style="display:block;margin-top:6px;color:#C23327">المحل مقفول دلوقتي</b>
       <div class="tiny muted mt">${s.awayMessage||'التاجر قفل استقبال الطلبات مؤقتًا — جرّب تاني بعدين'}</div></div>`:`
     <div class="sec-t"><h3>✍️ اكتب طلبك من ${s.name}</h3></div>
-    <p class="tiny muted mb" style="margin-top:-6px">اكتب كل صنف عايزه لوحده — المحل هيجهزهولك ويأكدلك السعر قبل ما يوصلك المندوب</p>
+    <p class="tiny muted mb" style="margin-top:-6px">اكتب كل صنف عايزه في سطر لوحده — المحل هيجهزهولك ويأكدلك السعر قبل ما يوصلك المندوب</p>
     <div class="fld">
-      <div style="display:flex;gap:7px">
-        <input id="shopItemInput" placeholder="مثلاً: ${s.typeKey==='pharmacy'?'أنبوبة بنادول':s.typeKey==='cafe'?'قهوة تركي وسط':'كيلو رز'}" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();addShopItem();}">
-        <button type="button" onclick="addShopItem()" style="flex:0 0 auto;background:var(--ac);color:#fff;border:0;border-radius:11px;padding:0 18px;font-weight:800;font-size:19px;cursor:pointer">+</button>
-      </div>
+      <label>اكتب طلبك</label>
+      <textarea id="shopItemsText" rows="4" placeholder="${s.typeKey==='pharmacy'?'مثلاً:\nأنبوبة بنادول\nفيتامين سي':s.typeKey==='cafe'?'مثلاً:\nقهوة تركي وسط\nكيكة شوكولاتة':'مثلاً:\nكيلو رز\nزجاجة زيت'}" oninput="S._shopItemsTextDraft=this.value">${S._shopItemsTextDraft||''}</textarea>
+      <div class="tiny muted mt" style="margin-top:5px">💡 مش لازم تعمل أي حاجة تانية — سطر جديد لكل صنف وخلاص</div>
     </div>
-    <div id="shopItemsList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px">${shopItemsListHtml()}</div>
     ${s.typeKey==='pharmacy'?rxPhotoBoxHtml():''}
     <div class="fld"><label>أي تفاصيل إضافية؟ (اختياري)</label>
       <textarea id="shopNotes" rows="2" placeholder="مثلاً: ماركة معينة، أو ملاحظة للتاجر" oninput="S._shopNotesDraft=this.value">${S._shopNotesDraft||''}</textarea></div>
@@ -2010,36 +2008,25 @@ function rxPhotoBoxHtml(){
 function handleRxPhoto(input){
   const file=input.files&&input.files[0]; if(!file)return;
   const reader=new FileReader();
-  reader.onload=e=>{ S._rxPhoto=e.target.result; render(); };
+  reader.onload=e=>{ S._rxPhoto=e.target.result; refreshShopOrderForm(); };
   reader.readAsDataURL(file);
 }
-function removeRxPhoto(){ S._rxPhoto=null; render(); }
-function shopItemsListHtml(){
-  if(!S._shopItems||!S._shopItems.length) return `<div class="tiny muted" style="padding:2px 2px 0">لسه معملتش أصناف — ضيف واحد فوق 👆</div>`;
-  return S._shopItems.map((it,i)=>`<div style="display:flex;align-items:center;gap:8px;background:var(--surf2);border-radius:10px;padding:8px 11px">
-    <span style="flex:1;font-size:12.5px;font-weight:600">• ${it}</span>
-    <button type="button" onclick="removeShopItem(${i})" style="background:none;border:0;color:var(--danger);font-size:15px;cursor:pointer;padding:2px 4px">✕</button></div>`).join('');
-}
-function addShopItem(){
-  const el=document.getElementById('shopItemInput'); const v=el.value.trim();
-  if(!v){toast('اكتب اسم الصنف الأول');return}
-  S._shopItems=S._shopItems||[]; S._shopItems.push(v); el.value=''; refreshShopOrderForm();
-}
-function removeShopItem(i){ S._shopItems.splice(i,1); refreshShopOrderForm(); }
+function removeRxPhoto(){ S._rxPhoto=null; refreshShopOrderForm(); }
 function refreshShopOrderForm(){
   const addrEl=document.getElementById('shopAddr'); if(addrEl) S._shopAddrDraft=addrEl.value;
   const notesEl=document.getElementById('shopNotes'); if(notesEl) S._shopNotesDraft=notesEl.value;
   const budgetEl=document.getElementById('shopBudget'); if(budgetEl) S._shopBudgetDraft=budgetEl.value;
+  const itemsEl=document.getElementById('shopItemsText'); if(itemsEl) S._shopItemsTextDraft=itemsEl.value;
   render();
-  const inp=document.getElementById('shopItemInput'); if(inp) inp.focus();
 }
 async function submitShopOrder(){
   const s=SHOPS[S.activeShop]; if(!s){toast('حصلت مشكلة — ارجع تاني');return}
-  const items=S._shopItems||[];
+  const itemsText=(document.getElementById('shopItemsText').value||'').trim();
+  const items=itemsText.split('\n').map(l=>l.trim()).filter(Boolean);
   const notes=(document.getElementById('shopNotes').value||'').trim();
   const budget=+document.getElementById('shopBudget').value||null;
   const addr=document.getElementById('shopAddr').value.trim();
-  if(!items.length&&!notes){toast('ضيف صنف واحد على الأقل أو اكتب التفاصيل');return}
+  if(!items.length&&!notes){toast('اكتب اللي عايزه على الأقل');return}
   if(!addr){toast('اكتب عنوانك');return}
   if(sb){
     const {data:fresh}=await sb.from('merchants').select('is_open,status').eq('id',s.id).maybeSingle();
@@ -2090,7 +2077,7 @@ async function submitShopOrder(){
       addr,geo:S.co.geo,items:[],notes:desc,fee:customerFee,total:0,stage:'placed',driver:null,recurring:false,placedAt:new Date().toISOString()};
   }
   S.orders.unshift(order);
-  S._shopItems=[]; S._shopNotesDraft=''; S._shopBudgetDraft=''; S._rxPhoto=null;
+  S._shopItemsTextDraft=''; S._shopNotesDraft=''; S._shopBudgetDraft=''; S._rxPhoto=null;
   if(!sb) emit({to:['merchant'],type:'order:new',order});
   S.fta.dismissed=true;
   go('track',order.id);
@@ -2525,10 +2512,10 @@ function repeatOrder(orderId){
   // نفتحله نفس المحل مع نفس الأصناف اللي كتبها قبل كده كنقطة بداية، يقدر يعدّل فيها قبل ما يبعت
   S.activeShop=o.merchantId;
   const prevItems=(o.notes||'').split('\n').map(l=>l.trim()).filter(l=>l.startsWith('•')).map(l=>l.replace(/^•\s*/,''));
-  S._shopItems=prevItems.length?prevItems:(o.items||[]).map(it=>it.n);
+  S._shopItemsTextDraft=(prevItems.length?prevItems:(o.items||[]).map(it=>it.n)).join('\n');
   S._shopNotesDraft=''; S._shopBudgetDraft=''; S._shopAddrDraft=o.addr||S.co.addr||'';
   go('shop');
-  toast(S._shopItems.length?'✓ جبتلك نفس أصناف طلبك اللي فات — عدّل فيها وابعتها':'اكتب طلبك وابعته');
+  toast(S._shopItemsTextDraft?'✓ جبتلك نفس أصناف طلبك اللي فات — عدّل فيها وابعتها':'اكتب طلبك وابعته');
 }
 const CR_STAGE_LABEL={placed:'⏳ بننتظر موافقة الإدارة',approved:'📢 مستني مندوب يقبل الطلب',assigned:'🛵 المندوب رايح يجيبهالك',delivering:'📦 في الطريق ليك',delivered:'✅ اتسلّم',rejected:'❌ اتلغى الطلب — كلّمنا للتفاصيل'};
 function vOrders(){
