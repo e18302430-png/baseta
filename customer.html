@@ -1023,7 +1023,10 @@ function mountApp(){
       subscribeMyComplaintUpdates();
       checkMonthlyLeaderboard();
     }
-    if('Notification' in window && Notification.permission==='default') Notification.requestPermission();
+    if('Notification' in window){
+      if(Notification.permission==='granted') setupRealPushNotifications('customer',S.co.id);
+      else if(Notification.permission==='default') Notification.requestPermission().then(p=>{ if(p==='granted') setupRealPushNotifications('customer',S.co.id); });
+    }
     if(S._welcomeCoupon){
       const c=S._welcomeCoupon; S._welcomeCoupon=null;
       setTimeout(()=>toast('🎁 أهلًا! كوبون خصم '+c.pct+'٪ من صاحبك على أول طلب ليك: '+c.code),1200);
@@ -1045,6 +1048,7 @@ function mapRowToOrder(o,items){
     geo:(o.delivery_lat!=null)?{lat:o.delivery_lat,lng:o.delivery_lng}:null,
     fee:+o.delivery_fee, total:+o.total, stage:o.stage, driver:o.driver_name||null, driverId:o.driver_id||null,
     recurring:o.is_recurring, feedbackSubmitted:o.feedback_submitted, deliveryPhoto:o.delivery_photo_url||null, notes:o.notes||'',
+    prescriptionPhoto:o.prescription_photo_url||null,
     placedAt:o.placed_at||new Date().toISOString(),
     items:(items||[]).map(i=>({n:i.name,q:+i.qty,p:+i.unit_price,u:i.unit,sellBy:i.sell_by,pid:i.product_id}))
   };
@@ -1065,6 +1069,7 @@ function subscribeMyOrders(){
       if(o){
         o.stage=payload.new.stage; o.driver=payload.new.driver_name||o.driver; o.driverId=payload.new.driver_id||o.driverId;
         if(payload.new.delivery_photo_url) o.deliveryPhoto=payload.new.delivery_photo_url;
+        if(payload.new.total!=null) o.total=+payload.new.total;
       }
       render();
       if(S.view==='track'&&S.oid===payload.new.id) notify('تحديث جديد على طلبك');
@@ -1228,7 +1233,7 @@ const CATS=[
   {k:'restaurant',n:'مطاعم',i:'🍔',c:'#FDE8E6'},{k:'cafe',n:'كافيهات',i:'☕',c:'#FBEEDC'},{k:'bakery',n:'مخابز',i:'🥖',c:'#FFF3DE'},
 ];
 function mapProductRow(p){
-  return {id:p.id,n:p.name,br:p.brand||'',i:p.icon||'🛒',p:+p.price,u:p.unit,sellBy:p.sell_by,s:+p.stock};
+  return {id:p.id,n:p.name,br:p.brand||'',i:p.icon||'🛒',p:+p.price,u:p.unit,sellBy:p.sell_by,s:+p.stock,photoUrl:p.photo_url||null};
 }
 function isWithinStoreHours(openTime,closeTime){
   if(!openTime||!closeTime)return true;
@@ -1325,6 +1330,30 @@ function pushNotify(m){
       new Notification('بسيطة',{body:m,icon:''});
     }
   }catch(e){}
+}
+/* ═══ الإشعارات الحقيقية (Web Push) — دي اللي بتوصل حتى والتطبيق مقفول تمامًا أو انت فاتح تطبيق تاني،
+   بعكس التنبيهات العادية اللي محتاجة التطبيق يكون شغال في الخلفية عشان تظهر ═══ */
+const VAPID_PUBLIC_KEY='BJlAnXEwUIkU7FQD5iWN94V92WKJkcfciLH449U28a5lVdcSYY0oKAiOJdhxM3YgnI7kYUqLeOaJl0Wu0reC9Yo';
+function urlBase64ToUint8Array(base64String){
+  const padding='='.repeat((4-base64String.length%4)%4);
+  const base64=(base64String+padding).replace(/-/g,'+').replace(/_/g,'/');
+  const raw=window.atob(base64);
+  return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)));
+}
+async function setupRealPushNotifications(role,ownerId){
+  try{
+    if(!('serviceWorker' in navigator)||!('PushManager' in window)||!sb||!ownerId)return;
+    if(Notification.permission!=='granted')return;
+    const reg=await navigator.serviceWorker.register('/sw.js');
+    let sub=await reg.pushManager.getSubscription();
+    if(!sub){
+      sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(VAPID_PUBLIC_KEY)});
+    }
+    const json=sub.toJSON();
+    await sb.from('push_subscriptions').upsert({
+      role,owner_id:String(ownerId),endpoint:json.endpoint,p256dh:json.keys.p256dh,auth:json.keys.auth
+    },{onConflict:'endpoint'});
+  }catch(e){ console.error('basita: تعذّر تفعيل الإشعارات الحقيقية',e); }
 }
 let tT;function toast(m){playNotifySound();pushNotify(m);const t=$('#toast');t.textContent=m;t.classList.add('show');
   clearTimeout(tT);tT=setTimeout(()=>t.classList.remove('show'),2400)}
@@ -1760,7 +1789,7 @@ function vHome(){
   const q=(S.searchQuery||'').trim().toLowerCase();
   const applyFilter=arr=>{
     let r=S.catFilter?arr.filter(s=>s.typeKey===S.catFilter):arr;
-    if(q) r=r.filter(s=>s.name.toLowerCase().includes(q)||s.products.some(p=>p.n.toLowerCase().includes(q)));
+    if(q) r=r.filter(s=>s.name.toLowerCase().includes(q));
     return r;
   };
   const myVillage=VILLAGES.find(v=>v.id===S.co.villageId);
@@ -1776,7 +1805,7 @@ function vHome(){
   startFreeDeliveryTick();
   return `${freeDeliveryCountdownHtml()}
     <div class="searchBar"><span class="ic">🔍</span>
-      <input id="shopSearchInput" placeholder="دوّر على محل أو صنف..." value="${S.searchQuery||''}" oninput="handleSearchInput(this)"></div>
+      <input id="shopSearchInput" placeholder="دوّر على محل..." value="${S.searchQuery||''}" oninput="handleSearchInput(this)"></div>
     ${priorityBanner?`<div class="${priorityBanner.cls}" style="margin:9px 16px 0;width:calc(100% - 32px)">
       <span class="ic">${priorityBanner.ic}</span>
       <span><b>${priorityBanner.b}</b>${priorityBanner.s?`<span>${priorityBanner.s}</span>`:''}</span></div>`:''}
@@ -1859,13 +1888,23 @@ function openAboutBasita(){
     </p>`);
 }
 function openShop(id){
-  S.activeShop=id; PRODS=SHOPS[id].products; S._crossVillageConfirmed=false;
+  S.activeShop=id; S._crossVillageConfirmed=false;
+  const s=SHOPS[id];
+  if(s&&['restaurant','cafe'].includes(s.typeKey)){ PRODS=s.products; }
+  else{ S._shopItems=[]; S._shopNotesDraft=''; S._shopBudgetDraft=''; S._shopAddrDraft=S.co.addr||''; S._rxPhoto=null; }
   go('shop');
 }
 function backHome(){ go('home'); }
+/* ═══ كل نشاط وطريقة العرض المناسبة له: المطاعم والكافيهات عندها قائمة أصناف وأسعار ثابتة (زي المنيو)
+   فتفضل بتتصفح وتضيف للسلة زي أي تطبيق توصيل عادي. أما البقالة والصيدلية فأصنافهم بتتغيّر كل يوم
+   وسعرها مش دايمًا واحد، فبدل ما التاجر يتعب في تسجيل كل صنف، العميل بيكتب طلبه والتاجر يأكد السعر ═══ */
 function vShop(){
   const s=SHOPS[S.activeShop];
   if(!s)return vHome();
+  if(['restaurant','cafe'].includes(s.typeKey)) return vShopCatalog(s);
+  return vShopWriteOrder(s);
+}
+function vShopCatalog(s){
   const sameVillage=!!(s.villageId&&s.villageId===S.co.villageId);
   const myVillage=VILLAGES.find(v=>v.id===S.co.villageId);
   const shopVillage=VILLAGES.find(v=>v.id===s.villageId);
@@ -1892,7 +1931,7 @@ function vShop(){
       <div class="tiny muted mt">${s.awayMessage||'التاجر قفل استقبال الطلبات مؤقتًا — جرّب تاني بعدين'}</div></div>`:''}
     ${ftaShopTipHtml()}
     <div class="sec-t"><h3>الأصناف</h3><span class="num">${s.products.length} صنف</span></div>
-    ${s.products.length?s.products.map(p=>`<div class="prod" style="${p.s<=0?'opacity:.5':''}"><span class="ph">${p.i}</span>
+    ${s.products.length?s.products.map(p=>`<div class="prod" style="${p.s<=0?'opacity:.5':''}"><span class="ph" style="${p.photoUrl?'padding:0;overflow:hidden':''}">${p.photoUrl?`<img src="${p.photoUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">`:p.i}</span>
       <span style="flex:1"><span class="n">${p.n}${p.br?` <span class="muted tiny">${p.br}</span>`:''}</span>
       <span class="u">${p.s<=0?'نفدت الكمية':(p.sellBy==='weight'?'سعر الكيلو':p.u)}</span><span class="pr num">${M(p.p)} ج</span></span>
       <span class="act">${(!s.isOpen||p.s<=0)?'':p.sellBy==='weight'?
@@ -1903,6 +1942,159 @@ function vShop(){
         `<button class="add" onclick="addCart('${p.id}')">+</button>`)}</span></div>`).join(''):
       `<div class="empty"><div class="e">🏷️</div><h4>المحل لسه بيضيف أصنافه</h4></div>`}
     <div style="height:8px"></div></div>`;
+}
+function vShopWriteOrder(s){
+  const sameVillage=!!(s.villageId&&s.villageId===S.co.villageId);
+  const myVillage=VILLAGES.find(v=>v.id===S.co.villageId);
+  const shopVillage=VILLAGES.find(v=>v.id===s.villageId);
+  const km=villageDistanceKm(myVillage,shopVillage);
+  const isPromo=isFreeDeliveryPromo(sameVillage);
+  const fee=isPromo?0:(sameVillage?10:computeDeliveryFee(km,false));
+  const eta=etaMinutesFromFee(fee||10);
+  return `<div class="pad">
+    <button class="back" style="margin-top:14px" onclick="backHome()">→</button>
+    ${s.photo?`<div style="margin-top:12px;border-radius:16px;overflow:hidden;box-shadow:var(--sh)">
+      <img src="${s.photo}" style="width:100%;height:150px;object-fit:cover;display:block"></div>`:''}
+    <div class="hero" style="${s.photo?'border-radius:0 0 16px 16px;margin-top:0':''}">
+      <div class="e">${s.type}</div><h2>${s.name}</h2>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:6px">
+        ${s.rating!=null?`<span style="font-weight:800;color:#B87610;display:flex;align-items:center;gap:3px"><span style="color:#F5A623">★</span>${s.rating} <span style="color:var(--txt3);font-weight:500">(${s.reviewCount} تقييم)</span></span>`:
+          `<span style="font-weight:700;color:var(--ac-d)">🆕 محل جديد</span>`}
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+        <span class="shopcard-time" style="font-size:11px">⏱️ التوصيل خلال ${eta} دقيقة تقريبًا</span>
+        <span class="shopcard-dist" style="font-size:11px">💵 رسوم التوصيل ${isPromo?'مجانًا 🎉':fee+' ج'}</span>
+      </div>
+      ${s.bio?`<p style="margin-top:8px;color:var(--txt);opacity:.85;line-height:1.7">${s.bio}</p>`:''}</div>
+    ${!s.isOpen?`<div class="card mt" style="padding:14px;background:#FDE8E6;border-color:#F5B5AE;text-align:center">
+      <div style="font-size:22px">🔒</div><b style="display:block;margin-top:6px;color:#C23327">المحل مقفول دلوقتي</b>
+      <div class="tiny muted mt">${s.awayMessage||'التاجر قفل استقبال الطلبات مؤقتًا — جرّب تاني بعدين'}</div></div>`:`
+    <div class="sec-t"><h3>✍️ اكتب طلبك من ${s.name}</h3></div>
+    <p class="tiny muted mb" style="margin-top:-6px">اكتب كل صنف عايزه لوحده — المحل هيجهزهولك ويأكدلك السعر قبل ما يوصلك المندوب</p>
+    <div class="fld">
+      <div style="display:flex;gap:7px">
+        <input id="shopItemInput" placeholder="مثلاً: ${s.typeKey==='pharmacy'?'أنبوبة بنادول':s.typeKey==='cafe'?'قهوة تركي وسط':'كيلو رز'}" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();addShopItem();}">
+        <button type="button" onclick="addShopItem()" style="flex:0 0 auto;background:var(--ac);color:#fff;border:0;border-radius:11px;padding:0 18px;font-weight:800;font-size:19px;cursor:pointer">+</button>
+      </div>
+    </div>
+    <div id="shopItemsList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px">${shopItemsListHtml()}</div>
+    ${s.typeKey==='pharmacy'?rxPhotoBoxHtml():''}
+    <div class="fld"><label>أي تفاصيل إضافية؟ (اختياري)</label>
+      <textarea id="shopNotes" rows="2" placeholder="مثلاً: ماركة معينة، أو ملاحظة للتاجر" oninput="S._shopNotesDraft=this.value">${S._shopNotesDraft||''}</textarea></div>
+    <div class="fld"><label>تقريبًا هيكلّف كام؟ (اختياري)</label>
+      <input id="shopBudget" type="number" placeholder="مثلاً 80" value="${S._shopBudgetDraft||''}" oninput="S._shopBudgetDraft=this.value"></div>
+    ${addressFieldHtml('shopAddr',S._shopAddrDraft)}
+    <div class="alert info" style="margin-top:4px">رسوم التوصيل <span class="num">${isPromo?'مجانًا 🎉':fee+' ج'}</span> — تكلفة الأصناف نفسها هيأكدهالك المحل بعد ما يشوف طلبك</div>
+    <button class="btn btn-p mt" style="width:100%" onclick="submitShopOrder()">ابعت الطلب</button>`}
+    <div style="height:8px"></div></div>`;
+}
+/* ═══ إرفاق صورة الروشتة — للصيدليات بس، عشان الصيدلي يشوف بخط دكتوره بالظبط عايز إيه ═══ */
+function rxPhotoBoxHtml(){
+  return `<div class="fld">
+    <label>📎 عندك روشتة؟ ارفق صورتها (اختياري بس بيساعد الصيدلية كتير)</label>
+    <input type="file" accept="image/*" capture="environment" id="rxPhotoFile" style="display:none" onchange="handleRxPhoto(this)">
+    ${S._rxPhoto?`<div style="position:relative;margin-top:6px">
+      <img src="${S._rxPhoto}" style="width:100%;max-height:220px;object-fit:cover;border-radius:12px">
+      <button type="button" onclick="removeRxPhoto()" style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,.6);color:#fff;border:0;
+        width:30px;height:30px;border-radius:50%;font-size:15px;cursor:pointer">✕</button></div>`:
+      `<button type="button" onclick="document.getElementById('rxPhotoFile').click()" class="btn2 btn-o2" style="width:100%;margin-top:6px">
+        📷 صوّر الروشتة</button>`}
+  </div>`;
+}
+function handleRxPhoto(input){
+  const file=input.files&&input.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{ S._rxPhoto=e.target.result; render(); };
+  reader.readAsDataURL(file);
+}
+function removeRxPhoto(){ S._rxPhoto=null; render(); }
+function shopItemsListHtml(){
+  if(!S._shopItems||!S._shopItems.length) return `<div class="tiny muted" style="padding:2px 2px 0">لسه معملتش أصناف — ضيف واحد فوق 👆</div>`;
+  return S._shopItems.map((it,i)=>`<div style="display:flex;align-items:center;gap:8px;background:var(--surf2);border-radius:10px;padding:8px 11px">
+    <span style="flex:1;font-size:12.5px;font-weight:600">• ${it}</span>
+    <button type="button" onclick="removeShopItem(${i})" style="background:none;border:0;color:var(--danger);font-size:15px;cursor:pointer;padding:2px 4px">✕</button></div>`).join('');
+}
+function addShopItem(){
+  const el=document.getElementById('shopItemInput'); const v=el.value.trim();
+  if(!v){toast('اكتب اسم الصنف الأول');return}
+  S._shopItems=S._shopItems||[]; S._shopItems.push(v); el.value=''; refreshShopOrderForm();
+}
+function removeShopItem(i){ S._shopItems.splice(i,1); refreshShopOrderForm(); }
+function refreshShopOrderForm(){
+  const addrEl=document.getElementById('shopAddr'); if(addrEl) S._shopAddrDraft=addrEl.value;
+  const notesEl=document.getElementById('shopNotes'); if(notesEl) S._shopNotesDraft=notesEl.value;
+  const budgetEl=document.getElementById('shopBudget'); if(budgetEl) S._shopBudgetDraft=budgetEl.value;
+  render();
+  const inp=document.getElementById('shopItemInput'); if(inp) inp.focus();
+}
+async function submitShopOrder(){
+  const s=SHOPS[S.activeShop]; if(!s){toast('حصلت مشكلة — ارجع تاني');return}
+  const items=S._shopItems||[];
+  const notes=(document.getElementById('shopNotes').value||'').trim();
+  const budget=+document.getElementById('shopBudget').value||null;
+  const addr=document.getElementById('shopAddr').value.trim();
+  if(!items.length&&!notes){toast('ضيف صنف واحد على الأقل أو اكتب التفاصيل');return}
+  if(!addr){toast('اكتب عنوانك');return}
+  if(sb){
+    const {data:fresh}=await sb.from('merchants').select('is_open,status').eq('id',s.id).maybeSingle();
+    if(fresh&&(fresh.is_open===false||!['trial','active','payment_review'].includes(fresh.status))){
+      s.isOpen=false; render(); toast('للأسف المحل اتقفل دلوقتي بالظبط — جرّب تاني بعدين'); return;
+    }
+  }
+  const wasFirstOrder=isFirstTimer();
+  const sameVillage=!!(s.villageId&&s.villageId===S.co.villageId);
+  const km=villageDistanceKm(VILLAGES.find(v=>v.id===S.co.villageId),VILLAGES.find(v=>v.id===s.villageId));
+  const isPromo=isFreeDeliveryPromo(sameVillage);
+  const normalFee=sameVillage?10:(km==null?12:km<=3?12:km<=6?15:km<=10?20:km<=15?25:Math.round(25+(km-15)*1.5));
+  const commission=isPromo?0:computePlatformCommission(km,sameVillage);
+  const customerFee=isPromo?0:normalFee;
+  const netEarning=+(normalFee-commission).toFixed(2);
+  const descParts=[];
+  if(items.length) descParts.push(items.map(it=>'• '+it).join('\n'));
+  if(notes) descParts.push(notes);
+  if(budget) descParts.push(`(تقريبًا ${budget} ج حسب كلام العميل)`);
+  const desc=descParts.join('\n').trim();
+  let order;
+  if(sb&&S.co.id){
+    const {data:orderRow,error}=await sb.from('orders').insert({
+      merchant_id:s.id, customer_id:S.co.id, customer_name:S.co.name, customer_phone:S.co.ph||'01015974104',
+      address:addr, delivery_lat:S.co.geo?S.co.geo.lat:null, delivery_lng:S.co.geo?S.co.geo.lng:null, delivery_fee:customerFee,
+      origin_village_id:s.villageId||null, dest_village_id:S.co.villageId||null,
+      platform_commission:commission, driver_net_earning:netEarning,
+      total:0, stage:'placed', is_recurring:false, feedback_submitted:false, notes:desc
+    }).select().single();
+    if(error){ console.error('basita: فشل إرسال الطلب لقاعدة البيانات',error); toast('حصلت مشكلة في إرسال الطلب — جرّب تاني'); return; }
+    // لو العميل رفق صورة روشتة، بنرفعها بعد ما الطلب يتسجل عشان نربطها برقم الطلب
+    if(S._rxPhoto){
+      try{
+        const blob=await (await fetch(S._rxPhoto)).blob();
+        const path='RX-'+orderRow.id+'-'+Date.now()+'.jpg';
+        const {error:upErr}=await sb.storage.from('delivery-photos').upload(path,blob,{upsert:true});
+        if(!upErr){
+          const rxUrl=sb.storage.from('delivery-photos').getPublicUrl(path).data.publicUrl;
+          await sb.from('orders').update({prescription_photo_url:rxUrl}).eq('id',orderRow.id);
+          orderRow.prescription_photo_url=rxUrl;
+        }else{ console.error('basita: فشل رفع صورة الروشتة',upErr); }
+      }catch(e){ console.error('basita: فشل رفع صورة الروشتة',e); }
+    }
+    order=mapRowToOrder(orderRow,[]);
+  }else{
+    const id='B'+Math.floor(1000+Math.random()*9000);
+    order={id,merchantId:s.id,shopName:s.name,customerId:S.co.id,name:S.co.name,ph:S.co.ph||'01015974104',
+      addr,geo:S.co.geo,items:[],notes:desc,fee:customerFee,total:0,stage:'placed',driver:null,recurring:false,placedAt:new Date().toISOString()};
+  }
+  S.orders.unshift(order);
+  S._shopItems=[]; S._shopNotesDraft=''; S._shopBudgetDraft=''; S._rxPhoto=null;
+  if(!sb) emit({to:['merchant'],type:'order:new',order});
+  S.fta.dismissed=true;
+  go('track',order.id);
+  if(wasFirstOrder){
+    setTimeout(()=>openSheet('🎉 مبروك أول طلب ليك!',`
+      <p style="color:var(--txt2);font-size:13.5px;line-height:1.8;margin:0 0 16px">
+        طلبك اتبعت لـ<b>${s.name}</b> وهيوصلك قريب. هيأكدلك المحل السعر أول ما يشوف طلبك،
+        وتقدر تتابع كل خطوة لحظة بلحظة من هنا، ومن تبويب "طلباتي" في أي وقت.</p>
+      <button class="btn btn-p" onclick="closeSheet()">تمام، يلا نتابع الطلب</button>`),450);
+  }
 }
 function vCart(){
   const it=cItems();
@@ -2209,14 +2401,28 @@ function vTrack(){
         <span class="tiny muted">هنفكّرك تطلب نفس الأصناف أوتوماتيك</span></span>
       <div class="sw ${o.recurring?'on':''}" onclick="toggleRecurring('${o.id}')"><i></i></div></div>`:''}
     <div class="sec-t"><h3>ملخص الطلب</h3></div>
-    <div class="card">${o.items.map(i=>`<div class="row"><span>${i.n} <span class="tiny muted">${i.sellBy==='weight'?weightLabel(i.q):'×'+i.q}</span></span>
+    ${o.prescriptionPhoto?`<div class="card mb" style="padding:10px;text-align:center">
+      <div class="tiny muted mb">📎 صورة الروشتة اللي بعتّها</div>
+      <img src="${o.prescriptionPhoto}" style="width:100%;border-radius:10px;max-height:200px;object-fit:cover"></div>`:''}
+    <div class="card">
+      ${o.items.length?`${o.items.map(i=>`<div class="row"><span>${i.n} <span class="tiny muted">${i.sellBy==='weight'?weightLabel(i.q):'×'+i.q}</span></span>
       <b class="num">${M(i.p*i.q)} ج</b></div>`).join('')}
       <div class="row" style="border-top:1px solid var(--line);padding-top:9px"><span class="muted">إجمالي الأصناف</span>
-      <b class="num">${M(o.total-o.fee)} ج</b></div>
+      <b class="num">${M(o.total-o.fee)} ج</b></div>`:
+      `<div style="padding:2px 0 6px">
+        <div class="tiny muted mb" style="font-weight:700">اللي طلبته:</div>
+        ${(o.notes||'').split('\n').filter(Boolean).map(line=>line.trim().startsWith('•')?
+          `<div class="row" style="border:0;padding:4px 0"><span>${line.replace(/^•\s*/,'')}</span></div>`:
+          `<div class="tiny muted" style="padding:4px 0">${line}</div>`).join('')||'<div class="tiny muted">—</div>'}
+      </div>
+      ${o.stage==='placed'&&!o.total?`<div class="row" style="border-top:1px solid var(--line);padding-top:9px">
+        <span class="muted">قيمة الأصناف</span><b class="tiny" style="color:var(--ac-d)">⏳ المحل بيأكد السعر دلوقتي</b></div>`:
+        o.total?`<div class="row" style="border-top:1px solid var(--line);padding-top:9px"><span class="muted">إجمالي الأصناف (مؤكّد من المحل)</span>
+        <b class="num">${M(o.total-o.fee)} ج</b></div>`:''}`}
       <div class="row"><span class="muted">رسوم التوصيل</span>
       <b class="num" style="color:${o.fee===0?'var(--ok)':'var(--txt)'}">${o.fee===0?'مجانًا 🎉':M(o.fee)+' ج'}</b></div>
-      <div class="row" style="border-top:1px solid var(--line);padding-top:9px"><b>الإجمالي شامل التوصيل</b>
-      <b class="num kufi" style="color:var(--ac-d);font-size:16px">${M(o.total)} ج</b></div></div>
+      ${(o.items.length||o.total)?`<div class="row" style="border-top:1px solid var(--line);padding-top:9px"><b>الإجمالي شامل التوصيل</b>
+      <b class="num kufi" style="color:var(--ac-d);font-size:16px">${M(o.total)} ج</b></div>`:''}</div>
     <button class="btn2" style="width:100%;margin-top:10px;background:var(--surf2);color:var(--txt2);justify-content:center;display:flex;gap:7px;align-items:center;padding:11px;border-radius:12px;font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-weight:700;font-size:12.5px" onclick="openSupportSheet('${o.id}')">
       <span style="font-size:15px">🚩</span> في مشكلة في الطلب ده؟ بلّغنا</button>
     <div style="height:14px"></div></div>`;
@@ -2274,22 +2480,13 @@ function repeatOrder(orderId){
   const o=S.orders.find(x=>x.id===orderId); if(!o)return;
   const shop=SHOPS[o.merchantId];
   if(!shop||!shop.isOpen){ toast('المحل ده مقفول دلوقتي — جرّب تاني بعدين'); return; }
-  if(Object.keys(S.cart).length&&S.cartShop!==o.merchantId){
-    if(!confirm('عندك أصناف من محل تاني في السلة. تفضيها وتبدأ من المحل ده؟'))return;
-    S.cart={};
-  }
-  let added=0, missing=0;
-  o.items.forEach(it=>{
-    const p=shop.products.find(x=>x.id===it.pid);
-    if(!p){ missing++; return; }
-    S.cartShop=o.merchantId;
-    S.cart[p.id]=it.sellBy==='weight'?it.q:(S.cart[p.id]||0)+it.q;
-    added++;
-  });
-  if(!added){ toast('للأسف كل أصناف الطلب ده بقت مش متاحة'); return; }
-  render();
-  toast(missing?`✓ اتضاف ${added} صنف — و${missing} صنف مش متاح دلوقتي`:'✓ اتضاف الطلب كامل للسلة');
-  go('cart');
+  // نفتحله نفس المحل مع نفس الأصناف اللي كتبها قبل كده كنقطة بداية، يقدر يعدّل فيها قبل ما يبعت
+  S.activeShop=o.merchantId;
+  const prevItems=(o.notes||'').split('\n').map(l=>l.trim()).filter(l=>l.startsWith('•')).map(l=>l.replace(/^•\s*/,''));
+  S._shopItems=prevItems.length?prevItems:(o.items||[]).map(it=>it.n);
+  S._shopNotesDraft=''; S._shopBudgetDraft=''; S._shopAddrDraft=o.addr||S.co.addr||'';
+  go('shop');
+  toast(S._shopItems.length?'✓ جبتلك نفس أصناف طلبك اللي فات — عدّل فيها وابعتها':'اكتب طلبك وابعته');
 }
 const CR_STAGE_LABEL={placed:'⏳ بننتظر موافقة الإدارة',approved:'📢 مستني مندوب يقبل الطلب',assigned:'🛵 المندوب رايح يجيبهالك',delivering:'📦 في الطريق ليك',delivered:'✅ اتسلّم',rejected:'❌ اتلغى الطلب — كلّمنا للتفاصيل'};
 function vOrders(){
@@ -2311,7 +2508,7 @@ function vOrders(){
     <button style="width:100%;text-align:right;background:none;border:0;padding:0;cursor:pointer" onclick="go('track','${o.id}')">
     <div class="row"><b class="kufi">${shortId(o.id)}</b>
       <span class="bdg ${o.stage==='delivered'?'b-ac':'b-w'}">${SLABEL[o.stage]}</span></div>
-    <div class="tiny muted mt">${o.items.length} أصناف · <span class="num">${M(o.total)}</span> ج
+    <div class="tiny muted mt">${o.items.length?o.items.length+' أصناف · ':''}<span class="num">${o.total?M(o.total)+' ج':(o.stage==='placed'?'⏳ السعر لسه بيتأكد':M(o.total)+' ج')}</span>
       ${o.recurring?' · 🔁 متكرر أسبوعيًا':''}</div></button>
     <button class="btn2 btn-o2" style="width:100%;margin-top:9px" onclick="event.stopPropagation();repeatOrder('${o.id}')">🔁 كرر الطلب ده</button>
     </div>`}).join('')}
