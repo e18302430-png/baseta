@@ -932,7 +932,9 @@ function startShift(){
       if(sb&&S.driverId){ sb.from('drivers').update({is_available:true,last_seen_at:new Date().toISOString()}).eq('id',S.driverId).then(()=>{}); subscribeMyTasks(); subscribeMyTickets(); subscribeMySettlements(); subscribeCustomRequests(); startHeartbeat(); loadMyHistory(); loadMyComplaints(); subscribeMyComplaints(); subscribeMyTransfers(); }
       else emit({to:['merchant','owner'],type:'driver:online',driverId:S.driverId,driverName:S.driverName||'كريم عبد الله',vehicle:S.vehicle||'🛵'});
       if('Notification' in window && Notification.permission==='default'){
-        Notification.requestPermission().then(()=>renderNotifWarning());
+        Notification.requestPermission().then(p=>{ renderNotifWarning(); if(p==='granted') setupRealPushNotifications('driver',S.driverId); });
+      }else if(Notification.permission==='granted'){
+        setupRealPushNotifications('driver',S.driverId);
       }
       renderNotifWarning();
       if(S.avail) startLocBroadcast();
@@ -1000,7 +1002,7 @@ function renderNotifWarning(){
       <span style="font-size:20px">🔔</span>
       <span><b>فعّل الإشعارات عشان توصلك المهام دايمًا</b>
       <span>حتى لو فتحت تطبيق تاني — ده أهم حاجة عشان الشغل ما يفوتكش</span></span>
-      <button onclick="Notification.requestPermission().then(renderNotifWarning)">تفعيل</button></div>`;
+      <button onclick="Notification.requestPermission().then(p=>{renderNotifWarning();if(p==='granted')setupRealPushNotifications('driver',S.driverId);})">تفعيل</button></div>`;
   }
 }
 function pushNotify(m){
@@ -1009,6 +1011,30 @@ function pushNotify(m){
       new Notification('بسيطة · تطبيق المندوب',{body:m,icon:''});
     }
   }catch(e){}
+}
+/* ═══ الإشعارات الحقيقية (Web Push) — دي اللي بتوصل حتى والتطبيق مقفول تمامًا أو انت فاتح تطبيق تاني،
+   بعكس التنبيهات العادية اللي محتاجة التطبيق يكون شغال في الخلفية عشان تظهر ═══ */
+const VAPID_PUBLIC_KEY='BJlAnXEwUIkU7FQD5iWN94V92WKJkcfciLH449U28a5lVdcSYY0oKAiOJdhxM3YgnI7kYUqLeOaJl0Wu0reC9Yo';
+function urlBase64ToUint8Array(base64String){
+  const padding='='.repeat((4-base64String.length%4)%4);
+  const base64=(base64String+padding).replace(/-/g,'+').replace(/_/g,'/');
+  const raw=window.atob(base64);
+  return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)));
+}
+async function setupRealPushNotifications(role,ownerId){
+  try{
+    if(!('serviceWorker' in navigator)||!('PushManager' in window)||!sb||!ownerId)return;
+    if(Notification.permission!=='granted')return;
+    const reg=await navigator.serviceWorker.register('/sw.js');
+    let sub=await reg.pushManager.getSubscription();
+    if(!sub){
+      sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(VAPID_PUBLIC_KEY)});
+    }
+    const json=sub.toJSON();
+    await sb.from('push_subscriptions').upsert({
+      role,owner_id:String(ownerId),endpoint:json.endpoint,p256dh:json.keys.p256dh,auth:json.keys.auth
+    },{onConflict:'endpoint'});
+  }catch(e){ console.error('basita: تعذّر تفعيل الإشعارات الحقيقية',e); }
 }
 function toast(m){playNotifySound();pushNotify(m);const t=document.getElementById('toast');if(!t)return;t.textContent=m;t.classList.add('show');
   clearTimeout(window._tT);window._tT=setTimeout(()=>t.classList.remove('show'),2600)}
