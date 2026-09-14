@@ -1066,13 +1066,19 @@ function subscribeMyOrders(){
   sb.channel('my-orders-'+S.co.id)
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'orders',filter:'customer_id=eq.'+S.co.id},payload=>{
       let o=S.orders.find(x=>x.id===payload.new.id);
+      let justGotPrice=false;
       if(o){
+        const prevTotal=+o.total||0;
         o.stage=payload.new.stage; o.driver=payload.new.driver_name||o.driver; o.driverId=payload.new.driver_id||o.driverId;
         if(payload.new.delivery_photo_url) o.deliveryPhoto=payload.new.delivery_photo_url;
         if(payload.new.total!=null) o.total=+payload.new.total;
+        if(payload.new.notes!=null) o.notes=payload.new.notes;
+        justGotPrice=!o.items.length&&prevTotal===0&&o.total>0&&o.stage==='placed';
       }
       render();
-      if(S.view==='track'&&S.oid===payload.new.id) notify('تحديث جديد على طلبك');
+      if(S.view==='track'&&S.oid===payload.new.id){
+        notify(justGotPrice?'المحل حدد سعر طلبك — وافق عشان يكمل 💰':'تحديث جديد على طلبك');
+      }
     })
     .subscribe();
 }
@@ -2337,6 +2343,15 @@ function vTrack(){
       ${o.driver?`<div class="bdg b-ac mt">المندوب: ${o.driver}</div>`:''}
       <button class="btn2" style="width:100%;margin-top:11px;background:#25D366;color:#fff;justify-content:center;display:flex;gap:7px;align-items:center;padding:10px;border-radius:11px;font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-weight:700" onclick="shareTrackOnWhatsapp('${o.id}')">
         <span style="font-size:16px">💬</span> ابعت رابط التتبع على واتساب</button></div>
+    ${(!o.items.length&&o.stage==='placed'&&o.total>0)?`<div class="card mb" style="padding:17px;text-align:center;background:linear-gradient(120deg,#FFF3DE,#FDF1DD);border:1.5px solid var(--ac)">
+      <div style="font-size:28px">💰</div>
+      <b style="font-size:15px;display:block;margin-top:6px">${(SHOPS[o.merchantId]&&SHOPS[o.merchantId].name)||'المحل'} حدد سعر أصنافك بـ <span class="num" style="color:var(--ac-d)">${M(o.total-o.fee)}</span> ج</b>
+      <div class="tiny muted mt">+ رسوم التوصيل ${o.fee===0?'مجانية 🎉':M(o.fee)+' ج'} = الإجمالي <span class="num" style="font-weight:800">${M(o.total)}</span> ج</div>
+      <div style="display:flex;gap:9px;margin-top:14px">
+        <button class="btn btn-p" style="flex:1" onclick="approveOrderPrice('${o.id}')">✅ موافق، كمّل</button>
+        <button class="btn" style="flex:1;background:#FDE8E6;color:#C23327" onclick="rejectOrderPrice('${o.id}')">❌ مش موافق</button>
+      </div>
+    </div>`:''}
     ${o._driverArrived?`<div style="background:#C23327;border-radius:14px;padding:15px;margin-bottom:12px;text-align:center;box-shadow:0 8px 20px -8px rgba(194,51,39,.5)">
       <div style="font-size:24px;margin-bottom:5px">💰</div>
       <div style="color:#fff;font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-weight:900;font-size:15px;line-height:1.6">
@@ -2427,6 +2442,33 @@ function vTrack(){
       <span style="font-size:15px">🚩</span> في مشكلة في الطلب ده؟ بلّغنا</button>
     <div style="height:14px"></div></div>`;
 }
+/* ═══ موافقة/رفض العميل على السعر اللي حدده المحل — الطلب مايتحولش لـ"مقبول" ويتبدأ البحث عن مندوب
+   إلا لما العميل نفسه يوافق، عشان محدش يتفاجئ بسعر مش موافق عليه ═══ */
+async function approveOrderPrice(id){
+  const o=S.orders.find(x=>x.id===id); if(!o)return;
+  o.stage='accepted';
+  if(sb){ const {error}=await sb.from('orders').update({stage:'accepted'}).eq('id',id); if(error){ console.error('basita:',error); toast('حصلت مشكلة — جرّب تاني'); return; } }
+  render(); toast('✓ تمام! بندوّر على أقرب مندوب متاح دلوقتي');
+}
+function rejectOrderPrice(id){
+  openSheet('السعر مش مناسب؟',`
+    <p class="tiny muted mb">قوللنا السبب لو حابب (اختياري) — هيوصل للمحل عشان يراجع السعر ويبعتلك سعر تاني</p>
+    <div class="fld"><textarea id="rejectReasonInput" rows="2" placeholder="مثلاً: غالي شوية، أو مش نفس اللي كنت متوقعه"></textarea></div>
+    <button class="btn btn-p" style="width:100%" onclick="confirmRejectPrice('${id}')">تأكيد الرفض</button>`);
+}
+async function confirmRejectPrice(id){
+  const o=S.orders.find(x=>x.id===id); if(!o)return;
+  const reason=(document.getElementById('rejectReasonInput').value||'').trim();
+  closeSheet();
+  const rejectNote='⚠️ العميل رفض السعر اللي اتبعت ('+M(o.total)+' ج)'+(reason?' — السبب: '+reason:'')+' — يُرجى مراجعة السعر والمحاولة تاني';
+  const newNotes=(o.notes?o.notes+'\n':'')+rejectNote;
+  if(sb){
+    const {error}=await sb.from('orders').update({total:0,notes:newNotes}).eq('id',id);
+    if(error){ console.error('basita:',error); toast('حصلت مشكلة — جرّب تاني'); return; }
+  }
+  o.total=0; o.notes=newNotes;
+  render(); toast('اتبعت للمحل إنك مش موافق — هيراجع السعر ويبعتلك تاني');
+}
 function toggleRecurring(id){
   const o=S.orders.find(x=>x.id===id); o.recurring=!o.recurring; render();
   toast(o.recurring?'تمام — هنفكّرك الأسبوع الجاي بنفس الطلب':'اتلغى التكرار');
@@ -2504,10 +2546,10 @@ function vOrders(){
     </button>`).join('')}`:''}
     ${S.orders.length?`<div class="sec-t"><h3>طلباتك من المحلات</h3></div>`:''}
     ${S.orders.map(o=>{
-    return `<div class="card mb" style="padding:13px">
+    return `<div class="card mb" style="padding:13px;${(!o.items.length&&o.stage==='placed'&&o.total>0)?'border-color:var(--ac);box-shadow:0 0 0 1.5px var(--ac)':''}">
     <button style="width:100%;text-align:right;background:none;border:0;padding:0;cursor:pointer" onclick="go('track','${o.id}')">
     <div class="row"><b class="kufi">${shortId(o.id)}</b>
-      <span class="bdg ${o.stage==='delivered'?'b-ac':'b-w'}">${SLABEL[o.stage]}</span></div>
+      <span class="bdg ${o.stage==='delivered'?'b-ac':(!o.items.length&&o.stage==='placed'&&o.total>0)?'b-w':'b-w'}">${(!o.items.length&&o.stage==='placed'&&o.total>0)?'💰 حدّد السعر — وافق':SLABEL[o.stage]}</span></div>
     <div class="tiny muted mt">${o.items.length?o.items.length+' أصناف · ':''}<span class="num">${o.total?M(o.total)+' ج':(o.stage==='placed'?'⏳ السعر لسه بيتأكد':M(o.total)+' ج')}</span>
       ${o.recurring?' · 🔁 متكرر أسبوعيًا':''}</div></button>
     <button class="btn2 btn-o2" style="width:100%;margin-top:9px" onclick="event.stopPropagation();repeatOrder('${o.id}')">🔁 كرر الطلب ده</button>
