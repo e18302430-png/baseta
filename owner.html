@@ -1123,6 +1123,10 @@ function adminOrderStageLabel(stage){
 function adminOrderStageBadge(stage){
   if(stage==='delivered')return 'b-ac'; if(stage==='rejected'||stage==='cancelled')return 'b-d'; return 'b-prog';
 }
+function isWriteOrderMerchant(merchantId){
+  const m=S.merchants.find(x=>x.id===merchantId);
+  return !!(m&&['بقالة','صيدلية'].includes(m.type));
+}
 function onAdminOrderSearch(v){ S.orderSearchQ=(v||'').trim(); renderAdminOrdersList(); }
 function setAdminOrderKindFilter(k){ S.orderKindFilter=(S.orderKindFilter===k?null:k); render(); }
 function classifyAdminOrderKind(x){
@@ -1153,7 +1157,7 @@ function renderAdminOrdersList(){
         <span class="n">${shortId(x.id)} · ${x.customer_name||'—'}${x.prescription_photo_url?' · 📎 روشتة':''}</span>
         <span class="s">${x._at?new Date(x._at).toLocaleString('ar-EG'):''} ${(x.description||x.notes)?'· '+(x.description||x.notes).split('\n')[0]:''}</span>
       </span>
-      <span class="bdg ${adminOrderStageBadge(x.stage)}">${adminOrderStageLabel(x.stage)}</span>
+      <span class="bdg ${(x._kind==='order'&&isWriteOrderMerchant(x.merchant_id)&&x.stage==='placed'&&x.total>0)?'b-w':adminOrderStageBadge(x.stage)}">${(x._kind==='order'&&isWriteOrderMerchant(x.merchant_id)&&x.stage==='placed'&&x.total>0)?'💰 بانتظار موافقة العميل':adminOrderStageLabel(x.stage)}</span>
     </div>`).join('')}</div>`:
     `<div class="tiny muted" style="padding:14px 4px">${q||S.orderKindFilter?'مفيش طلبات مطابقة':'لسه مفيش طلبات'}</div>`;
 }
