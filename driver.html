@@ -880,11 +880,25 @@ function logout(){
 function applyDriverRow(data){
   S.driverId=data.id; S.driverName=data.name; S.vehicle=data.vehicle; S.phone=data.phone; S.villageId=data.village_id||null;
 }
+/* ═══ بلوك مؤقت من الإدارة — لو الحساب متبلوك، نوقف الاستخدام تمامًا ونوضح السبب بدل ما نسيبه يستخدم التطبيق عادي ═══ */
+function showBlockedScreen(reason){
+  const el=document.createElement('div');
+  el.id='blockedOverlay';
+  el.style.cssText='position:fixed;inset:0;z-index:999;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px;text-align:center';
+  el.innerHTML=`
+    <div style="font-size:52px;margin-bottom:16px">🚫</div>
+    <h2 style="font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-weight:900;font-size:19px;margin-bottom:10px;color:var(--txt)">حسابك متوقف مؤقتًا</h2>
+    <p style="color:var(--txt2);font-size:14px;line-height:1.8;max-width:320px">
+      ${reason?'السبب: '+reason:'تم إيقاف الحساب مؤقتًا من الإدارة.'}<br>لو محتاج تفاصيل أكتر أو حابب تستفسر، كلّم الدعم الفني.</p>
+    <button onclick="window.open('https://wa.me/201015974104','_blank')" style="margin-top:20px;background:#25D366;color:#fff;border:0;padding:12px 22px;border-radius:12px;font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-weight:800;font-size:13.5px;cursor:pointer">💬 كلّم الدعم على واتساب</button>`;
+  document.body.appendChild(el);
+}
 async function tryRestoreSession(){
   const s=loadSession();
   if(!s||!s.driverId||!sb)return false;
   const {data,error}=await sb.from('drivers').select('*').eq('id',s.driverId).maybeSingle();
   if(error||!data){ clearSession(); return false; }
+  if(data.is_blocked){ applyDriverRow(data); showBlockedScreen(data.block_reason); return true; }
   applyDriverRow(data);
   applyDriverIdentity();
   if(data.status==='pending_review'){
@@ -909,6 +923,7 @@ async function doLogin(){
     const pass_hash=await hashPassword(pass);
     if(pass_hash!==data.password_hash){ toast('كلمة المرور غلط'); return; }
     if(data.status!=='approved'){ toast('حسابك لسه بانتظار مراجعة الأمان'); return; }
+    if(data.is_blocked){ applyDriverRow(data); saveSession(); document.getElementById('loginFlow').classList.remove('show'); showBlockedScreen(data.block_reason); return; }
     applyDriverRow(data);
     S.password=pass;
   }else{
@@ -963,26 +978,23 @@ async function playNotifySound(){
     o.start();o.stop(ctx.currentTime+.3);
   }catch(e){}
 }
-/* ═══ نغمة قوية ومميزة لمهمة جديدة — مختلفة تمامًا عن التنبيه العادي، وبتتكرر ثلاث مرات عشان محدش يفوّتها ═══ */
+/* ═══ نغمة المهمة الجديدة — "بيب بيب" حاد ومميز يتكرر 4 مرات، مصمم عشان يبان واضح فوق أي ضوضاء حواليك
+   ومتفرق تمامًا عن أي صوت تنبيه عادي في التطبيق، مع اهتزاز قوي يماشيه ═══ */
 async function playOrderAlert(){
   try{
     const ctx=await ensureAudioCtxRunning(); if(!ctx){ console.warn('basita: الصوت متقفل لحد أول لمسة على الشاشة'); return; }
-    const ring=startTime=>{
-      [740,988,1319].forEach((freq,i)=>{
-        const o=ctx.createOscillator(),g=ctx.createGain();
-        o.connect(g);g.connect(ctx.destination);
-        o.type='square';o.frequency.value=freq;
-        const t0=startTime+i*.13;
-        g.gain.setValueAtTime(.0001,t0);
-        g.gain.exponentialRampToValueAtTime(.7,t0+.02);
-        g.gain.exponentialRampToValueAtTime(.0001,t0+.2);
-        o.start(t0);o.stop(t0+.22);
-      });
+    const beep=(t0,freq,dur)=>{
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.connect(g);g.connect(ctx.destination);
+      o.type='square';o.frequency.value=freq;
+      g.gain.setValueAtTime(.0001,t0);
+      g.gain.exponentialRampToValueAtTime(.85,t0+.015);
+      g.gain.exponentialRampToValueAtTime(.0001,t0+dur);
+      o.start(t0);o.stop(t0+dur+.02);
     };
-    ring(ctx.currentTime);
-    ring(ctx.currentTime+.5);
-    ring(ctx.currentTime+1.0);
-    if(navigator.vibrate) navigator.vibrate([220,90,220,90,220,90,220]);
+    const doubleBeep=t0=>{ beep(t0,1568,.11); beep(t0+.14,1976,.13); };
+    [0,.42,.84,1.26].forEach(offset=>doubleBeep(ctx.currentTime+offset));
+    if(navigator.vibrate) navigator.vibrate([300,120,300,120,300,120,300,120,300]);
   }catch(e){}
 }
 function renderNotifWarning(){
