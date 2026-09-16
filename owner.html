@@ -318,7 +318,8 @@ async function loadPendingFromDB(){
     const mapped={id:m.id,name:m.name,type:BIZ_LABELS_O[m.biz_type]||m.biz_type,
       icon:BIZ_ICONS_O[m.biz_type]||'🏪',phone:m.phone,status:m.status,daysLeft:computeDaysLeftO(m),price:99,
       slaBreaches:0,pendingAmount:m.pending_amount||99,pendingReceipt:m.pending_receipt_url||null,
-      villageName:villageMap[m.village_id]||'—',openTime:m.open_time,closeTime:m.close_time};
+      villageName:villageMap[m.village_id]||'—',openTime:m.open_time,closeTime:m.close_time,
+      isBlocked:m.is_blocked||false,blockReason:m.block_reason||null};
     const existing=S.merchants.find(x=>x.id===m.id);
     if(existing) Object.assign(existing,mapped);
     else S.merchants.unshift(mapped);
@@ -327,7 +328,8 @@ async function loadPendingFromDB(){
   (drivers||[]).forEach(d=>{
     const mapped={driverId:d.id,driverName:d.name,phone:d.phone,vehicle:d.vehicle,
       idCardPhoto:d.id_card_photo_url,selfiePhoto:d.selfie_photo_url,agreementAccepted:d.agreement_accepted,
-      status:d.status==='pending_review'?'pending':d.status,at:new Date(d.created_at).toLocaleDateString('ar-EG')};
+      status:d.status==='pending_review'?'pending':d.status,at:new Date(d.created_at).toLocaleDateString('ar-EG'),
+      isBlocked:d.is_blocked||false,blockReason:d.block_reason||null};
     const existing=S.driverApplications.find(x=>x.driverId===d.id);
     if(existing) Object.assign(existing,mapped);
     else S.driverApplications.unshift(mapped);
@@ -1301,7 +1303,7 @@ async function loadCustomersFromDB(){
     const mine=(orders||[]).filter(o=>o.customer_id===c.id);
     return {id:c.id,name:c.name,phone:c.phone,villageName:villageMap[c.village_id]||'—',
       createdAt:c.created_at?new Date(c.created_at).toLocaleDateString('ar-EG'):'—',
-      orders:mine.length,spent:mine.reduce((s,o)=>s+ +o.total,0)};
+      orders:mine.length,spent:mine.reduce((s,o)=>s+ +o.total,0),isBlocked:c.is_blocked||false,blockReason:c.block_reason||null};
   });
   render();
 }
@@ -1411,6 +1413,54 @@ async function openCRDetailAdmin(requestId){
       </div>`:''}
   `);
 }
+/* ═══ بلوك مؤقت — يقفل استخدام الحساب مؤقتًا من غير ما يتحذف، ويوضحله سبب البلوك لو اتكتب ═══ */
+async function toggleBlockAccount(table,id,isBlocked,label){
+  if(!isBlocked){
+    const reason=prompt('سبب البلوك المؤقت لـ'+label+'؟ (هيظهر له، اختياري)','');
+    if(reason===null)return;
+    if(sb){
+      const {error}=await sb.from(table).update({is_blocked:true,block_reason:reason||null}).eq('id',id);
+      if(error){ console.error('basita:',error); toast('حصلت مشكلة في تنفيذ البلوك'); return; }
+    }
+    toast('✓ اتعمل بلوك مؤقت لـ'+label);
+  }else{
+    if(!confirm('تشيل البلوك المؤقت عن '+label+'؟'))return;
+    if(sb){
+      const {error}=await sb.from(table).update({is_blocked:false,block_reason:null}).eq('id',id);
+      if(error){ console.error('basita:',error); toast('حصلت مشكلة في شيل البلوك'); return; }
+    }
+    toast('✓ اتشال البلوك عن '+label);
+  }
+  if(table==='customers'){ const c=S.customers.find(x=>x.id===id); if(c){c.isBlocked=!isBlocked;c.blockReason=null;} openCustomerDetail(id); }
+  if(table==='merchants'){ const m=S.merchants.find(x=>x.id===id); if(m){m.isBlocked=!isBlocked;m.blockReason=null;} openMerchantDetail(id); }
+  if(table==='drivers'){ const a=S.driverApplications.find(x=>x.driverId===id); if(a){a.isBlocked=!isBlocked;a.blockReason=null;} openDriverDetail(id); }
+}
+function blockToggleHtml(table,id,isBlocked,label,blockReason){
+  return `<div class="card mt" style="padding:14px">
+    ${isBlocked?`<div class="tiny" style="color:#C23327;font-weight:700;margin-bottom:8px">🚫 الحساب ده متبلوك مؤقتًا دلوقتي${blockReason?' — السبب: '+blockReason:''}</div>`:''}
+    <button class="btn2" style="width:100%;background:${isBlocked?'var(--ac-l)':'#FDE8E6'};color:${isBlocked?'var(--ac-d)':'#C23327'}"
+      onclick="toggleBlockAccount('${table}','${id}',${isBlocked},'${label.replace(/'/g,"\\'")}')">
+      ${isBlocked?'✓ شيل البلوك المؤقت':'🚫 بلوك مؤقت للحساب ده'}</button>
+  </div>`;
+}
+async function deleteDriverAccount(id){
+  const a=S.driverApplications.find(x=>x.driverId===id); if(!a)return;
+  if(!confirm('متأكد إنك عايز تحذف حساب المندوب "'+a.driverName+'" نهائيًا؟ يقدر يسجّل حساب جديد بنفس الرقم بعد كده لو حب يرجع يشتغل.'))return;
+  if(sb){
+    await sb.from('orders').update({driver_id:null,driver_name:null}).eq('driver_id',id);
+    await sb.from('custom_requests').update({driver_id:null,driver_name:null}).eq('driver_id',id);
+    await sb.from('tips').delete().eq('driver_id',id);
+    await sb.from('settlements').delete().eq('driver_id',id);
+    await sb.from('wallet_transfers').delete().eq('to_driver_id',id);
+    await sb.from('order_rejections').delete().eq('driver_id',id);
+    await sb.from('push_subscriptions').delete().eq('role','driver').eq('owner_id',id);
+    const {error}=await sb.from('drivers').delete().eq('id',id);
+    if(error){ console.error('basita:',error); toast('حصلت مشكلة في الحذف — جرّب تاني'); return; }
+  }
+  S.driverApplications=S.driverApplications.filter(x=>x.driverId!==id);
+  closeDetailSheet();
+  render(); toast('اتحذف حساب المندوب نهائيًا — يقدر يسجّل من جديد بنفس الرقم وقت ما يحب');
+}
 async function openCustomerDetail(id){
   const c=S.customers.find(x=>x.id===id); if(!c)return;
   openDetailSheet('بيانات العميل الكاملة',`
@@ -1420,6 +1470,7 @@ async function openCustomerDetail(id){
     ${detailRow('عدد الطلبات',c.orders||0)}
     ${detailRow('إجمالي الإنفاق',M(c.spent||0)+' ج')}
     ${detailRow('تاريخ التسجيل',c.createdAt||'—')}
+    ${blockToggleHtml('customers',c.id,c.isBlocked,c.name,c.blockReason)}
     <div class="tiny muted mt mb" style="margin-top:12px">سجل الطلبات — دوس على أي طلب لتفاصيله كاملة</div>
     <div id="custOrdersList" class="tiny muted">بيتحمّل...</div>
   `);
@@ -1448,6 +1499,7 @@ async function openMerchantDetail(id){
     ${detailRow('الأيام المتبقية',m.daysLeft!=null?m.daysLeft+' يوم':'—')}
     ${detailRow('إجمالي المبيعات',M(m.salesTotal||0)+' ج')}
     ${detailRow('مواعيد العمل',(m.openTime&&m.closeTime)?(m.openTime+' — '+m.closeTime):'—')}
+    ${blockToggleHtml('merchants',m.id,m.isBlocked,m.name,m.blockReason)}
     <div class="tiny muted mt mb" style="margin-top:12px">سجل الطلبات — دوس على أي طلب لتفاصيله كاملة</div>
     <div id="merchOrdersList" class="tiny muted">بيتحمّل...</div>
   `);
@@ -1468,6 +1520,11 @@ async function openDriverDetail(id){
     ${detailRow('عدد التوصيلات',a.deliveries||0)}
     ${detailRow('صافي أرباحه المسجّلة',M(a.earnings||0)+' ج')}
     ${detailRow('الحالة',a.status==='approved'?'موثّق ومعتمد':a.status)}
+    ${blockToggleHtml('drivers',a.driverId,a.isBlocked,a.driverName,a.blockReason)}
+    <div class="card mt" style="padding:14px">
+      <button class="btn2" style="width:100%;background:#FDE8E6;color:#C23327" onclick="deleteDriverAccount('${a.driverId}')">🗑️ حذف الحساب نهائيًا</button>
+      <div class="tiny muted mt" style="text-align:center">حذف نهائي — يقدر يسجّل حساب جديد بنفس الرقم بعد كده</div>
+    </div>
     <div style="margin-top:12px">
       <div class="tiny muted mb">صورة البطاقة الشخصية</div>
       ${a.idCardPhoto?`<img src="${a.idCardPhoto}" style="width:100%;border-radius:10px;margin-bottom:10px" onclick="window.open('${a.idCardPhoto}','_blank')">`:'<div class="tiny muted">مفيش صورة</div>'}
