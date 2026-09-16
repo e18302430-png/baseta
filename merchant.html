@@ -1815,7 +1815,7 @@ function downloadQR(){
   const a=document.createElement('a'); a.download='basita-shop-qr.png'; a.href=c.toDataURL(); a.click();
 }
 function pickupCode(orderId,minuteOffset){
-  const epoch=Math.floor(Date.now()/60000)-(minuteOffset||0);
+  const epoch=Math.floor(Date.now()/300000)-(minuteOffset||0);
   const seed=orderId+'-'+epoch;
   let h=0; for(let i=0;i<seed.length;i++){ h=(h*31+seed.charCodeAt(i))>>>0; }
   return String(h%10000).padStart(4,'0');
@@ -2043,7 +2043,7 @@ function oCard(o){
              style="flex:1;padding:10px;border:1px solid var(--line);border-radius:10px;text-align:center;font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-size:17px;letter-spacing:4px;background:#fff">
            <button class="btn2 btn-p2" onclick="confirmPickup('${o.id}')">تأكيد</button>
          </div>
-         <span class="tiny" style="color:var(--ac-d)">🔒 الكود بيتغيّر كل دقيقة تلقائيًا لحماية بيانات العميل</span>
+         <span class="tiny" style="color:var(--ac-d)">🔒 الكود بيتغيّر كل ٥ دقايق تلقائيًا لحماية بيانات العميل</span>
        </div>`:''}
       ${o.driver&&o.stage!=='delivered'&&o.stage!=='assigned'?
         `<div class="tiny muted mt">🛵 المندوب: <b style="color:var(--txt)">${o.driver}</b></div>`:''}
