@@ -894,16 +894,30 @@ async function requestAccountDeletion(){
   toast('✓ اتحذفت بياناتك الشخصية بالكامل');
   location.reload();
 }
+/* ═══ بلوك مؤقت من الإدارة — لو الحساب متبلوك، نوقف الاستخدام تمامًا ونوضح السبب بدل ما نسيبه يستخدم التطبيق عادي ═══ */
+function showBlockedScreen(reason){
+  const el=document.createElement('div');
+  el.id='blockedOverlay';
+  el.style.cssText='position:fixed;inset:0;z-index:999;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px;text-align:center';
+  el.innerHTML=`
+    <div style="font-size:52px;margin-bottom:16px">🚫</div>
+    <h2 style="font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-weight:900;font-size:19px;margin-bottom:10px;color:var(--txt)">حسابك متوقف مؤقتًا</h2>
+    <p style="color:var(--txt2);font-size:14px;line-height:1.8;max-width:320px">
+      ${reason?'السبب: '+reason:'تم إيقاف الحساب مؤقتًا من الإدارة.'}<br>لو محتاج تفاصيل أكتر أو حابب تستفسر، كلّم الدعم الفني.</p>
+    <button onclick="window.open('https://wa.me/201015974104','_blank')" style="margin-top:20px;background:#25D366;color:#fff;border:0;padding:12px 22px;border-radius:12px;font-family:'Cairo','Segoe UI','Tahoma',sans-serif;font-weight:800;font-size:13.5px;cursor:pointer">💬 كلّم الدعم على واتساب</button>`;
+  document.body.appendChild(el);
+}
 async function tryRestoreSession(){
   const s=loadSession();
   if(!s||!s.id)return false;
   if(sb){
-    const {data,error}=await sb.from('customers').select('id').eq('id',s.id).maybeSingle();
+    const {data,error}=await sb.from('customers').select('id,is_blocked,block_reason').eq('id',s.id).maybeSingle();
     if(error||!data){
       console.error('basita: الحساب المحفوظ محليًا ملوش وجود في قاعدة البيانات — هيتم تسجيل خروج تلقائي',error);
       clearSession();
       return false;
     }
+    if(data.is_blocked){ showBlockedScreen(data.block_reason); return true; }
   }else{
     // مفيش اتصال بقاعدة البيانات دلوقتي، فمش هنقدر نتأكد إن الحساب المحفوظ محليًا لسه موجود فعلًا —
     // أهم من راحة الاستخدام إننا منوريش المستخدم كإنه "داخل" على حساب ممكن يكون اتمسح فعلًا (زي بعد تصفير المنصة)
@@ -919,7 +933,10 @@ async function verifyOtp(){
   if(authMode==='login'){
     if(sb){
       const {data,error}=await sb.from('customers').select('*').eq('phone',S.co.ph).maybeSingle();
-      if(data){ S.co.id=data.id; S.co.name=data.name; S.co.villageId=data.village_id||null; S.co.createdAt=data.created_at; document.getElementById('hiName').textContent=data.name.split(' ')[0]; }
+      if(data){
+        if(data.is_blocked){ showBlockedScreen(data.block_reason); return; }
+        S.co.id=data.id; S.co.name=data.name; S.co.villageId=data.village_id||null; S.co.createdAt=data.created_at; document.getElementById('hiName').textContent=data.name.split(' ')[0];
+      }
       else if(error){ console.error('basita: خطأ في البحث عن حسابك',error); }
     }
     saveSession();
