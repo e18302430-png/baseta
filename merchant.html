@@ -2166,7 +2166,16 @@ function vAcct(){
 }
 function vQR(){
   return `<div class="pad" style="padding-top:14px">
-    <div class="card" style="padding:0;overflow:hidden">
+    <div class="card" style="padding:16px">
+      <div class="tiny muted mb" style="font-weight:700">⏰ مواعيد العمل</div>
+      <div style="display:flex;gap:10px">
+        <div class="fld" style="flex:1;margin-bottom:0"><label>من الساعة</label><input type="time" id="hoursOpenInput" value="${S.openTime||'09:00'}"></div>
+        <div class="fld" style="flex:1;margin-bottom:0"><label>لحد الساعة</label><input type="time" id="hoursCloseInput" value="${S.closeTime||'23:00'}"></div>
+      </div>
+      <div class="tiny muted mt" style="margin-top:8px">العميل هيشوف متجرك "مقفول" تلقائيًا برّه المواعيد دي، ويرجع "مفتوح" تلقائيًا في الميعاد من غير ما تعمل حاجة. لو مواعيدك بتعدي نص الليل (زي ٩ص لـ١ص) اكتبها عادي، النظام فاهمها.</div>
+      <button class="btn2 btn-p2 mt" style="width:100%" onclick="saveWorkingHours()">حفظ المواعيد</button>
+    </div>
+    <div class="card mt" style="padding:0;overflow:hidden">
       ${S.shopPhoto?`<img src="${S.shopPhoto}" style="width:100%;height:160px;object-fit:cover;display:block">`:
         `<div style="width:100%;height:160px;background:var(--surf2);display:grid;place-items:center;color:var(--txt3)">
           <div style="text-align:center"><div style="font-size:32px">📷</div><div class="tiny mt">مفيش صورة لمتجرك لسه</div></div></div>`}
@@ -2191,6 +2200,17 @@ function vQR(){
     <button onclick="openVillageImpact()" style="width:100%;text-align:center;margin-top:6px">
       <p class="tiny muted">🌾 قصة بسيطة — إزاي بنرقمن قرى مصر</p></button>
     <div style="height:14px"></div></div>`;
+}
+async function saveWorkingHours(){
+  const openTime=document.getElementById('hoursOpenInput').value;
+  const closeTime=document.getElementById('hoursCloseInput').value;
+  if(!openTime||!closeTime){toast('حدد الوقتين الأول والاخير');return}
+  S.openTime=openTime; S.closeTime=closeTime;
+  if(sb&&S.merchantId){
+    const {error}=await sb.from('merchants').update({open_time:openTime,close_time:closeTime}).eq('id',S.merchantId);
+    if(error){ console.error('basita:',error); toast('❌ حصلت مشكلة: '+(error.message||'خطأ غير معروف')); return; }
+  }
+  toast('✓ اتحدّثت مواعيد العمل — هتتطبّق فورًا عند العملاء');
 }
 async function uploadShopPhoto(input){
   const file=input.files[0]; if(!file)return;
