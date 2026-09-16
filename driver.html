@@ -819,7 +819,7 @@ function subscribeMyApproval(){
       if(payload.new.status==='approved'){
         S.verifyStatus='approved';
         document.getElementById('pendingReview').classList.remove('show');
-        setTimeout(()=>document.getElementById('shiftStart').classList.add('show'),300);
+        startShift();
         toast('🎉 صاحب المنصة وافق على هويتك!');
       }else if(payload.new.status==='rejected'){
         S.verifyStatus='rejected'; toast('اعتذرت الإدارة عن طلبك — تواصل مع الدعم');
@@ -834,7 +834,7 @@ async function checkDriverApproval(){
   }
   if(S.verifyStatus==='approved'){
     document.getElementById('pendingReview').classList.remove('show');
-    setTimeout(()=>document.getElementById('shiftStart').classList.add('show'),300);
+    startShift();
   }else{
     toast('لسه بنراجع بياناتك — هنبعتلك إشعار أول ما نخلص');
   }
@@ -894,7 +894,7 @@ async function tryRestoreSession(){
     return true;
   }
   if(data.status==='rejected'){ clearSession(); return false; }
-  document.getElementById('shiftStart').classList.add('show');
+  startShift();
   return true;
 }
 async function doLogin(){
@@ -919,28 +919,24 @@ async function doLogin(){
   saveSession();
   applyDriverIdentity();
   document.getElementById('loginFlow').classList.remove('show');
-  setTimeout(()=>document.getElementById('shiftStart').classList.add('show'),350);
+  startShift();
 }
+/* ═══ المندوب بيبقى "مستعد لاستقبال الطلبات" تلقائيًا من لحظة ما التطبيق يفتح — من غير ما يحتاج يضغط
+   على أي زرار "بدء مناوبة" أول. الضغط اليدوي على "بدء المناوبة" (زي بعد استراحة) لسه شغال زي ما هو. ═══ */
 function startShift(){
-  document.getElementById('shiftSw').classList.add('on');
-  setTimeout(()=>{
-    document.getElementById('shiftStart').style.opacity=0;
-    setTimeout(()=>{
-      document.getElementById('shiftStart').classList.remove('show');
-      document.getElementById('mainApp').classList.add('show');
-      render();
-      if(sb&&S.driverId){ sb.from('drivers').update({is_available:true,last_seen_at:new Date().toISOString()}).eq('id',S.driverId).then(()=>{}); subscribeMyTasks(); subscribeMyTickets(); subscribeMySettlements(); subscribeCustomRequests(); startHeartbeat(); loadMyHistory(); loadMyComplaints(); subscribeMyComplaints(); subscribeMyTransfers(); }
-      else emit({to:['merchant','owner'],type:'driver:online',driverId:S.driverId,driverName:S.driverName||'كريم عبد الله',vehicle:S.vehicle||'🛵'});
-      if('Notification' in window && Notification.permission==='default'){
-        Notification.requestPermission().then(p=>{ renderNotifWarning(); if(p==='granted') setupRealPushNotifications('driver',S.driverId); });
-      }else if(Notification.permission==='granted'){
-        setupRealPushNotifications('driver',S.driverId);
-      }
-      renderNotifWarning();
-      if(S.avail) startLocBroadcast();
-      toast('بدأت مناوبتك — مستني أول مهمة');
-    },400);
-  },600);
+  document.getElementById('shiftStart').classList.remove('show');
+  document.getElementById('mainApp').classList.add('show');
+  render();
+  if(sb&&S.driverId){ sb.from('drivers').update({is_available:true,last_seen_at:new Date().toISOString()}).eq('id',S.driverId).then(()=>{}); subscribeMyTasks(); subscribeMyTickets(); subscribeMySettlements(); subscribeCustomRequests(); startHeartbeat(); loadMyHistory(); loadMyComplaints(); subscribeMyComplaints(); subscribeMyTransfers(); }
+  else emit({to:['merchant','owner'],type:'driver:online',driverId:S.driverId,driverName:S.driverName||'كريم عبد الله',vehicle:S.vehicle||'🛵'});
+  if('Notification' in window && Notification.permission==='default'){
+    Notification.requestPermission().then(p=>{ renderNotifWarning(); if(p==='granted') setupRealPushNotifications('driver',S.driverId); });
+  }else if(Notification.permission==='granted'){
+    setupRealPushNotifications('driver',S.driverId);
+  }
+  renderNotifWarning();
+  if(S.avail) startLocBroadcast();
+  toast('أهلًا بيك — جاهز تستقبل الطلبات فورًا 🛵');
 }
 /* ═══ سياق صوت واحد دائم — بيتفتح لحظة أول لمسة من المندوب على الشاشة (سياسة المتصفحات بتمنع الصوت التلقائي قبل كده) ═══ */
 let _audioCtx=null;
@@ -1206,7 +1202,7 @@ onBus(d=>{
     notify('✅ اتوافق على حسابك — يلا ابدأ مناوبتك');
     if(document.getElementById('pendingReview').classList.contains('show')){
       document.getElementById('pendingReview').classList.remove('show');
-      setTimeout(()=>document.getElementById('shiftStart').classList.add('show'),300);
+      startShift();
     }
     return;
   }
@@ -1620,7 +1616,7 @@ function saveDriverPassword(){
 
 let scanOrderId=null, scanStream=null, scanRAF=null;
 function pickupCode(orderId,minuteOffset){
-  const epoch=Math.floor(Date.now()/60000)-(minuteOffset||0);
+  const epoch=Math.floor(Date.now()/300000)-(minuteOffset||0);
   const seed=orderId+'-'+epoch;
   let h=0; for(let i=0;i<seed.length;i++){ h=(h*31+seed.charCodeAt(i))>>>0; }
   return String(h%10000).padStart(4,'0');
@@ -1697,7 +1693,7 @@ function renderFullTaskCard(t,i,activeLen){
              <div style="text-align:center;padding:14px;background:var(--ac-l);border-radius:12px">
                <div class="tiny muted">قول الكود ده للتاجر عشان يأكّد استلامك</div>
                <div class="kufi num" id="pcode-${t.id}" style="font-size:32px;letter-spacing:8px;color:var(--ac-d);margin:6px 0">${pickupCode(t.id,0)}</div>
-               <div class="tiny" style="color:var(--ac-d)">🔒 بيتجدد كل دقيقة تلقائيًا</div>
+               <div class="tiny" style="color:var(--ac-d)">🔒 بيتجدد كل ٥ دقايق تلقائيًا</div>
              </div>`:
             t.stage==='delivering'?
             (!t._arrivedCustomer?
