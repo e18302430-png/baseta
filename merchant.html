@@ -1414,7 +1414,7 @@ function productPhotoBoxHtml(){
   return `<div class="fld" id="productPhotoBox">
     <label>📸 صورة المنتج (اختياري)</label>
     <div class="tiny muted mb" style="margin-top:-4px">💡 صورة حقيقية للمنتج بتطمّن العميل وبتزوّد ثقته في طلبه — بس مش إجباري خالص</div>
-    <input type="file" accept="image/*" capture="environment" id="productPhotoFile" style="display:none" onchange="handleProductPhoto(this)">
+    <input type="file" accept="image/*" id="productPhotoFile" style="display:none" onchange="handleProductPhoto(this)">
     ${S._productPhotoLocal?`<div style="position:relative;margin-top:6px">
       <img src="${S._productPhotoLocal}" style="width:100%;max-height:180px;object-fit:cover;border-radius:12px">
       <button type="button" onclick="removeProductPhoto()" style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,.6);color:#fff;border:0;
@@ -1460,12 +1460,12 @@ async function saveProduct(id){
   if(sb&&S.merchantId){
     if(id){
       const {error}=await sb.from('products').update(row).eq('id',id);
-      if(error){ console.error('basita:',error); toast('حصلت مشكلة في التعديل');return }
+      if(error){ console.error('basita:',error); toast('❌ فشل التعديل: '+(error.message||'خطأ غير معروف'));return }
       Object.assign(S.products.find(x=>x.id===id),{n,p:price,u:unit,s:stock,sellBy,batch:row.batch_number,expiry:row.expiry_date,wholesale:row.wholesale_price});
       await uploadProductPhotoIfNeeded(id);
     }else{
       const {data,error}=await sb.from('products').insert({...row,merchant_id:S.merchantId,icon:BIZ().icon,brand:''}).select().single();
-      if(error){ console.error('basita:',error); toast('حصلت مشكلة في الإضافة');return }
+      if(error){ console.error('basita:',error); toast('❌ فشل إضافة المنتج: '+(error.message||'خطأ غير معروف'));return }
       S.products.push(mapProductRow(data));
       await uploadProductPhotoIfNeeded(data.id);
     }
