@@ -716,7 +716,28 @@ function vOverview(){
   const trialCount=S.merchants.filter(m=>m.status==='trial').length;
   const pendingCR=(S.customRequests||[]).filter(r=>r.stage==='placed'&&!isTukTukRequest(r));
   const pendingTuk=(S.customRequests||[]).filter(r=>r.stage==='placed'&&isTukTukRequest(r));
+  // ═══ طلبات فضلت من غير رد من التاجر لمدة 5 دقايق أو أكتر — أهم حاجة تبان فورًا للمالك عشان يتصل بالتاجر مباشرة ═══
+  const delayedOrders=(S.orders||[]).filter(o=>o.stage==='placed'&&o.placed_at&&(Date.now()-new Date(o.placed_at).getTime())>5*60000)
+    .map(o=>({...o,_merchant:S.merchants.find(m=>m.id===o.merchant_id)}));
   return `<div class="pad" style="padding-top:14px">
+    ${delayedOrders.length?`<div style="background:linear-gradient(120deg,#3A0E0E,#5A1616);border-radius:16px;padding:14px 16px;margin-bottom:14px;
+      box-shadow:0 10px 24px -10px rgba(90,22,22,.6);border:1px solid rgba(255,255,255,.08)">
+      <div style="display:flex;align-items:center;gap:9px">
+        <span style="font-size:20px">⏰</span>
+        <b style="color:#FF8A80;font-family:'Cairo';font-size:14px">${delayedOrders.length} طلب فضل من غير رد من التاجر لأكتر من 5 دقايق!</b>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
+        ${delayedOrders.slice(0,6).map(o=>{
+          const mins=Math.floor((Date.now()-new Date(o.placed_at).getTime())/60000);
+          return `<div style="background:rgba(255,255,255,.08);border-radius:11px;padding:10px 12px;cursor:pointer" onclick="openOrderDetailAdmin('${o.id}')">
+          <div style="color:#fff;font-size:12.5px;font-weight:700">${o._merchant?o._merchant.name:'محل غير معروف'} — طلب ${shortId(o.id)}</div>
+          <div style="color:#FFCDD2;font-size:10.5px;margin-top:2px">فاضل من ${mins} دقيقة من غير رد · العميل: ${o.customer_name||'—'}</div>
+          ${o._merchant&&o._merchant.phone?`<a href="tel:${o._merchant.phone}" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;background:#fff;color:#5A1616;
+            padding:7px 14px;border-radius:9px;font-family:'Cairo';font-weight:800;font-size:11.5px;text-decoration:none">📞 اتصل بالتاجر دلوقتي</a>`:''}
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`:''}
     ${pendingCR.length?`<div style="background:linear-gradient(120deg,#241A05,#3A2E14);border-radius:16px;padding:14px 16px;margin-bottom:14px;
       box-shadow:0 10px 24px -10px rgba(36,26,5,.5)">
       <div style="display:flex;align-items:center;gap:9px">
@@ -1752,5 +1773,8 @@ function viewDoc(src){
   document.body.appendChild(el);
 }
 function closeDocView(){ document.getElementById('docViewWrap')?.remove(); }
+/* ═══ نحدّث شاشة "الطلبات المتأخرة" كل دقيقة تلقائيًا، عشان عدّاد الدقايق يفضل صحيح
+   من غير ما تحتاج تعمل ريفرش بنفسك ═══ */
+setInterval(()=>{ if(S.view==='overview') render(); },60000);
 </script>
 </body></html>
