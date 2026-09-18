@@ -777,6 +777,7 @@ function subscribeMyApproval(){
         S.sub.status=payload.new.status; S.sub.daysLeft=computeDaysLeft(payload.new);
         toast('🎉 صاحب المنصة وافق على متجرك!');
         proceedToStoreOpen();
+        setTimeout(showFinalStepTips,1200);
       }else if(payload.new.status==='rejected'){
         document.getElementById('pendingApproval').innerHTML=`
           <div style="width:84px;height:84px;border-radius:26px;background:#FDE8E6;display:grid;place-items:center;font-size:36px;margin-bottom:20px">✕</div>
@@ -784,6 +785,23 @@ function subscribeMyApproval(){
           <p style="color:var(--txt2);font-size:13.5px;margin:10px 0 0;max-width:280px">تواصل مع الدعم الفني لمعرفة السبب</p>`;
       }
     }).subscribe();
+}
+/* ═══ خطوة أخيرة مهمة — بنوريها مرة واحدة بس بعد الموافقة، عشان نضمن وصول الطلبات والإشعارات
+   حتى لو الموبايل بيقفل التطبيقات في الخلفية (مشكلة شائعة جدًا في موبايلات كتير) ═══ */
+function showFinalStepTips(){
+  openSheet('⚠️ خطوة أخيرة مهمة جدًا',`
+    <p class="tiny muted mb">عشان توصلك الطلبات والإشعارات دايمًا حتى لو التطبيق مقفول، اعمل الخطوتين دول بس مرة واحدة:</p>
+    <div class="card mb" style="padding:14px;display:flex;gap:12px;align-items:center">
+      <span style="font-size:30px">🔋</span>
+      <div><b style="font-size:13.5px;display:block">استثني التطبيق من توفير البطارية</b>
+      <span class="tiny muted">إعدادات موبايلك ← البطارية ← دوّر على "بسيطة" أو Chrome ← اختار "بدون تحسين/تشغيل حر"</span></div>
+    </div>
+    <div class="card mb" style="padding:14px;display:flex;gap:12px;align-items:center">
+      <span style="font-size:30px">🏠</span>
+      <div><b style="font-size:13.5px;display:block">ضيف التطبيق لشاشتك الرئيسية</b>
+      <span class="tiny muted">من قايمة المتصفح (⋮) فوق ← "إضافة إلى الشاشة الرئيسية"</span></div>
+    </div>
+    <button class="btn btn-p" style="width:100%" onclick="closeSheet()">تمام، خلصت الخطوتين</button>`);
 }
 function computeDaysLeft(row){
   const cycleStart=row.status==='active'?row.subscription_renews_at:row.trial_started_at;
@@ -904,6 +922,22 @@ async function checkNewDeviceLogin(merchantRow){
     S._newDeviceAlert=true;
   }
 }
+/* ═══ ملخص بسيط لآخر يوم شغل — بيظهر مرة واحدة بس أول ما التاجر يفتح التطبيق في يوم جديد،
+   عشان يشجّعه يرجع يفتح التطبيق باستمرار من غير أي تعقيد أو خدمة خارجية ═══ */
+function checkDailySummary(){
+  const today=new Date().toDateString();
+  const lastShown=localStorage.getItem('basita_daily_summary_'+S.merchantId);
+  if(lastShown===today)return;
+  const hadPrevious=!!lastShown;
+  localStorage.setItem('basita_daily_summary_'+S.merchantId,today);
+  if(!hadPrevious)return; // أول مرة يفتح التطبيق خالص، مفيش داعي نوريه ملخص فاضي
+  const yesterday=new Date(); yesterday.setDate(yesterday.getDate()-1);
+  const yStr=yesterday.toDateString();
+  const yOrders=(S.orders||[]).filter(o=>o.stage==='delivered'&&o.placedTs&&new Date(o.placedTs).toDateString()===yStr);
+  if(!yOrders.length)return;
+  const total=yOrders.reduce((s,o)=>s+(+o.total||0),0);
+  toast(`📊 إمبارح خدت ${yOrders.length} طلب بإجمالي ${M(total)} ج — استمر كده! 💪`);
+}
 function proceedToStoreOpen(){
   document.getElementById('loginFlow').classList.remove('show');
   setTimeout(()=>{
@@ -926,6 +960,7 @@ function proceedToStoreOpen(){
         }
         renderNotifWarning();
         if(sb&&S.merchantId){ loadMyProducts(); subscribeMyOrders(); subscribeMyReviews(); subscribeMyTickets(); subscribeMySettlements(); }
+        setTimeout(checkDailySummary,2500);
         if(S._newDeviceAlert){
           S._newDeviceAlert=false;
           setTimeout(()=>{ if(confirm('⚠️ ده تسجيل دخول من جهاز جديد على حسابك.\nلو إنت اللي بتسجّل دخول من موبايل تاني، تجاهل الرسالة دي.\nلو مش إنت، دوس "موافق" عشان تغيّر كلمة المرور فورًا.'))openChangePassword();
