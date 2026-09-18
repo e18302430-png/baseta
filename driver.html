@@ -1989,12 +1989,21 @@ function markOfflineNow(){
   if(sb&&S.driverId) sb.from('drivers').update({is_available:false}).eq('id',S.driverId).then(()=>{});
 }
 window.addEventListener('pagehide',markOfflineNow);
+/* ═══ لو المتصفح استرجع نسخة "مجمّدة" من الصفحة بدل ما يحمّلها من جديد فعليًا (حاجة شائعة جدًا
+   على أندرويد وقت العودة من تطبيق تاني) — ده الحدث الصحيح اللي بيوضح إن ده حصل، فنجبره يحمّل الصفحة
+   من الأول بدل ما يسيب المستخدم شايف نسخة ميتة مش بترد ═══ */
+window.addEventListener('pageshow',e=>{ if(e.persisted) location.reload(); });
+let _hiddenSinceT=null;
 document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){ _hiddenSinceT=Date.now(); return; }
   // قفل الشاشة أو تحويل لتطبيق تاني مؤقتًا حاجة طبيعية جدًا وقت الشغل — مش معناها المندوب سايب المهمة.
   // النبض الدوري (كل ٤٥ ثانية) والمهلة الزمنية عند التاجر (دقيقتين) كافيين لاكتشاف اللي قفل التطبيق فعليًا.
-  if(!document.hidden&&sb&&S.driverId&&S.avail){
+  if(sb&&S.driverId&&S.avail){
     sb.from('drivers').update({is_available:true,last_seen_at:new Date().toISOString()}).eq('id',S.driverId).then(()=>{});
   }
+  // لو الاتصال اللحظي اتقطع في الخلفية لمدة طويلة (شائع جدًا على أندرويد)، أضمن حل إنه يحدّث نفسه
+  // تلقائيًا بدل ما المندوب يضطر يعمل ريفرش يدوي كل مرة
+  if(_hiddenSinceT&&Date.now()-_hiddenSinceT>20000) location.reload();
 });
 function startLocBroadcast(){
   stopLocBroadcast();
