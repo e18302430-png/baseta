@@ -730,6 +730,17 @@ function onBus(fn){
 let _deferredInstallPrompt=null;
 const _isStandalone=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;
 const _isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent);
+/* ═══ لو الاتصال اللحظي اتقطع في الخلفية لمدة طويلة (شائع جدًا على أندرويد بعد قفل الشاشة أو تبديل التطبيقات)،
+   أضمن حل إن التطبيق يحدّث نفسه تلقائيًا بدل ما المستخدم يضطر يعمل ريفرش يدوي كل مرة ═══ */
+/* ═══ لو المتصفح استرجع نسخة "مجمّدة" من الصفحة بدل ما يحمّلها من جديد فعليًا (حاجة شائعة جدًا
+   على أندرويد وقت العودة من تطبيق تاني) — ده الحدث الصحيح اللي بيوضح إن ده حصل، فنجبره يحمّل الصفحة
+   من الأول بدل ما يسيب المستخدم شايف نسخة ميتة مش بترد ═══ */
+window.addEventListener('pageshow',e=>{ if(e.persisted) location.reload(); });
+let _hiddenSinceT=null;
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){ _hiddenSinceT=Date.now(); return; }
+  if(_hiddenSinceT&&Date.now()-_hiddenSinceT>20000) location.reload();
+});
 window.addEventListener('beforeinstallprompt',e=>{
   e.preventDefault();
   _deferredInstallPrompt=e;
