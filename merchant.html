@@ -2361,6 +2361,17 @@ function checkAppLockPin(el){
   if(el.value===getAppLockPin()){ document.getElementById('appLockScreen').style.display='none'; }
   else{ el.value=''; toast('رمز غلط'); }
 }
-document.addEventListener('visibilitychange',()=>{ if(!document.hidden) showAppLockIfNeeded(); });
+/* ═══ لو المتصفح استرجع نسخة "مجمّدة" من الصفحة بدل ما يحمّلها من جديد فعليًا (حاجة شائعة جدًا
+   على أندرويد وقت العودة من تطبيق تاني) — ده الحدث الصحيح اللي بيوضح إن ده حصل، فنجبره يحمّل الصفحة
+   من الأول بدل ما يسيب المستخدم شايف نسخة ميتة مش بترد ═══ */
+window.addEventListener('pageshow',e=>{ if(e.persisted) location.reload(); });
+let _hiddenSinceT=null;
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){ _hiddenSinceT=Date.now(); return; }
+  showAppLockIfNeeded();
+  // لو التطبيق قفل في الخلفية أو الموبايل قفل الاتصال اللحظي (شائع جدًا على أندرويد بعد فترة)،
+  // أضمن حل إنه يحدّث نفسه لوحده تلقائيًا بدل ما التاجر يضطر يعمل ريفرش يدوي كل مرة
+  if(_hiddenSinceT&&Date.now()-_hiddenSinceT>20000) location.reload();
+});
 </script>
 </body></html>
